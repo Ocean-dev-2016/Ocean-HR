@@ -29,7 +29,8 @@ class CompanyRequest extends FormRequest
     {
         // dd($request->all());
         $id = $request->route('company') ?? 0;
-        $isEdit = $id ? true : false;
+        $companyId = is_object($id) ? $id->id : $id;
+        $isEdit = $companyId ? true : false;
         $dateFormats = array_keys(Helper::getSupportedDateFormats());
         $timeFormats = array_keys(Helper::getSupportedTimeFormats());
         return [
@@ -39,12 +40,12 @@ class CompanyRequest extends FormRequest
                 'nullable',
                 'size:15', // GSTIN must be exactly 15 characters
                 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
-                Rule::unique((new Company())->getTable())->ignore($id),
+                Rule::unique((new Company())->getTable())->ignore($companyId),
             ],
             'company_name' => [
                 'required',
                 'max:255',
-                Rule::unique((new Company())->getTable())->ignore($id),
+                Rule::unique((new Company())->getTable())->ignore($companyId),
             ],
             'person_name' => [
                 'required',
@@ -63,9 +64,7 @@ class CompanyRequest extends FormRequest
                 $isEdit ? ['nullable'] : ['required'],
                 ['regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/']
             ),
-            'country_id' => [
-                'required'
-            ],
+            'country_id' => $isEdit ? ['nullable'] : ['required'],
             'state_id' => $isEdit ? ['nullable'] : ['required'],
             'city_id' => $isEdit ? ['nullable'] : ['required'],
             'plan_id' => $isEdit ? ['nullable'] : ['required'],
