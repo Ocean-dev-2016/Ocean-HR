@@ -123,7 +123,7 @@
                     <footer class="footer text-center py-3">
                         <p class="mb-0 text-muted">
                             Powered By
-                            <a href="https://oceaninfotechcrm.com/" target="_blank" class="fw-bold text-primary">
+                            <a href="https://oceaninfotechcrm.com/" target="_blank" class="fw-bold" style="color: #ea580c !important; text-decoration: none;">
                                 Ocean Infotech
                             </a>
                         </p>
