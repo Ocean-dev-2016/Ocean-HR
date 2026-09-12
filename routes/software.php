@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\software\AttendanceController;
 use App\Http\Controllers\software\CompanyController;
+use App\Http\Controllers\software\CompanyRegistrationController;
 use App\Http\Controllers\software\DashboardController;
 use App\Http\Controllers\software\EmployeeAssignAssetsController;
 use App\Http\Controllers\software\EmployeeIncrementDetailsController;
@@ -78,6 +79,11 @@ Route::GET('/login', [SoftwareAuthController::class, 'showLoginForm'])->name('so
 Route::POST('/login-submit', [SoftwareAuthController::class, 'submitLoginForm'])->name('software.submit.login');
 Route::match(['get', 'post'], '/logout', [SoftwareAuthController::class, 'logout'])->name('software.logout');
 
+// Public Company Registration
+Route::get('/register-company', [SoftwareAuthController::class, 'showCompanyRegisterForm'])->name('software.register.company');
+Route::post('/register-company', [SoftwareAuthController::class, 'submitCompanyRegisterForm'])->name('software.register.company.submit');
+Route::post('company/check-company-exists', [CompanyController::class, 'check_company_exists'])->name('company.check-company-exists');
+
 // Forgot Password
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('software.forgot.password');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('software.forgot.password.submit');
@@ -116,7 +122,11 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::match(['get', 'post'], 'set_company_session', [CompanyController::class, 'set_company_session'])->name('company.set_company_session');
     Route::match(['get', 'post'], 'verify_website_api_code', [CompanyController::class, 'verify_website_api_code'])->name('company.verify_website_api_code');
     Route::match(['get', 'post'], 'master_config/{platform?}/{id?}', [CompanyController::class, 'set_master_config'])->name('company.master_config');
-    Route::match(['get', 'post'], 'get_master_social', [CompanyController::class, 'get_master_social'])->name('company.get_master_social');
+    // Company Registration
+    Route::resource('company-registration', CompanyRegistrationController::class, ['names' => 'software.company-registration']);
+    Route::post('company-registration/{id}/approve', [CompanyRegistrationController::class, 'approve'])->name('software.company-registration.approve');
+    Route::post('company-registration/{id}/reject', [CompanyRegistrationController::class, 'reject'])->name('software.company-registration.reject');
+
 
     // Sidebar Menu
     Route::match(['GET', 'POST'], 'sidebar-menu', [DashboardController::class, 'sidebar_menu'])->name('sidebar.menu');

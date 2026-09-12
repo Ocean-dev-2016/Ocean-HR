@@ -5,6 +5,48 @@
 @section('page_leavel_style')
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/@form-validation/form-validation.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/css/pages/page-auth.css') }}" />
+    <style>
+        .btn-dull-orange {
+            background: linear-gradient(135deg, #ea580c 0%, #d97706 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3) !important;
+            transition: all 0.25s ease-in-out !important;
+        }
+
+        .btn-dull-orange:hover, .btn-dull-orange:focus {
+            background: linear-gradient(135deg, #c2410c 0%, #b45309 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 6px 18px rgba(234, 88, 12, 0.4) !important;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-dull-orange {
+            border: 2px solid #ea580c !important;
+            color: #ea580c !important;
+            background: #ffffff !important;
+            border-radius: 10px !important;
+            transition: all 0.25s ease-in-out !important;
+        }
+
+        .btn-outline-dull-orange:hover, .btn-outline-dull-orange:focus {
+            background: #fff7ed !important;
+            border-color: #c2410c !important;
+            color: #c2410c !important;
+            transform: translateY(-1px);
+        }
+        .auth-cover-bg-color {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+        }
+        .auth-illustration {
+            max-height: 75% !important;
+            max-width: 75% !important;
+            height: auto !important;
+            transform: scale(1.05) !important;
+            transition: transform 0.3s ease-in-out !important;
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -13,7 +55,7 @@
     <div class="authentication-wrapper authentication-cover authentication-bg">
         <div class="authentication-inner row">
             <!-- /Left Text -->
-            <div class="d-none d-lg-flex col-lg-7 p-0">
+            <div class="d-none d-lg-flex col-lg-6 p-0">
                 <div class="auth-cover-bg auth-cover-bg-color d-flex justify-content-center align-items-center">
                     <img src="{{ asset('software/img/illustrations/auth-login-illustration-light.png') }}"
                         alt="auth-login-cover" class="img-fluid my-5 auth-illustration" />
@@ -25,45 +67,16 @@
             <!-- /Left Text -->
 
             <!-- Login -->
-            <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
-                <div class="w-px-400 mx-auto">
+            <div class="d-flex col-12 col-lg-6 align-items-center p-sm-5 p-4">
+                <div class="w-100 mx-auto" style="max-width: 580px;">
                     <!-- Logo -->
-                    @if ($errors->has('plan_expired'))
-                        <div class="alert alert-danger">
-                            {{ $errors->first('plan_expired') }}
-                        </div>
-                    @endif
-                    @if ($errors->has('company_inactive'))
-                        <div class="alert alert-danger">
-                            {{ $errors->first('company_inactive') }}
-                        </div>
-                    @endif
-
-                    <div class="app-brand mb-4">
-                        <a href="{{ route('software.login') }}" class="app-brand-link gap-2">
-                            <img class="w-100" src="{{ asset('software/img/logo.png') }}" />
-                            {{-- <span class="app-brand-logo demo">
-                            <svg width="32" height="22" viewBox="0 0 32 22" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M0.00172773 0V6.85398C0.00172773 6.85398 -0.133178 9.01207 1.98092 10.8388L13.6912 21.9964L19.7809 21.9181L18.8042 9.88248L16.4951 7.17289L9.23799 0H0.00172773Z"
-                                    fill="#266BEE" />
-                                <path opacity="0.06" fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M7.69824 16.4364L12.5199 3.23696L16.5541 7.25596L7.69824 16.4364Z"
-                                    fill="#161616" />
-                                <path opacity="0.06" fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M8.07751 15.9175L13.9419 4.63989L16.5849 7.28475L8.07751 15.9175Z"
-                                    fill="#161616" />
-                                <path fill-rule="evenodd" clip-rule="evenodd"
-                                    d="M7.77295 16.3566L23.6563 0H32V6.88383C32 6.88383 31.8262 9.17836 30.6591 10.4057L19.7824 22H13.6938L7.77295 16.3566Z"
-                                    fill="#266BEE" />
-                            </svg>
-                        </span> --}}
+                    <div class="app-brand mb-3 text-center d-flex justify-content-center">
+                        <a href="{{ route('software.login') }}" class="app-brand-link gap-2 w-100 justify-content-center">
+                            <img src="{{ asset('software/img/logo.png') }}" style="max-width: 440px; width: 100%; height: auto; object-fit: contain;" />
                         </a>
                     </div>
                     <!-- /Logo -->
-                    <h3 class="mb-1">Welcome to {{ env('APP_NAME') }} 👋</h3>
-                    {{-- <p class="mb-4">Please sign-in to your account and start the adventure</p> --}}
+                    <h3 class="mb-2 fw-bold">Welcome to {{ env('APP_NAME') }} 👋</h3>
 
                     <form id="formAuthentication" class="mb-3" action="{{ route('software.submit.login') }}"
                         method="post">
@@ -76,7 +89,7 @@
                         <div class="mb-3">
                             <label for="email" class="form-label">Username or Email or Phone</label>
                             <input type="text" class="form-control" id="email" name="username"
-                                placeholder="Enter your email or username" autofocus value="{{ old('username') }}" />
+                                placeholder="Enter your email or username" value="{{ old('username') }}" />
                         </div>
                         <div class="mb-3 form-password-toggle">
                             <div class="d-flex justify-content-between">
@@ -88,12 +101,6 @@
                                     aria-describedby="password" />
                                 <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
                             </div>
-                            {{-- <div class="text-end">
-                                <a href="{{ route('software.forgot.password') }}">
-
-                                    <small>Forgot Password?</small>
-                                </a>
-                            </div> --}}
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
@@ -101,7 +108,16 @@
                                 <label class="form-check-label" for="remember-me"> Remember Me </label>
                             </div>
                         </div>
-                        <button class="btn btn-primary d-grid w-100">Sign in</button>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-dull-orange w-100 py-2.5 fw-bold">Sign in</button>
+                            </div>
+                            <div class="col-6">
+                                <a href="{{ route('software.register.company') }}" class="btn btn-outline-dull-orange w-100 py-2.5 fw-bold text-nowrap d-flex align-items-center justify-content-center">
+                                    <i class="ti ti-building-plus me-1"></i> Register with Demo
+                                </a>
+                            </div>
+                        </div>
                     </form>
 
                     <footer class="footer text-center py-3">

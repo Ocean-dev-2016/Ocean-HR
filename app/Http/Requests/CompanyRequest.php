@@ -54,11 +54,13 @@ class CompanyRequest extends FormRequest
             'whatsapp_number' => [
                 'required',
                 'numeric',
-                'regex:/^\d{10}$/'
+                'regex:/^\d{10}$/',
+                Rule::unique((new Company())->getTable(), 'whatsapp_number')->ignore($companyId),
             ],
             'email' => [
                 'required',
-                'email'
+                'email',
+                Rule::unique((new Company())->getTable(), 'email')->ignore($companyId),
             ],
             'password' => array_merge(
                 $isEdit ? ['nullable'] : ['required'],
@@ -96,9 +98,12 @@ class CompanyRequest extends FormRequest
             'gst_no.required' => 'The GST number is required.',
             'gst_no.regex' => 'The GST number is invalid.',
             'company_name.required' => 'The company name is required.',
+            'company_name.unique' => 'This company name is already registered.',
             'person_name.required' => 'The person name is required.',
             'whatsapp_number.required' => 'The whatsapp number is required.',
+            'whatsapp_number.unique' => 'This WhatsApp number is already registered with another company.',
             'email.required' => 'The email is required.',
+            'email.unique' => 'This email address is already registered with another company.',
             'password.required' => 'The password is required.',
             'country_id.required' => 'The country is required.',
             'state_id.required' => 'The state is required.',

@@ -68,6 +68,55 @@
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/@form-validation/form-validation.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <style>
+        /* Global Toastr Fix & Bootstrap 5 Conflict Prevention */
+        #toast-container {
+            z-index: 999999 !important;
+        }
+        #toast-container > div.toast {
+            opacity: 1 !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+            border-radius: 12px !important;
+            padding: 14px 20px 14px 50px !important;
+            min-width: 320px !important;
+            max-width: 480px !important;
+            width: auto !important;
+            display: block !important;
+            overflow: visible !important;
+            border: none !important;
+        }
+        #toast-container > div.toast-error {
+            background-color: #ea5455 !important;
+            color: #ffffff !important;
+        }
+        #toast-container > div.toast-success {
+            background-color: #28c76f !important;
+            color: #ffffff !important;
+        }
+        #toast-container > div.toast-info {
+            background-color: #00cfdd !important;
+            color: #ffffff !important;
+        }
+        #toast-container > div.toast-warning {
+            background-color: #ff9f43 !important;
+            color: #ffffff !important;
+        }
+        #toast-container div.toast-message {
+            color: #ffffff !important;
+            font-size: 0.925rem !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+            display: block !important;
+            word-break: break-word !important;
+        }
+        #toast-container div.toast-title {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            font-size: 1rem !important;
+            margin-bottom: 4px !important;
+            display: block !important;
+        }
+    </style>
 
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/node-waves/node-waves.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />

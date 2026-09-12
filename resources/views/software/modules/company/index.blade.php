@@ -33,13 +33,13 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-4 mb-2">
                             <label class="form-label">Filter by Name</label>
                             <input type="search" class="form-control search" name="search" placeholder="search..."
                                 autofocus>
                         </div>
 
-                        <div class="col-md-6 d-flex align-items-end mb-2">
+                        <div class="col-md-8 d-flex align-items-end mb-2">
                             <div class="flex-grow-1 me-2">
                                 <label class="form-label">Filter by Plan</label>
                                 <select id="plan_id" name="plan_id"
