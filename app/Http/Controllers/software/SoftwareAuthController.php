@@ -140,17 +140,18 @@ class SoftwareAuthController extends Controller
                     }
                 }
             }else{
-                $teamPerson = Employee::where('username', $request->get("username"))->first();
+                $company = Company::where('app_key', $request->get("app_key"))->first();
+                if (!$company) {
+                    return Redirect::back()->withErrors(['app_key' => 'App key is wrong'])->withInput();
+                }
+
+                $teamPerson = Employee::where('company_id', $company->id)
+                    ->where('username', $request->get("username"))
+                    ->first();
+
                 //dd("L-172", $teamPerson->toArray(), $request->all());
                 if ($teamPerson) {
                     if ($teamPerson?->status == "active") {
-                        $company = Company::where('id', $teamPerson->company_id)->first();
-
-                        // check app_key matches company.app_key
-                        if ($request->get("app_key") !== $company?->app_key) {
-                            return Redirect::back()->withErrors(['app_key' => 'App key is wrong'])->withInput();
-                        }
-
                         $credentials = [
                             'username' => $request->get("username"),
                             'password' => $request->get("password"),
@@ -167,7 +168,7 @@ class SoftwareAuthController extends Controller
                                 Auth::guard('employees')->logout();
                                 return Redirect::back()->withErrors(['company_inactive' => 'Your Company is Inactive.'])->withInput();
                             } else {
-                                $panel_url = $company->panel_url;
+                                $panel_url = $company->panel_url ?: route('software.dashboard');
 
                                 return Redirect::intended(url($panel_url))->withSuccess('You are Logged in as Team Person!');
                             }

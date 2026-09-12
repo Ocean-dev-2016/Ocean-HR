@@ -49,7 +49,8 @@ class EmployeeRequest extends FormRequest
 
     public function rules(Request $request): array
     {
-        $id = $request->route('employees') ?? $request->edit_id ?? 0;
+        $routeParam = $request->route('employee') ?? $request->route('employees');
+        $id = is_object($routeParam) ? $routeParam->id : ($routeParam ?? $request->edit_id ?? 0);
 
         // Check company's employee_code_auto_generation setting
         $company = Company::find($request->company_id);
@@ -116,7 +117,9 @@ class EmployeeRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique((new Employee())->getTable(), 'username')->ignore($id)->whereNull('deleted_at'),
+                Rule::unique((new Employee())->getTable(), 'username')
+                    ->ignore($id)
+                    ->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at')),
             ],
             'password' => [
                 $id ? 'nullable' : 'required',
