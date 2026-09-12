@@ -1,0 +1,126 @@
+# production
+cd hrms.oceaninfotechcrm.com/
+git pull origin main
+php artisan db:seed --class=MainMenuSeeder
+php artisan migrate:refresh --path=
+
+|-------------------------------------------- Local
+
+|-------------------------------------------- On Development
+
+|-------------------------------------------- Live
+
+===> 11-02-2026
+ALTER TABLE `leave_applications` CHANGE `team_person_ids` `team_person_ids` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL;
+
+===> 13-01-2026
+php artisan migrate:refresh --path=database/migrations/2025_11_15_192110_create_biometric_machines_table.php
+
+===> 14-11-2025
+ALTER TABLE `branches` ADD `employee_code_start` BIGINT NULL  DEFAULT NULL AFTER `prefix`;
+ALTER TABLE `employees` CHANGE `role_id` `role_id` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL;
+
+===> 14-11-2025
+ALTER TABLE `employee_education_experience_details` CHANGE `attachment` `attachment` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL;
+ALTER TABLE `employee_education_experience_details` CHANGE `company_name` `company_name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `joining_date` `joining_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `left_date` `left_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `ctc_salary` `ctc_salary` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `department_name` `department_name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `designation_name` `designation_name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `effective_date` `effective_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `document_type` `document_type` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL, CHANGE `document_name` `document_name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL;
+
+===> 31-09-2025
+ALTER TABLE `employment_details` ADD `sub_department_id` VARCHAR(255) NULL DEFAULT NULL AFTER `department_id`, ADD `process_id` VARCHAR(255) NULL DEFAULT NULL AFTER `sub_department_id`;
+
+php artisan migrat:refresh --path=database/migrations/2025_10_08_221736_create_salaries_table.php
+==>03-11-2025
+
+php artisan migrat:refresh --path=database/migrations/2025_09_10_215427_create_employment_details_table.php
+
+
+===>12-10-2025
+
+
+php artisan migrat:refresh --path=database/migrations/2025_10_03_154215_create_account_heads_table.php
+
+
+
+===>07-09-2025
+ALTER TABLE `employees` CHANGE `role_id` `role_id` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
+
+
+===> 30-09-2025
+php artisan migrat:refresh --path=database/migrations/2025_04_30_064436_create_document_types_table.php
+
+ALTER TABLE `shifts` CHANGE `auth_punch_out` `auto_punch_out` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+
+ALTER TABLE `shifts` ADD `working_hour` VARCHAR(255) NULL DEFAULT NULL AFTER `auto_punch_out`, ADD `breaking_hour` VARCHAR(255) NULL DEFAULT NULL AFTER `working_hour`, ADD `half_day_hour` VARCHAR(255) NULL DEFAULT NULL AFTER `breaking_hour`, ADD `present_day_hour` VARCHAR(255) NULL DEFAULT NULL AFTER `half_day_hour`;
+
+ALTER TABLE `employee_wise_salary_details` DROP `working_hour`, DROP `breaking_hour`, DROP `half_day_hour`, DROP `present_day_hour`;
+
+===> 06-09-2025
+ALTER TABLE `payment_receipts` ADD `payment_mode` VARCHAR(255) NULL AFTER `account_head_id`;
+
+
+
+===> 03-09-2025
+php artisan migrat:refresh --path=database/migrations/2025_09_09_222155_create_holidays_table.php
+php artisan migrat:refresh --path=database/migrations/2025_09_16_090612_create_bonuses_table.php
+
+
+===>02-09-2025
+ALTER TABLE `employment_details` CHANGE `confirmation_date` `employment_confirmation_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci  NULL DEFAULT NULL;
+ALTER TABLE `leave_applications` CHANGE `team_person_ids` `branch_id` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci  NULL DEFAULT NULL;
+ALTER TABLE `leave_applications` ADD `employee_id` VARCHAR(255) NULL AFTER `branch_id`;
+
+
+====> 01-09-2025
+ALTER TABLE `employment_details` ADD `employee_id` VARCHAR(255) NOT NULL AFTER `company_id`;
+ALTER TABLE `employment_details` CHANGE `designation_type_id` `designation_type` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `date_of_joing` `date_of_joining` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `shift_details` `shift` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` DROP `branch_id`;
+ALTER TABLE `employment_details` CHANGE `employment_confirmation_date` `confirmation_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `date_of_joining` `date_of_joining` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `confirmation_date` `confirmation_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `employee_pf_no` `employee_pf_no` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `uan_no` `uan_no` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `outdoor_attendance` `outdoor_attendance` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
+
+====> 30-09-2025
+php artisan migrate:refresh --path=database/migrations/2025_09_22_091520_create_attendances_table.php
+
+====> 29-09-2025
+php artisan migrate:refresh --path=database/migrations/2025_09_19_093046_create_employee_increment_details_table.php
+ALTER TABLE attendances DROP COLUMN punch_out_time;
+
+====> 22-09-2025
+ALTER TABLE `company_details` DROP `per_minutes_request_current_location`;
+
+php artisan migrate:refresh --path=database/migrations/2025_09_22_091520_create_attendances_table.php
+
+ALTER TABLE `companies` DROP `max_inquiry_count`;
+ALTER TABLE `companies` ADD `branch_type` VARCHAR(50) NOT NULL DEFAULT 'single' COMMENT 'single, multiple' AFTER `mobile_max`;
+ALTER TABLE `shifts` ADD `branch_id` VARCHAR(100) NULL DEFAULT NULL AFTER `company_id`;
+ALTER TABLE `employees` CHANGE `anniversary_date` `date_of_anniversary` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL;
+
+====> 30-09-2025
+ALTER TABLE `employment_details` ADD `employee_id` VARCHAR(255) NOT NULL AFTER `company_id`;
+ALTER TABLE `employment_details` CHANGE `designation_type_id` `designation_type` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `date_of_joing` `date_of_joining` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `shift_details` `shift` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` DROP `branch_id`;
+ALTER TABLE `employment_details` CHANGE `employment_confirmation_date` `confirmation_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE `employment_details` CHANGE `date_of_joining` `date_of_joining` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `confirmation_date` `confirmation_date` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `employee_pf_no` `employee_pf_no` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `uan_no` `uan_no` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL, CHANGE `outdoor_attendance` `outdoor_attendance` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
+
+==> 20-09-2025
+ALTER TABLE `companies` DROP `customer_panel_right`, DROP `max_customer_count`;
+ALTER TABLE `plan_masters` CHANGE `max_team_user_count` `max_employee_user_count` INT(11) NOT NULL;
+ALTER TABLE `plan_masters` DROP `max_customer_count`, DROP `max_inquiry_count`;
+ALTER TABLE `companies` CHANGE `max_team_user_count` `max_employee_user_count` INT(11) NOT NULL DEFAULT '0';
+ALTER TABLE `role_permissions` DROP `customer_role_id`;
+ALTER TABLE `master_modules` DROP `customer_type_id`;
+
+ALTER TABLE `companies` DROP `order_view_format`, DROP `quotation_view_format`, DROP `dispatch_view_format`, DROP `purchaseOrder_view_format`, DROP `order_prefix`, DROP `quotation_prefix`, DROP `dispatch_prefix`, DROP `packing_slip_prefix`, DROP `vendor_prefix`, DROP `purchase_order_prefix`, DROP `order_title`, DROP `quotation_title`, DROP `dispatch_title`, DROP `packing_slip_title`, DROP `vendor_title`, DROP `purchase_order_title`, DROP `order_view_color`, DROP `quotation_view_color`, DROP `dispatch_view_color`, DROP `packing_slip_view_color`, DROP `vendor_view_color`, DROP `purchase_order_color`, DROP `stock_manage_by`, DROP `quantity`, DROP `tax_type`, DROP `stock_check`, DROP `account_effect_by`;
+ALTER TABLE `company_details` DROP `how_assign_inquiry`, DROP `duplication_check_type`, DROP `is_quantity_decimal`, DROP `inward_prefix`, DROP `inward_title`, DROP `inward_color`;
+
+==> 19-09-2025
+php artisan migrate:refresh --path=database/migrations/2025_09_19_093046_create_employee_increment_details_table.php
+php artisan migrate:refresh --path=database/migrations/2025_09_16_161610_create_employee_asign_assets_table.php
+php artisan migrate:refresh --path=database/migrations/2025_09_15_231924_create_employees_table.php
+
+
+==> 14-09-2025
+Database changes : ALTER TABLE `holidays` CHANGE `date` `date` DATE NOT NULL;
+

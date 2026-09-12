@@ -1,0 +1,433 @@
+@extends('software.layout.app')
+
+@php
+    $i = 0;
+    $page_title = isset($modules['title']) ? $modules['title'] : null;
+    $folder_path = isset($modules['folder_path']) ? $modules['folder_path'] : null;
+    $route = isset($modules['route']) ? $modules['route'] : null;
+    $company_id = isset($modules['company_id']) ? $modules['company_id'] : null;
+    $authLoginUserDetail = isset($modules['authLoginUserDetail']) ? $modules['authLoginUserDetail'] : null;
+    $loginUserId = isset($authLoginUserDetail?->id) ? $authLoginUserDetail?->id : null;
+    $parent_type_id = isset($modules['parent_type_id']) ? $modules['parent_type_id'] : null;
+    // dd($modules);
+@endphp
+
+@section('title', $page_title)
+
+@section('page_leavel_style')
+    <link rel="stylesheet" href="{{ asset('software/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('software/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+@endsection
+
+@section('content')
+    <div class="px-1">
+        <div class="d-lg-flex justify-content-lg-between flex-column flex-lg-row">
+            @include('software.inlcudes.breadcrumb', [
+                'breadcrumbArray' => [['title' => $page_title, 'url' => '']],
+                'route' => $route,
+                'show_add_btn' => isset($modules['add_permission']) ? $modules['add_permission'] : false,
+                'show_filter_btn' => true,
+                'show_back_btn' => false,
+                'show_export_btn' =>
+                    isset($modules['excel_permission']) &&
+                    isset($modules['print_permission']) &&
+                    ($modules['excel_permission'] || $modules['print_permission'])
+                        ? true
+                        : false,
+                'show_excal_btn' => isset($modules['excel_permission']) ? $modules['excel_permission'] : false,
+                'show_print_btn' => isset($modules['print_permission']) ? $modules['print_permission'] : false,
+            ])
+        </div>
+    </div>
+    <div class="row my-3">
+        <div class="col-md-12 mb-5" id="filter_section">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Filter by Search</label>
+                            <input type="search" class="form-control search" name="search" placeholder="search..."
+                                autofocus>
+                        </div>
+                        @if (!$company_id)
+                            <div class="col-md-3 mb-2 col-sm-12">
+                                <div class="form-group">
+                                    <label class="form-label">Filter by Company</label>
+                                    <select id="company_id" name="company_id"
+                                        class="form-control search_by_company select2 select_filter"
+                                        data-append="search_by_company" showBranch="branchDiv">
+                                        <option value="">Filter by Company</option>
+                                    </select>
+                                </div>
+                            </div>
+                        @endif
+                        <div class="col-md-3 col-sm-12">
+                            <div class="form-group">
+                                <label class="form-label">Filter by Employee</label>
+                                <select id="employee_id" name="employee_id"
+                                    class="form-control search_by_employee select2 select_filter"
+                                    data-append="search_by_employee">
+                                    <option value="">Filter by Employee</option>
+                                </select>
+                            </div>
+                        </div>
+                        {{-- Filter by Month --}}
+                        <div class="col-md-3 col-sm-12 mb-3">
+                            <div class="form-group">
+                                <label class="form-label">Filter by Month</label>
+                                <select id="filter_effect_on_month" name="filter_effect_on_month"
+                                    class="form-control select2 select_filter">
+                                    <option value="">Select Month</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {{-- Filter by Year --}}
+                        <div class="col-md-3 col-sm-12 mb-3">
+                            <div class="form-group">
+                                <label class="form-label">Filter by Year</label>
+                                <select id="filter_effect_of_year" name="filter_effect_of_year"
+                                    class="form-control select2 select_filter">
+                                    <option value="">Select Year</option>
+                                </select>
+                            </div>
+                        </div>
+
+
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Filter by Date</label>
+                            <input type="text" name="employee_date"
+                                class="form-control employee_daterangepicker table_filter"
+                                placeholder="DD/MM/YYYY to DD/MM/YYYY">
+                        </div>
+
+                        <div class="col-md-3 d-flex align-items-end mb-2">
+                            <!-- Filter Dropdown -->
+                            <div class="flex-grow-1 me-2">
+                                <label for="status_filter" class="form-label">Filter by Status</label>
+                                <select id="status_filter" name="status" class="form-select select2">
+                                    <option value="all">All</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Approve">Approve</option>
+                                </select>
+                            </div>
+
+                            <!-- Clear Button -->
+                            <div>
+                                <button type="button" title="Clear Filter" id="cilory_filter"
+                                    class="btn btn-outline-danger btn-icon">
+                                    <i class="ti ti-x"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-datatable text-nowrap mt-3">
+                    <div class="card-datatable table-responsive">
+                        <table id="yajra-datatables" class="dt-responsive table table-hover">
+                            @if (isset($columns))
+                                <thead>
+                                    <tr>
+                                        @foreach ($columns as $item)
+                                            <th class="{{ $item->className ?? '' }}">
+                                                {{ ucfirst($item->td_label ?? $item->name) }}
+                                            </th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                            @endif
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
+@section('page_leavel_script')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="{{ asset('software/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+@endsection
+
+@push('page_scripts')
+
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2 for dropdowns
+            $('.select2').select2({
+                width: '100%',
+                placeholder: 'Select option',
+                allowClear: true
+            });
+
+            // Populate Filter by Month
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            const selectedFilterMonth = "{{ request('filter_effect_on_month') ?? '' }}";
+            months.forEach(function(month) {
+                const selected = (selectedFilterMonth === month) ? 'selected' : '';
+                $('#filter_effect_on_month').append(
+                    `<option value="${month}" ${selected}>${month}</option>`);
+            });
+
+            // Populate Filter by Year
+            const currentYear = new Date().getFullYear();
+            const startYear = currentYear - 5;
+            const endYear = currentYear;
+            const selectedFilterYear = "{{ request('filter_effect_of_year') ?? '' }}";
+            for (let y = startYear; y <= endYear; y++) {
+                const selected = (selectedFilterYear == y) ? 'selected' : '';
+                $('#filter_effect_of_year').append(`<option value="${y}" ${selected}>${y}</option>`);
+            }
+        });
+    </script>
+
+    <script type="text/javascript">
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+        $(document).ready(function() {
+            const startOfMonth = moment().startOf('month');
+            const endOfMonth = moment().endOf('month');
+
+            $('.my_daterangepicker').daterangepicker({
+                startDate: startOfMonth,
+                endDate: endOfMonth,
+                autoUpdateInput: false,
+                locale: {
+                    format: 'DD-MM-YYYY',
+                    separator: ' to ',
+                    cancelLabel: 'Clear'
+                }
+            });
+
+
+            $('.my_daterangepicker').on('apply.daterangepicker', function(ev, picker) {
+                $(this).val(
+                    picker.startDate.format('DD-MM-YYYY') + ' to ' + picker.endDate.format('DD-MM-YYYY')
+                );
+                dtable.draw();
+            });
+
+            $('.my_daterangepicker').on('cancel.daterangepicker', function(ev, picker) {
+                $(this).val('');
+                dtable.draw();
+            });
+        });
+
+
+        var dtable = null;
+        $(document).ready(function() {
+            dtable = $('#yajra-datatables').DataTable({
+                processing: true,
+                serverSide: true,
+                // dom: '<"table-responsive"t><"d-flex justify-content-between align-items-center"<"ps-3"l>i<"pe-4"p>>',
+                dom: '<"table-responsive"t><"datatable-footer d-flex justify-content-between align-items-center flex-wrap px-3 py-2"l i p>',
+
+                order: [
+                    [0, 'ASC']
+                ],
+                ajax: {
+                    url: "{{ route($route . '.index') }}",
+                    type: "GET",
+                    beforeSend: function(request) {
+                        request.setRequestHeader("X-CSRF-TOKEN", $('meta[name="csrf-token"]').attr(
+                            'content'));
+                    },
+                    data: function(d) {
+
+                        d.search = $('input[name="search"]').val();
+                        d.filter_company = $('select[name="company_id"]').val();
+                        d.filter_employee = $('select[name="employee_id"]').val();
+
+                        d.filter_effect_on_month = $('select[name="filter_effect_on_month"]').val();
+                        d.filter_effect_of_year = $('select[name="filter_effect_of_year"]').val();
+
+                        d.filter_date = $('input[name="employee_date"]').val();
+                        d.status = $('#status_filter').val();
+                    }
+                },
+                columns: {!! isset($columns) ? json_encode($columns) : [] !!},
+                language: {
+                    searchPlaceholder: 'Search...',
+                }
+            });
+        });
+
+        $(document).on('change', '.select_filter', function(event) {
+            event.preventDefault();
+            dtable.draw();
+        });
+        $('input[name="search"]').keyup(function() {
+            dtable.draw();
+        });
+        $('input[name="date"]').on('change apply.daterangepicker', function() {
+            dtable.draw();
+        });
+        $(document).on('change', '.search_by_customer_type', function() {
+            $('#yajra-datatables').DataTable().draw(); // Adjust ID accordingly
+        });
+
+        $('#status_filter').on('change', function() {
+            dtable.ajax.reload();
+        });
+        $(document).ready(function() {
+            $("#cilory_filter").click(function() {
+                $('.select_filter').val(null).trigger('change');
+                $('.search').val('');
+                dtable.draw();
+            });
+
+        });
+    </script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+
+    <script>
+        $(document).on('click', '.change-status-btn', function() {
+            let id = $(this).data('id');
+            let company_id = $(this).data('company_id');
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You will not be able to recover this data!",
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                buttonsStyling: false,
+                confirmButtonText: 'Yes, approve it!',
+                cancelButtonText: 'No, cancel please!',
+                customClass: {
+                    confirmButton: 'swal2-confirm btn btn-danger fw-bold mx-2 px-4',
+                    cancelButton: 'swal2-cancel btn btn-primary fw-bold mx-2 px-4'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ route('payment-receipt.status-update') }}",
+                        type: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            id: id,
+                            company_id: company_id,
+                        },
+                        success: function(response) {
+                            $('#yajra-datatables').DataTable().ajax.reload(null, false);
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Approved!',
+                                text: 'Status has been updated.',
+                                buttonsStyling: false,
+                                confirmButtonText: 'OK',
+                                customClass: {
+                                    confirmButton: 'btn btn-success fw-bold px-4'
+                                }
+                            });
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Failed to update status.',
+                                buttonsStyling: false,
+                                confirmButtonText: 'OK',
+                                customClass: {
+                                    confirmButton: 'btn btn-danger fw-bold px-4'
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        // Excel Export Button for Payment Receipt
+        $('#export_excel_btn').on('click', function(e) {
+            e.preventDefault();
+
+            // Correct date input name
+            const filterDate = $('input[name="employee_date"]').val()?.replace(' - ', ' to ') ?? '';
+
+            let filters = {
+                search: $('input[name="search"]').val(),
+                filter_company: $('select[name="company_id"]').val(),
+                filter_branch: $('select[name="branch_id"]').val(),
+                filter_employee: $('select[name="employee_id"]').val(),
+                filter_effect_on_month: $('select[name="filter_effect_on_month"]').val(),
+                filter_effect_of_year: $('select[name="filter_effect_of_year"]').val(),
+                status: $('#status_filter').val(),
+                filter_date: filterDate
+            };
+
+            const queryParams = $.param(filters);
+            const url = "{{ route($route . '.export.excel') }}" + "?" + queryParams;
+            window.location.href = url;
+        });
+
+        $('#print_btn').on('click', function(e) {
+            e.preventDefault();
+
+            const filter_date = $('input[name="employee_date"]').val()?.replace(' - ', ' to ') ?? '';
+
+
+
+            let filters = {
+                search: $('input[name="search"]').val(),
+                filter_company: $('select[name="company_id"]').val(),
+                filter_branch: $('select[name="branch_id"]').val(),
+                filter_employee: $('select[name="employee_id"]').val(),
+                filter_effect_on_month: $('select[name="filter_effect_on_month"]').val(),
+                filter_effect_of_year: $('select[name="filter_effect_of_year"]').val(),
+
+                status: $('#status_filter').val(),
+                filter_date: filter_date
+            };
+
+
+            let queryParams = $.param(filters);
+
+
+            let url = "{{ route($route . '.print') }}?" + queryParams;
+            window.open(url, '_blank');
+        });
+
+        // $('#print_btn').on('click', function(e) {
+        //     e.preventDefault();
+        //     const filterDate = $('input[name="date"]').val()?.replace(' - ', ' to ') ?? '';
+        //     let filters = {
+        //         search: $('input[name="search"]').val(),
+        //         filter_company: $('select[name="filter_company"]').val(),
+        //         customer_type_id: $('select[name="customer_type_id"]').val(),
+        //         receipt_type: $('select[name="receipt_type"]').val(),
+        //         status: $('select[name="status"]').val(),
+        //         date: filterDate
+        //     };
+        //     let queryParams = $.param(filters);
+        //     let url = "{{ route($route . '.print') }}?" + queryParams;
+        //     window.open(url, '_blank');
+
+        // });
+    </script>
+
+
+
+
+    {{-- @include('utils.getCompany') --}}
+    @if (!$company_id)
+        @include('utils.getCompany')
+    @endif
+    @include('utils.getEmployee')
+
+
+    @include('software.inlcudes.script-delete-record')
+    @include('software.inlcudes.script-update-status')
+    @include('software.inlcudes.script-restore-record')
+@endpush

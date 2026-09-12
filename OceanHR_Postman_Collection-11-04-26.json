@@ -1,0 +1,1098 @@
+{
+	"info": {
+		"_postman_id": "b34d449b-3964-482f-9484-ad5ca990272b",
+		"name": "OceanHR API",
+		"description": "API collection for OceanHR including Auth, Expense, and Leave modules with proper status codes.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Verify App Key",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "app_key",
+									"value": "{{app_key}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/verify-appkey",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"verify-appkey"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Employee Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "app_key",
+									"value": "{{app_key}}",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "123456",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/get-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Common Module",
+			"item": [
+				{
+					"name": "Get Countries",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/get-country",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-country"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get States",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "country_id",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/get-state",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-state"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Cities",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "state_id",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/get-city",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"get-city"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Expense Module",
+			"item": [
+				{
+					"name": "Expense Category List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "branch_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "filter_by_status",
+									"value": "active",
+									"type": "text",
+									"description": "Values: active, inactive, all",
+									"disabled": false
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/category/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"category",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Sub-Category List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "expense_category_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "branch_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "team_person_id",
+									"value": "",
+									"type": "text",
+									"description": "Optional: Fetch sub-categories for specific team person",
+									"disabled": false
+								},
+								{
+									"key": "filter_by_status",
+									"value": "active",
+									"type": "text",
+									"description": "Values: active, inactive, all",
+									"disabled": false
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/sub-category/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"sub-category",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "from_date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "YYYY-MM-DD",
+									"disabled": false
+								},
+								{
+									"key": "to_date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "YYYY-MM-DD",
+									"disabled": false
+								},
+								{
+									"key": "expense_category_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "expense_subcategory_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "per_page",
+									"value": "20",
+									"type": "text",
+									"disabled": false
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Add/Edit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "edit_id",
+									"value": "",
+									"type": "text",
+									"description": "Keep empty for Add, provide ID for Edit"
+								},
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "expense_category_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "expense_subcategory_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "YYYY-MM-DD"
+								},
+								{
+									"key": "req_amount",
+									"value": "500",
+									"type": "text"
+								},
+								{
+									"key": "remark",
+									"value": "Maintenance expense",
+									"type": "text"
+								},
+								{
+									"key": "attachment",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/add_edit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"add_edit"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Category Add/Edit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "edit_id",
+									"value": "",
+									"description": "Empty for Add, ID for Edit"
+								},
+								{
+									"key": "company_id",
+									"value": "{{company_id}}"
+								},
+								{
+									"key": "name",
+									"value": "Travel Expense"
+								},
+								{
+									"key": "status",
+									"value": "active"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/category/add_edit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"category",
+								"add_edit"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Category Delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}"
+								},
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/category/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"category",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Sub-Category Add/Edit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "edit_id",
+									"value": ""
+								},
+								{
+									"key": "company_id",
+									"value": "{{company_id}}"
+								},
+								{
+									"key": "expense_category_id",
+									"value": "1"
+								},
+								{
+									"key": "name",
+									"value": "Fuel"
+								},
+								{
+									"key": "expense_type",
+									"value": "KM"
+								},
+								{
+									"key": "team_person_ids",
+									"value": "31",
+									"description": "Comma separated employee IDs"
+								},
+								{
+									"key": "min_amount",
+									"value": "10",
+									"disabled": false
+								},
+								{
+									"key": "max_amount",
+									"value": "1000",
+									"disabled": false
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Values: active, inactive"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/sub-category/add_edit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"sub-category",
+								"add_edit"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Sub-Category Delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}"
+								},
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/sub-category/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"sub-category",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "id",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Expense Chart",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "from_date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "YYYY-MM-DD",
+									"disabled": false
+								},
+								{
+									"key": "to_date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "YYYY-MM-DD",
+									"disabled": false
+								},
+								{
+									"key": "expense_category_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								},
+								{
+									"key": "expense_subcategory_id",
+									"value": "",
+									"type": "text",
+									"disabled": false
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/chart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"chart"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Leave Module",
+			"item": [
+				{
+					"name": "Leave Type List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leave/type/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leave",
+								"type",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Leave List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leave/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leave",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Leave Add/Edit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "edit_id",
+									"value": "1",
+									"type": "text",
+									"description": "Keep empty for Add, provide ID for Edit"
+								},
+								{
+									"key": "company_id",
+									"value": "{{company_id}}",
+									"type": "text"
+								},
+								{
+									"key": "leave_type_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "halfday_fullday",
+									"value": "fullday",
+									"type": "text",
+									"description": "Values: halfday, fullday"
+								},
+								{
+									"key": "firsthalf_secondhalf",
+									"value": "firsthalf",
+									"type": "text",
+									"description": "Required if halfday. Values: firsthalf, secondhalf"
+								},
+								{
+									"key": "singleday_multipleday",
+									"value": "singleday",
+									"type": "text",
+									"description": "Values: singleday, multipleday"
+								},
+								{
+									"key": "fromdate_time",
+									"value": "{{current_datetime}}",
+									"type": "text"
+								},
+								{
+									"key": "todate_time",
+									"value": "{{current_datetime}}",
+									"type": "text"
+								},
+								{
+									"key": "leave_reason",
+									"value": "Personal urgent work",
+									"type": "text"
+								},
+								{
+									"key": "attachment",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leave/add_edit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leave",
+								"add_edit"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Leave Delete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/leave/delete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leave",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Attendance Module",
+			"item": [
+				{
+					"name": "Punch In-Out",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "attendace_type",
+									"value": "in",
+									"type": "text",
+									"description": "Values: in, out (Required)"
+								},
+								{
+									"key": "remark",
+									"value": "Punched from Mobile App",
+									"type": "text",
+									"description": "Optional"
+								},
+								{
+									"key": "latitude",
+									"value": "21.1702",
+									"type": "text",
+									"description": "Optional"
+								},
+								{
+									"key": "longitude",
+									"value": "72.8311",
+									"type": "text",
+									"description": "Optional"
+								},
+								{
+									"key": "attendance_date",
+									"value": "{{current_date}}",
+									"type": "text",
+									"description": "Ignored: Server Date will be used automatically",
+									"disabled": false
+								},
+								{
+									"key": "punch_in_time",
+									"value": "{{current_time}}",
+									"type": "text",
+									"description": "Ignored: Server Time will be used automatically",
+									"disabled": false
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/punch-in-out",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"punch-in-out"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Punch History",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "limit",
+									"value": "10",
+									"type": "text"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/punch-history",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"punch-history"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Active Punch-In Records",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/active-punch-in-records",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"active-punch-in-records"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000"
+		},
+		{
+			"key": "app_key",
+			"value": "OceanHR@2025"
+		},
+		{
+			"key": "token",
+			"value": "your_access_token"
+		},
+		{
+			"key": "company_id",
+			"value": "2"
+		},
+		{
+			"key": "current_date",
+			"value": "2026-04-13"
+		},
+		{
+			"key": "current_time",
+			"value": "11:00 AM"
+		},
+		{
+			"key": "current_datetime",
+			"value": "2026-04-13 11:00:00"
+		}
+	]
+}

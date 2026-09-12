@@ -1,0 +1,121 @@
+{
+	"info": {
+		"_postman_id": "e9a2d7f8-5678-4567-89ab-cdef01234567",
+		"name": "Expense and Notification Update API",
+		"description": "Collection for the newly implemented Expense Status Update API and updated Notification List API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Expense Module",
+			"item": [
+				{
+					"name": "Expense Status Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "id",
+									"value": "1",
+									"type": "text",
+									"description": "Expense Record ID"
+								},
+								{
+									"key": "update_status",
+									"value": "pass",
+									"type": "text",
+									"description": "Values: pass, reject"
+								},
+								{
+									"key": "pass_amount",
+									"value": "500",
+									"type": "text",
+									"description": "Approved amount (Optional)"
+								},
+								{
+									"key": "reason",
+									"value": "Approved by manager",
+									"type": "text",
+									"description": "Reason for approval/rejection (Optional)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/expense/status_update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"expense",
+								"status_update"
+							]
+						},
+						"description": "Allows Admins/Managers to approve or reject expense requests via API. This also triggers a push notification to the employee."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notification Module",
+			"item": [
+				{
+					"name": "Notification List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "limit",
+									"value": "10",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/notification/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notification",
+								"list"
+							]
+						},
+						"description": "Fetches a list of notifications. Now returns 'title', 'body', and 'message' fields for better mobile app integration."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000"
+		},
+		{
+			"key": "token",
+			"value": "your_access_token"
+		}
+	]
+}

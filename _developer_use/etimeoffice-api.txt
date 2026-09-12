@@ -1,0 +1,82 @@
+API 1  (Row Data Api)
+https://api.etimeoffice.com/api/DownloadPunchData?Empcode=0001&FromDate=01/01/2018_01:00&ToDate=01/12/2019_00:00
+
+Empcode=ALL  (Total Employee Code)
+Empcode=0001(Only 0001 Employee Data)
+
+FromDate Formate IS dd/MM/yyyy_HH:mm
+ToDate Fromate is dd/MM/yyyy_HH:mm
+
+
+Authorization Type Basic
+username = Corporateid:usename:password:true
+
+Header Key and Value 
+Key--------Authorization
+Value--------c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+value is converted to base 64 encoding of (corporateid:username:password:true)
+for testing use      support:support:support@1:true
+
+--------------------------------------------------------
+
+API 2  (Row Data Api)
+https://api.etimeoffice.com/api/DownloadPunchDataMCID?Empcode=0001&FromDate=01/01/2020_01:00&ToDate=03/01/2020_00:00
+
+Empcode=ALL  (Total Employee Code)
+Empcode=0001(Only 0001 Employee Data)
+
+FromDate Formate IS dd/MM/yyyy_HH:mm
+ToDate Fromate is dd/MM/yyyy_HH:mm
+
+
+Authorization Type Basic
+username = Corporateid:usename:password:true
+
+Header Key and Value 
+Key--------Authorization
+Value--------c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+value is converted to base 64 encoding of (corporateid:username:password:true)
+for testing use      support:support:support@1:true
+
+--------------------------------------------------------
+
+API (Data With IN/OUT)
+https://api.etimeoffice.com/api/DownloadInOutPunchData?Empcode=ALL&FromDate=10/01/2019&ToDate=10/01/2019
+	
+	Empcode=ALL  (Total Employee Code)
+	Empcode=0001(Only 0001 Employee Data)
+	
+	FromDate Formate IS dd/MM/yyyy_HH:mm
+	ToDate Fromate is dd/MM/yyyy_HH:mm
+	
+	
+	Authorization Type Basic
+	username = Corporateid:usename:password:true
+	
+	Header Key and Value 
+	Key--------Authorization
+	Value--------c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+	value is converted to base 64 encoding of (corporateid:username:password:true)
+	for testing use      support:support:support@1:true
+
+--------------------------------------------------------
+
+API (Row Data With LastRecord)
+https://api.etimeoffice.com/api/DownloadLastPunchData?Empcode=ALL&LastRecord=092020$454
+	
+	Empcode=ALL  (Total Employee Code)
+	Empcode=0001(Only 0001 Employee Data)
+	
+	LastRecord=092020$454   (Mmyyyy$ID)
+	in First Time API call LastRecord Should Pass this way)
+	Save the MaxRecord in your table and Next Api Call Pass this value Directly, So you get Latest Data Not Repeat
+	
+	Authorization Type Basic
+	username = Corporateid:usename:password:true
+	
+	Header Key and Value 
+	Key--------Authorization
+	Value--------c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+	value is converted to base 64 encoding of (corporateid:username:password:true)
+	for testing use      support:support:support@1:true
+	

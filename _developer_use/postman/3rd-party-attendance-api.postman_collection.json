@@ -1,0 +1,312 @@
+{
+	"info": {
+		"_postman_id": "3rd-party-attendance-api",
+		"name": "3rd Party Attendance API",
+		"description": "API collection for receiving attendance data from 3rd party systems (CRM, etc.) using biomax_id",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "3rd Party Attendance - Single Record",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"app_key\": \"{{app_key}}\",\n    \"biomax_id\": \"12345\",\n    \"timestamp\": \"2025-12-19 10:30:00\",\n    \"type\": \"in\",\n    \"txnId\": \"TXN001\",\n    \"device_serial\": \"DEV001\",\n    \"device_ip\": \"192.168.1.100\",\n    \"remark\": \"Punch in from 3rd party system\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send a single attendance record using biomax_id"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Multiple Records (records)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"app_key\": \"{{app_key}}\",\n    \"records\": [\n        {\n            \"biomax_id\": \"12345\",\n            \"timestamp\": \"2025-12-19 09:00:00\",\n            \"type\": \"in\",\n            \"txnId\": \"TXN001\",\n            \"device_serial\": \"DEV001\"\n        },\n        {\n            \"biomax_id\": \"12345\",\n            \"timestamp\": \"2025-12-19 18:00:00\",\n            \"type\": \"out\",\n            \"txnId\": \"TXN002\",\n            \"device_serial\": \"DEV001\"\n        },\n        {\n            \"biomax_id\": \"67890\",\n            \"timestamp\": \"2025-12-19 09:15:00\",\n            \"type\": \"in\",\n            \"txnId\": \"TXN003\",\n            \"device_serial\": \"DEV002\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send multiple attendance records using 'records' array"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Multiple Records (data)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"app_key\": \"{{app_key}}\",\n    \"data\": [\n        {\n            \"biomax_id\": \"12345\",\n            \"timestamp\": \"2025-12-19 09:00:00\",\n            \"type\": \"in\",\n            \"txnId\": \"TXN001\"\n        },\n        {\n            \"biomax_id\": \"67890\",\n            \"timestamp\": \"2025-12-19 09:15:00\",\n            \"type\": \"in\",\n            \"txnId\": \"TXN002\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send multiple attendance records using 'data' array"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Using company_id",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"company_id\": \"{{company_id}}\",\n    \"biomax_id\": \"12345\",\n    \"timestamp\": \"2025-12-19 10:30:00\",\n    \"type\": \"in\",\n    \"txnId\": \"TXN001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send attendance using company_id instead of app_key"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Using Header API Key",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "X-API-KEY",
+						"value": "{{app_key}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"biomax_id\": \"12345\",\n    \"timestamp\": \"2025-12-19 10:30:00\",\n    \"type\": \"in\",\n    \"txnId\": \"TXN001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send attendance using API key in header (X-API-KEY or Api-Key)"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Auto Detect IN/OUT",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"app_key\": \"{{app_key}}\",\n    \"biomax_id\": \"12345\",\n    \"timestamp\": \"2025-12-19 10:30:00\",\n    \"txnId\": \"TXN001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send attendance without type - system will auto-detect IN/OUT based on last punch"
+			},
+			"response": []
+		},
+		{
+			"name": "3rd Party Attendance - Alternative Field Names",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"app_key\": \"{{app_key}}\",\n    \"biometric_user_id\": \"12345\",\n    \"datetime\": \"2025-12-19 10:30:00\",\n    \"status\": \"in\",\n    \"transaction_id\": \"TXN001\",\n    \"serial_number\": \"DEV001\",\n    \"ip_address\": \"192.168.1.100\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/webhook/3rd-party/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"webhook",
+						"3rd-party",
+						"attendance"
+					]
+				},
+				"description": "Send attendance using alternative field names (biometric_user_id, datetime, status, etc.)"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "app_key",
+			"value": "your_company_app_key_here",
+			"type": "string"
+		},
+		{
+			"key": "company_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}

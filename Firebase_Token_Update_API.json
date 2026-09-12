@@ -1,0 +1,61 @@
+{
+	"info": {
+		"_postman_id": "fcm-token-update-id",
+		"name": "Firebase Token Update Collection",
+		"description": "API to update FCM device token for push notifications",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Update Device Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"device_token\": \"your_firebase_fcm_token_here\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/notification/update-device-token",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"notification",
+						"update-device-token"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://your-domain.com",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your_login_access_token",
+			"type": "string"
+		}
+	]
+}

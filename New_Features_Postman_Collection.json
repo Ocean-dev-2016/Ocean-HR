@@ -1,0 +1,129 @@
+{
+	"info": {
+		"_postman_id": "c6a2d7f8-1234-4567-89ab-cdef01234567",
+		"name": "HRMS New Features API",
+		"description": "Collection for newly developed Leave Availability and Notification APIs.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Leave Module",
+			"item": [
+				{
+					"name": "Available Leaves",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/leave/available-leaves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"leave",
+								"available-leaves"
+							]
+						},
+						"description": "Calculates Yearly and Monthly leave counts (Used/Available) for the dashboard."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notification Module",
+			"item": [
+				{
+					"name": "Notification List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "limit",
+									"value": "10",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/notification/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notification",
+								"list"
+							]
+						},
+						"description": "Fetches a list of notifications for the logged-in employee."
+					},
+					"response": []
+				},
+				{
+					"name": "Mark as Read",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "id",
+									"value": "1",
+									"type": "text",
+									"description": "Optional: Specific notification ID. Keep empty to mark all as read."
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/notification/mark-as-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notification",
+								"mark-as-read"
+							]
+						},
+						"description": "Marks notifications as read. If ID is provided, marks that specific one; otherwise marks all."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000"
+		},
+		{
+			"key": "token",
+			"value": "your_access_token"
+		}
+	]
+}
