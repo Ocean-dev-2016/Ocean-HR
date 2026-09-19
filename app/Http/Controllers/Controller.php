@@ -89,14 +89,21 @@ class Controller extends BaseController
                     }
                 }
 
-                $companyData = Company::with('plan')->where('id', $company_id)->firstOrFail();
+                $companyData = Company::with('plan')->where('id', $company_id)->first();
+                if (!$companyData) {
+                    Auth::guard('employees')->logout();
+                    if ($request->hasSession()) {
+                        $request->session()->invalidate();
+                    }
+                    return redirect()->route('software.login')->with('error', 'Associated company account not found. Please log in again.');
+                }
                 if (isset($companyData->plan_id) && !empty($companyData->plan_id)) {
                     $latestPlan = CompanySubscriptionPlan::where('company_id', $company_id)->where('plan_id', $companyData->plan_id)->orderBy('id', 'desc')->first();
                     $expiryDate = Carbon::parse($latestPlan?->plan_expiry_date);
                     if ($latestPlan && !empty($expiryDate) && $expiryDate->between(Carbon::today(), Carbon::today()->addDays(10))) {
                         View::share('is_plan_expired', true);
                         View::share('mainPlanExpiryDate', $expiryDate);
-                        View::share('mainPlanName', $companyData->plan->name);
+                        View::share('mainPlanName', $companyData->plan?->name);
                     }
                     View::share('companyData', $companyData);
                 }

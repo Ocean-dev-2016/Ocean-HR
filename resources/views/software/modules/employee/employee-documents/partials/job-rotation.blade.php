@@ -9,7 +9,10 @@
         ? \Carbon\Carbon::parse($employment->date_of_joining)->format('d/m/Y')
         : \Carbon\Carbon::now()->format('d/m/Y');
     $companyName = $selectedEmployee?->company?->company_name ?? 'OceanHR';
-    $headerImage = $headerImage ?? asset('software/img/header.jpg');
+    $headerImage = $headerImage 
+        ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
+        ?? ($selectedEmployee?->company?->company_logo_url ?? null)
+        ?? asset('software/img/logo.png');
     $watermarkImage = $watermarkImage ?? asset('software/img/Ocean_HR.png');
     $today = \Carbon\Carbon::now()->format('d/m/Y');
 @endphp

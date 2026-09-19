@@ -49,6 +49,17 @@
     @endif
 
 
+    @if (isset($show_grid_toggle) && $show_grid_toggle)
+        <div class="btn-group view-switcher-group ms-75 me-75" role="group" aria-label="View Switcher">
+            <button type="button" class="btn btn-outline-primary btn-dm waves-effect waves-light btn-icon view-toggle-btn active" id="btn_grid_view" data-view="grid" title="Grid View">
+                <i class="ti ti-layout-grid"></i>
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-dm waves-effect waves-light btn-icon view-toggle-btn" id="btn_list_view" data-view="list" title="List View">
+                <i class="ti ti-list"></i>
+            </button>
+        </div>
+    @endif
+
     @if (isset($show_filter_btn) && $show_filter_btn && isset($route))
     <button type="button" title="Search" id="show_filter"
         class="btn btn-outline-primary btn-dm waves-effect waves-light btn-icon ms-75 me-75 "><i

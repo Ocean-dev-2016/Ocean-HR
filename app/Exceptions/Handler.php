@@ -41,15 +41,15 @@ class Handler extends ExceptionHandler
     {
         // dd("unauthenticated 42",$request, $exception);
         // if ($exception instanceof AuthorizationException) {
-            // Force JSON response for API
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthenticated',
-                    'error' => 'Unauthenticated',
-                    'logout' => true,
-                ], 401);
-            }
+        // Force JSON response for API
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated',
+                'error' => 'Unauthenticated',
+                'logout' => true,
+            ], 401);
+        }
         // }
 
         return Redirect::guest(route('login'));

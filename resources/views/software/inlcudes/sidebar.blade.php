@@ -122,7 +122,7 @@
             </li>
             {{-- Admin  Setting  - Start --}}
             <li
-                class="menu-item {{ $sidebar_active == 'plan-master' || $sidebar_active == 'company' ? 'active open' : '' }}">
+                class="menu-item {{ $sidebar_active == 'plan-master' || $sidebar_active == 'company' || $sidebar_active == 'company-registration' || $sidebar_active == 'website-company-registration' ? 'active open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon icon-base ti ti-settings-star"></i>
                     {{-- <i class="ti ti-settings-spark"></i> --}}
@@ -138,6 +138,11 @@
                     <li class="menu-item {{ $sidebar_active == 'company' ? 'active' : '' }}">
                         <a href="{{ route('company.index') }}" class="menu-link">
                             <div data-i18n="Register Company">Register Company</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ $sidebar_active == 'company-registration' || $sidebar_active == 'website-company-registration' ? 'active' : '' }}">
+                        <a href="{{ route('website-company-registration.index') }}" class="menu-link">
+                            <div data-i18n="Website Company Registration">Website Company Registration</div>
                         </a>
                     </li>
                     <li class="menu-item {{ $sidebar_active == 'team-role' ? 'active' : '' }}">

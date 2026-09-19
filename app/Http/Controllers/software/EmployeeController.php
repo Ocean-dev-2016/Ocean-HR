@@ -108,6 +108,76 @@ class EmployeeController extends Controller
             View::share("columns", $columns);
 
             if ($request->ajax()) {
+                if ($request->get('view_type') === 'grid') {
+                    $gridQuery = Employee::with(['company', 'branch', 'current_role', 'parentEmployee'])
+                        ->select('employees.*', 'companies.company_name', 'team_role.name as team_role_name')
+                        ->leftJoin('companies', 'companies.id', '=', 'employees.company_id')
+                        ->leftJoin('team_role', 'team_role.id', '=', 'employees.role_id')
+                        ->when(Auth::guard('employees')->check() || !empty($modules['company_id']), function ($query) use ($modules, $loginUserId) {
+                            $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
+                            $query->where($modules['table_name'] . '.company_id', $companyId);
+                            if ($modules['personal_data_permission'] && $modules['all_data_permission'] == false) {
+                                $query->where($modules['table_name'] . '.created_by', $loginUserId);
+                            }
+                        });
+
+                    $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
+                    $gridQuery->where(function ($query) use ($payrollTypeId) {
+                        $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
+                            $q->whereIn('employment_type', $payrollTypeId);
+                        })
+                            ->orWhereDoesntHave('employmentDetail')
+                            ->orWhereHas('employmentDetail', function ($q) {
+                                $q->whereNull('employment_type');
+                            });
+                    });
+
+                    if (isset($modules['restore_permission']) && $modules['restore_permission']) {
+                        $gridQuery = $gridQuery->withTrashed();
+                    }
+
+                    if ($request->has('filter_company') && $request->filter_company) {
+                        $gridQuery->where($modules['table_name'] . '.company_id', $request->filter_company);
+                    }
+                    if ($request->has('filter_branch') && $request->filter_branch) {
+                        $gridQuery->where($modules['table_name'] . '.branch_id', $request->filter_branch);
+                    }
+                    if ($request->has('filter_parent') && $request->filter_parent) {
+                        $gridQuery->where($modules['table_name'] . '.parent_id', $request->filter_parent);
+                    }
+                    if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
+                        $gridQuery->where($modules['table_name'] . '.status', $request->status);
+                    }
+                    if ($request->has('search') && $request->search) {
+                        $searchTerm = $request->search;
+                        $gridQuery->where(function ($q) use ($searchTerm, $modules) {
+                            $q->where($modules['table_name'] . '.employee_code', 'like', "%" . $searchTerm . "%")
+                                ->orWhere($modules['table_name'] . '.full_name', 'like', "%" . $searchTerm . "%")
+                                ->orWhere($modules['table_name'] . '.contact_number', 'like', "%" . $searchTerm . "%")
+                                ->orWhere($modules['table_name'] . '.email', 'like', "%" . $searchTerm . "%")
+                                ->orWhere($modules['table_name'] . '.biometric_user_id', 'like', "%" . $searchTerm . "%");
+                        });
+                    }
+
+                    $gridQuery = $gridQuery->orderBy($modules['table_name'] . '.created_at', 'desc');
+
+                    $perPage = $request->get('per_page', 12);
+                    $perPage = ($perPage === 'all') ? 1000 : (intval($perPage) > 0 ? intval($perPage) : 12);
+                    $employees = $gridQuery->paginate($perPage);
+
+                    $html = view('software.modules.employee.partials.grid-view', compact('employees', 'modules'))->render();
+                    $pagination = view('software.modules.employee.partials.grid-pagination', compact('employees'))->render();
+
+                    return response()->json([
+                        'status' => true,
+                        'html' => $html,
+                        'pagination' => $pagination,
+                        'total' => $employees->total(),
+                        'from' => $employees->firstItem() ?? 0,
+                        'to' => $employees->lastItem() ?? 0,
+                    ]);
+                }
+
                 // build query with join for sorting/search
                 $data = Employee::select('employees.*', 'companies.company_name', 'team_role.name as team_role_name')
                     ->leftJoin('companies', 'companies.id', '=', 'employees.company_id')
@@ -131,10 +201,10 @@ class EmployeeController extends Controller
                     $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
                         $q->whereIn('employment_type', $payrollTypeId);
                     })
-                    ->orWhereDoesntHave('employmentDetail')
-                    ->orWhereHas('employmentDetail', function ($q) {
-                        $q->whereNull('employment_type');
-                    });
+                        ->orWhereDoesntHave('employmentDetail')
+                        ->orWhereHas('employmentDetail', function ($q) {
+                            $q->whereNull('employment_type');
+                        });
                 });
 
                 if (isset($modules['restore_permission']) && $modules['restore_permission']) {
@@ -296,7 +366,38 @@ class EmployeeController extends Controller
                 return $returnData;
             }
 
-            return view($modules['folder_path'] . '.index');
+            $initialGridQuery = Employee::with(['company', 'branch', 'current_role', 'parentEmployee'])
+                ->select('employees.*', 'companies.company_name', 'team_role.name as team_role_name')
+                ->leftJoin('companies', 'companies.id', '=', 'employees.company_id')
+                ->leftJoin('team_role', 'team_role.id', '=', 'employees.role_id')
+                ->when(Auth::guard('employees')->check() || !empty($modules['company_id']), function ($query) use ($modules, $loginUserId) {
+                    $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
+                    $query->where($modules['table_name'] . '.company_id', $companyId);
+                    if ($modules['personal_data_permission'] && $modules['all_data_permission'] == false) {
+                        $query->where($modules['table_name'] . '.created_by', $loginUserId);
+                    }
+                });
+
+            $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
+            $initialGridQuery->where(function ($query) use ($payrollTypeId) {
+                $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
+                    $q->whereIn('employment_type', $payrollTypeId);
+                })
+                    ->orWhereDoesntHave('employmentDetail')
+                    ->orWhereHas('employmentDetail', function ($q) {
+                        $q->whereNull('employment_type');
+                    });
+            });
+
+            if (isset($modules['restore_permission']) && $modules['restore_permission']) {
+                $initialGridQuery = $initialGridQuery->withTrashed();
+            }
+
+            $initialGridQuery->where($modules['table_name'] . '.status', 'active');
+            $initialGridQuery->orderBy($modules['table_name'] . '.created_at', 'desc');
+            $initialEmployees = $initialGridQuery->paginate(12);
+
+            return view($modules['folder_path'] . '.index', compact('initialEmployees'));
         } catch (\Exception $e) {
             return Redirect::route('software.dashboard')->withErrors($e->getMessage());
         }

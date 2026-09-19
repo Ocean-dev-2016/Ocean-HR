@@ -514,6 +514,33 @@ class CommonController extends Controller
     {
         try {
             $plan_master = PlanMaster::where('status', 'active');
+
+            $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+
+            $companyId = $request->input('company_id') ?: (Auth::guard('employees')->check() ? Auth::guard('employees')->user()->company_id : null);
+
+            if (!$isMasterAdmin && $companyId) {
+                $planIds = CompanySubscriptionPlan::where('company_id', $companyId)->pluck('plan_id')->toArray();
+                $compPlan = Company::where('id', $companyId)->value('plan_id');
+                if ($compPlan) {
+                    $planIds[] = $compPlan;
+                }
+                $planIds = array_unique(array_filter($planIds));
+                if (!empty($planIds)) {
+                    $plan_master->whereIn('id', $planIds);
+                }
+            } elseif ($request->filled('company_id')) {
+                $planIds = CompanySubscriptionPlan::where('company_id', $request->company_id)->pluck('plan_id')->toArray();
+                $compPlan = Company::where('id', $request->company_id)->value('plan_id');
+                if ($compPlan) {
+                    $planIds[] = $compPlan;
+                }
+                $planIds = array_unique(array_filter($planIds));
+                if (!empty($planIds)) {
+                    $plan_master->whereIn('id', $planIds);
+                }
+            }
+
             $plan_master = $plan_master->orderBy('id', 'desc')->get();
 
             return $this->sendResponse($plan_master, 'Plan list');

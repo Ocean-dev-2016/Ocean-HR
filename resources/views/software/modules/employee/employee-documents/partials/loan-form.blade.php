@@ -10,7 +10,10 @@
         ? \Carbon\Carbon::parse($employment->date_of_joining)->format('d/m/Y')
         : '--';
     $today = \Carbon\Carbon::now()->format('d/m/Y');
-    $headerImage = $headerImage ?? asset('software/img/header.jpg');
+    $headerImage = $headerImage 
+        ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
+        ?? ($selectedEmployee?->company?->company_logo_url ?? null)
+        ?? asset('software/img/logo.png');
     $watermarkImage = $watermarkImage ?? asset('software/img/Ocean_HR.png');
 @endphp
 
@@ -59,14 +62,20 @@
         position: relative;
         z-index: 1;
         margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
     }
 
     .loan-header img {
         display: block;
-        width: 100%;
+        max-height: 55px;
+        max-width: 260px;
+        width: auto;
         height: auto;
-        opacity: 0.64;
-        filter: grayscale(0.08) contrast(0.96);
+        object-fit: contain;
+        margin: 0 auto;
     }
 
     .loan-divider {

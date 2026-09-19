@@ -69,6 +69,7 @@
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/@form-validation/form-validation.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
+
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/node-waves/node-waves.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/typeahead-js/typeahead.css') }}" />
@@ -118,6 +119,14 @@
 
         .footer a {
             text-decoration: none;
+        }
+
+        .content-wrapper {
+            padding-bottom: 60px;
+        }
+
+        #filter_section {
+            display: none;
         }
     </style>
 </head>
@@ -179,10 +188,10 @@
         </div>
         <footer class="footer text-center py-3">
             <p class="mb-0 text-muted">
-                © 2025
+                © {{ date('Y') }}
                 {{ $authenticateUserDetails->company?->company_name ?? 'Ocean Infotech' }}. All Rights Reserved. |
                 Developed by
-                <a href="https://oceaninfotechcrm.com/" target="_blank" class="fw-bold text-primary">
+                <a href="https://oceaninfotech.co.in/" target="_blank" class="fw-bold text-primary">
                     Ocean Infotech
                 </a>
             </p>

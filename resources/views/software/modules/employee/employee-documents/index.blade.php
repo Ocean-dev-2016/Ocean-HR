@@ -102,6 +102,9 @@
                     @include('software.modules.employee.employee-documents.partials.document-shell', [
                         'documentTitle' => $previewDocumentTitle,
                         'previewMode' => true,
+                        'headerImage' => $selectedEmployee?->company?->order_header_logo_url 
+                            ?? $selectedEmployee?->company?->company_logo_url 
+                            ?? asset('software/img/logo.png'),
                         'watermarkImage' => $previewWatermarkImage,
                         'bodyView' => 'software.modules.employee.employee-documents.partials.' . $selectedDocumentType,
                         'bodyData' => [

@@ -111,35 +111,12 @@
                                                             $permission_checked = false;
                                                             if (isset($assignedPermission[$tr_uuid])) {
                                                                 $tr_permission_check = $assignedPermission[$tr_uuid];
-                                                                $tr_array = $tr_permission_check->toArray();
-
                                                                 if ($tr_permission_check && $tr_permission_check?->id) {
                                                                     $tr_array = $tr_permission_check->toArray();
                                                                     $flag_key = $permission_key . '_flag';
-
-                                                                    if (isset($assignedPermission[$tr_uuid])) {
-                                                                        // if (true && ($flag_key = 'restore_flag')) {
-                                                                        //     dd( 'Check 122', $flag_key, $tr_array, array_key_exists($flag_key, $tr_array), $tr_array[$flag_key], $permission_checked, );
-                                                                        // }
-                                                                        if (
-                                                                            isset($tr_array['id']) &&
-                                                                            array_key_exists($flag_key, $tr_array) &&
-                                                                            isset($tr_array[$flag_key])
-                                                                        ) {
-                                                                            $checked_all--;
-                                                                            $permission_checked = $tr_array[$flag_key];
-                                                                            // dd(
-                                                                            //     'Flag exists and can be accessed',
-                                                                            //     $flag_key,
-                                                                            //     $tr_array[$flag_key],
-                                                                            // );
-                                                                        } else {
-                                                                            dd(
-                                                                                'Flag missing or not set',
-                                                                                $flag_key,
-                                                                                $tr_array,
-                                                                            );
-                                                                        }
+                                                                    if (isset($tr_array[$flag_key]) && $tr_array[$flag_key]) {
+                                                                        $checked_all--;
+                                                                        $permission_checked = true;
                                                                     }
                                                                 }
                                                             }

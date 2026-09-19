@@ -42,11 +42,15 @@ class CompanySubscriptionPlanExpired extends Command
                     ->first();
 
                 if ($plan) {
-                    // Log or update status if needed
-                    //Log::info("Plan issue for company ID: {$company->id}, Plan ID: {$company->plan_id}");
-
                     $plan->subscription_status = 'expired';
                     $plan->save();
+
+                    $company->status = 'expired';
+                    $company->save();
+
+                    if (!empty($company->email)) {
+                        \App\Models\CompanyRegistration::where('email', $company->email)->update(['status' => 'expired']);
+                    }
                 }
             }
 

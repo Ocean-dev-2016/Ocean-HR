@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\software\AttendanceController;
 use App\Http\Controllers\software\CompanyController;
+use App\Http\Controllers\software\CompanyRegistrationController;
 use App\Http\Controllers\software\DashboardController;
 use App\Http\Controllers\software\EmployeeAssignAssetsController;
 use App\Http\Controllers\software\EmployeeIncrementDetailsController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\software\PaymentReceiptController;
 use App\Http\Controllers\software\RequestFormController;
 use App\Http\Controllers\software\SalarySlipController;
 use App\Http\Controllers\software\SoftwareAuthController;
+use App\Http\Controllers\software\GoogleAuthController;
 use App\Http\Controllers\software\LeaveTypeController;
 use App\Http\Controllers\software\DesignationController;
 use App\Http\Controllers\software\PlanMasterController;
@@ -52,6 +54,7 @@ use App\Http\Controllers\software\HolidayController;
 use App\Http\Controllers\software\ReferenceMasterController;
 use App\Http\Controllers\software\ShiftController;
 use App\Http\Controllers\software\EmployeeController;
+use App\Http\Controllers\software\OnboardingController;
 use App\Http\Controllers\software\EmployeeDocumentController;
 use App\Http\Controllers\software\EmployementDetailController;
 use App\Http\Controllers\software\LeaveApplicationController;
@@ -77,6 +80,22 @@ use Illuminate\Support\Facades\Route;
 Route::GET('/login', [SoftwareAuthController::class, 'showLoginForm'])->name('software.login');
 Route::POST('/login-submit', [SoftwareAuthController::class, 'submitLoginForm'])->name('software.submit.login');
 Route::match(['get', 'post'], '/logout', [SoftwareAuthController::class, 'logout'])->name('software.logout');
+
+// Google OAuth Authentication
+Route::get('/auth/google/signin', [GoogleAuthController::class, 'redirectToGoogleSignIn'])->name('software.auth.google.signin');
+Route::get('/auth/google/signup', [GoogleAuthController::class, 'redirectToGoogleSignUp'])->name('software.auth.google.signup');
+Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('software.auth.google');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('software.auth.google.callback');
+Route::get('/auth/google/verify-otp', [GoogleAuthController::class, 'showOtpForm'])->name('software.auth.google.verify-otp-form');
+Route::post('/auth/google/verify-otp', [GoogleAuthController::class, 'verifyOtp'])->name('software.auth.google.verify-otp-submit');
+Route::post('/auth/google/resend-otp', [GoogleAuthController::class, 'resendOtp'])->name('software.auth.google.resend-otp');
+Route::get('/auth/google/company-setup', [GoogleAuthController::class, 'showCompanySetupForm'])->name('software.auth.google.company-setup-form');
+Route::post('/auth/google/company-setup', [GoogleAuthController::class, 'submitCompanySetup'])->name('software.auth.google.company-setup-submit');
+
+// Public Company Registration
+Route::get('/register-company', [SoftwareAuthController::class, 'showCompanyRegisterForm'])->name('software.register.company');
+Route::post('/register-company', [SoftwareAuthController::class, 'submitCompanyRegisterForm'])->name('software.register.company.submit');
+Route::post('company/check-company-exists', [CompanyController::class, 'check_company_exists'])->name('company.check-company-exists');
 
 // Forgot Password
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('software.forgot.password');
@@ -116,7 +135,11 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::match(['get', 'post'], 'set_company_session', [CompanyController::class, 'set_company_session'])->name('company.set_company_session');
     Route::match(['get', 'post'], 'verify_website_api_code', [CompanyController::class, 'verify_website_api_code'])->name('company.verify_website_api_code');
     Route::match(['get', 'post'], 'master_config/{platform?}/{id?}', [CompanyController::class, 'set_master_config'])->name('company.master_config');
-    Route::match(['get', 'post'], 'get_master_social', [CompanyController::class, 'get_master_social'])->name('company.get_master_social');
+    // Company Registration / Website Company Registration
+    Route::match(['get', 'post'], 'website-company-registration-update-status', [CompanyRegistrationController::class, 'status_update'])->name('website-company-registration.status-update');
+    Route::resource('website-company-registration', CompanyRegistrationController::class, ['names' => 'website-company-registration']);
+    Route::resource('company-registration', CompanyRegistrationController::class, ['names' => 'software.company-registration']);
+
 
     // Sidebar Menu
     Route::match(['GET', 'POST'], 'sidebar-menu', [DashboardController::class, 'sidebar_menu'])->name('sidebar.menu');
@@ -398,6 +421,21 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::get('employees/export/excel', [EmployeeController::class, 'exportExcel'])->name('employees.export.excel');
     Route::get('employees/export/print', [EmployeeController::class, 'print'])->name('employees.print');
     Route::post('employees/update-displayorder', [EmployeeController::class, 'updateDisplayOrder'])->name('employees.update-displayorder');
+
+    // Onboarding Module Routes
+    Route::get('onboarding/role-template/{key}', [OnboardingController::class, 'getRoleTemplate'])->name('onboarding.role.template');
+    Route::get('onboarding/{id}/edit/{tab}', [OnboardingController::class, 'edit'])->name('onboarding.edit.tab')->where('tab', 'basic-details|documents|jd-kra|trainings|assets|reporting');
+    Route::get('onboarding/{id}/{tab}', [OnboardingController::class, 'show'])->name('onboarding.show.tab')->where('tab', 'basic-details|documents|jd-kra|trainings|assets|reporting');
+    Route::resource('onboarding', OnboardingController::class);
+    Route::post('onboarding/{id}/step1-update', [OnboardingController::class, 'updateBasicDetails'])->name('onboarding.step1.update');
+    Route::post('onboarding/{id}/document-upload', [OnboardingController::class, 'uploadDocument'])->name('onboarding.document.upload');
+    Route::post('onboarding/{id}/handbook-upload', [OnboardingController::class, 'uploadHandbook'])->name('onboarding.handbook.upload');
+    Route::post('onboarding/{id}/document-verify', [OnboardingController::class, 'verifyDocument'])->name('onboarding.document.verify');
+    Route::post('onboarding/{id}/step3-update', [OnboardingController::class, 'updateCompanyOverview'])->name('onboarding.step3.update');
+    Route::post('onboarding/{id}/training-status', [OnboardingController::class, 'updateTrainingStatus'])->name('onboarding.training.status');
+    Route::post('onboarding/{id}/asset-assign', [OnboardingController::class, 'assignAsset'])->name('onboarding.asset.assign');
+    Route::post('onboarding/{id}/step6-finalize', [OnboardingController::class, 'assignReportingAndFinalize'])->name('onboarding.step6.finalize');
+    Route::post('onboarding/{id}/convert-to-employee', [OnboardingController::class, 'convertToEmployee'])->name('onboarding.employee.convert');
 
     //Employee Assets Allocation Details
     Route::resource('employee-assign-assets', EmployeeAssignAssetsController::class);

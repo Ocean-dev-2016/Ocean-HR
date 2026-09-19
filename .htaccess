@@ -1,6 +1,12 @@
 # Increase PHP input limits
 php_value max_input_vars 50000
 
+# Block direct access to .env and sensitive files
+<Files ~ "^\.env">
+    Order allow,deny
+    Deny from all
+</Files>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

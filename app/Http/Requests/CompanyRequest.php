@@ -25,12 +25,12 @@ class CompanyRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(Request $request): array
+    public function rules(): array
     {
-        // dd($request->all());
-        $id = $request->route('company') ?? 0;
-        $companyId = is_object($id) ? $id->id : $id;
+        $id = $this->route('company') ?? $this->route('id') ?? $this->input('id') ?? $this->input('company_id') ?? 0;
+        $companyId = is_object($id) ? ($id->id ?? 0) : $id;
         $isEdit = $companyId ? true : false;
+        $isTeamUpdate = ($this->input('team_set') === 'team_update');
         $dateFormats = array_keys(Helper::getSupportedDateFormats());
         $timeFormats = array_keys(Helper::getSupportedTimeFormats());
         return [
@@ -40,25 +40,27 @@ class CompanyRequest extends FormRequest
                 'nullable',
                 'size:15', // GSTIN must be exactly 15 characters
                 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
-                Rule::unique((new Company())->getTable())->ignore($companyId),
+                Rule::unique((new Company())->getTable())->ignore($companyId)->whereNull('deleted_at'),
             ],
-            'company_name' => [
+            'company_name' => $isTeamUpdate ? ['nullable', 'max:255'] : [
                 'required',
                 'max:255',
-                Rule::unique((new Company())->getTable())->ignore($companyId),
+                Rule::unique((new Company())->getTable())->ignore($companyId)->whereNull('deleted_at'),
             ],
-            'person_name' => [
+            'person_name' => $isTeamUpdate ? ['nullable', 'max:255'] : [
                 'required',
                 'max:255'
             ],
-            'whatsapp_number' => [
+            'whatsapp_number' => $isTeamUpdate ? ['nullable'] : [
                 'required',
                 'numeric',
-                'regex:/^\d{10}$/'
+                'regex:/^\d{10}$/',
+                Rule::unique((new Company())->getTable(), 'whatsapp_number')->ignore($companyId)->whereNull('deleted_at'),
             ],
-            'email' => [
+            'email' => $isTeamUpdate ? ['nullable'] : [
                 'required',
-                'email'
+                'email',
+                Rule::unique((new Company())->getTable(), 'email')->ignore($companyId)->whereNull('deleted_at'),
             ],
             'password' => array_merge(
                 $isEdit ? ['nullable'] : ['required'],
@@ -69,12 +71,13 @@ class CompanyRequest extends FormRequest
             'city_id' => $isEdit ? ['nullable'] : ['required'],
             'plan_id' => $isEdit ? ['nullable'] : ['required'],
             'otp' => $isEdit ? ['nullable'] : ['required'],
-            'company_logo' => ['mimes:jpeg,png,jpg,webp|max:2048'],
-            'white_labeling_logo' => ['mimes:jpeg,png,jpg,webp|max:2048'],
-            'company_favicon' => ['mimes:jpeg,png,jpg,webp|max:2048'],
-            'app_logo' => ['mimes:jpeg,png,jpg,webp|max:2048'],
-            'header_image' => ['mimes:jpeg,png,jpg,webp|max:2048'],
-            'footer_image' => ['mimes:jpeg,png,jpg,webp|max:2048'],
+            'company_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'white_labeling_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'company_favicon' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'app_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'header_image' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'footer_image' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'handbook_file' => ['nullable', 'file', 'mimes:pdf,jpeg,png,jpg,webp', 'max:20480'],
             'hra_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'employee_code_auto_generation' => ['nullable', Rule::in(array_keys(config('constants.employee_code_auto_generation')))],
             'date_format' => ['nullable', Rule::in($dateFormats)],
@@ -96,9 +99,12 @@ class CompanyRequest extends FormRequest
             'gst_no.required' => 'The GST number is required.',
             'gst_no.regex' => 'The GST number is invalid.',
             'company_name.required' => 'The company name is required.',
+            'company_name.unique' => 'This company name is already registered.',
             'person_name.required' => 'The person name is required.',
             'whatsapp_number.required' => 'The whatsapp number is required.',
+            'whatsapp_number.unique' => 'This WhatsApp number is already registered with another company.',
             'email.required' => 'The email is required.',
+            'email.unique' => 'This email address is already registered with another company.',
             'password.required' => 'The password is required.',
             'country_id.required' => 'The country is required.',
             'state_id.required' => 'The state is required.',

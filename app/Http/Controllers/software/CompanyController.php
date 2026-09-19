@@ -155,8 +155,8 @@ class CompanyController extends Controller
                     })
                     // Contact Info
                     ->addColumn('company_details', function ($row) {
-                        $html = '<strong>' . $row->company_name . '</strong><br>';
-                        $html .= $row->gst_no;
+                        $html = '<strong>' . e($row->company_name) . '</strong><br>';
+                        $html .= e($row->gst_no);
                         return $html;
                     })
 
@@ -398,7 +398,13 @@ class CompanyController extends Controller
             $validated = array_merge($validated, $defaultValues);
             $validated['sp'] = Helper::generateSP($request->password);
             $validated['password'] = Hash::make($validated['password']);
-            $validated['app_key'] = "Defualt@" . date("Y");
+            $companyName = trim($request->company_name);
+            $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $companyName);
+            if (strlen($cleanName) < 3) {
+                $cleanName = str_pad($cleanName, 3, 'X');
+            }
+            $prefix = ucfirst(strtolower(substr($cleanName, 0, 3)));
+            $validated['app_key'] = $prefix . "@" . date("Y");
             // app_key
             // dd("L-395",$validated, Helper::getCurrentGuard());
             $company = Company::create($validated);
@@ -635,6 +641,14 @@ class CompanyController extends Controller
      */
     public function edit(string $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['currentGuard'] = ($this->currentGuard) ? $this->currentGuard : null;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
@@ -643,7 +657,6 @@ class CompanyController extends Controller
         $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
 
         try {
-
             $modules['updatePermission'] = Gate::check('hasPermission', ['update', $modules['module_name']]);
             if (!$modules['updatePermission']) {
                 abort(403, 'Unauthorized');
@@ -678,6 +691,14 @@ class CompanyController extends Controller
      */
     public function update(CompanyRequest $request, string $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -903,6 +924,43 @@ class CompanyController extends Controller
                 }
             }
 
+            if ($request->hasFile('handbook_file')) {
+                $file = $request->file('handbook_file');
+                $ext = strtolower($file->getClientOriginalExtension());
+                $compSlug = \Illuminate\Support\Str::slug($updateData->id . ' ' . $updateData->company_name);
+                $handbookFolder = "uploads/" . $compSlug . "/handbook/";
+                $handbookDir = public_path($handbookFolder);
+                if (!file_exists($handbookDir)) {
+                    mkdir($handbookDir, 0777, true);
+                }
+
+                // Remove existing old handbook files
+                foreach (['handbook.pdf', 'handbook.webp', 'handbook.png', 'handbook.jpg', 'handbook.jpeg'] as $oldF) {
+                    if (file_exists($handbookDir . $oldF)) {
+                        @unlink($handbookDir . $oldF);
+                    }
+                }
+
+                if ($ext === 'pdf') {
+                    $file->move($handbookDir, 'handbook.pdf');
+                } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+                    $tempPath = $file->getPathname();
+                    $imageContent = file_get_contents($tempPath);
+                    $img = @imagecreatefromstring($imageContent);
+                    if ($img !== false) {
+                        imagepalettetotruecolor($img);
+                        imagealphablending($img, true);
+                        imagesavealpha($img, true);
+                        imagewebp($img, $handbookDir . 'handbook.webp', 80);
+                        imagedestroy($img);
+                    } else {
+                        $file->move($handbookDir, 'handbook.' . $ext);
+                    }
+                } else {
+                    $file->move($handbookDir, 'handbook.' . $ext);
+                }
+            }
+
             // dd("L-711", $request->all(), $input);
             if ($updateData) {
                 unset($validated['id']);
@@ -1044,12 +1102,60 @@ class CompanyController extends Controller
     {
         $company_name = $request->company_name;
         $gst_no = $request->gst_no;
-        $company = Company::where('company_name', $company_name)->first();
-        if ($company) {
-            return $this->sendError('Company name already exists', $company);
-        } else {
-            return $this->sendResponse([], 'Company name does not exist');
+        $whatsapp_number = $request->whatsapp_number;
+        $email = $request->email;
+
+        if ($company_name) {
+            $company = Company::where('company_name', $company_name)->first();
+            if ($company) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Company name is already registered.'
+                ], 200);
+            }
         }
+
+        if ($gst_no) {
+            $gstCompany = Company::where('gst_no', $gst_no)->first();
+            if ($gstCompany) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'GST number is already registered.'
+                ], 200);
+            }
+        }
+
+        if ($whatsapp_number) {
+            $phoneCompany = Company::where('whatsapp_number', $whatsapp_number)->first();
+            if ($phoneCompany) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'WhatsApp number is already registered with another company.'
+                ], 200);
+            }
+            $empUser = Employee::where('username', $whatsapp_number)->first();
+            if ($empUser) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'WhatsApp number is already in use as a login username.'
+                ], 200);
+            }
+        }
+
+        if ($email) {
+            $emailCompany = Company::where('email', $email)->first();
+            if ($emailCompany) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email address is already registered with another company.'
+                ], 200);
+            }
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Validation passed.'
+        ], 200);
     }
 
     function generateEmployeeCode($companyId)
@@ -1278,6 +1384,14 @@ class CompanyController extends Controller
     /** company wise mail setting */
     public function mail_setting(Request $request, $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -1362,6 +1476,14 @@ class CompanyController extends Controller
     /** company wise license setting */
     public function license_setting(Request $request, $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -1487,6 +1609,14 @@ class CompanyController extends Controller
     /** company upgrade plan */
     public function upgrade_plan(Request $request, $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -1587,6 +1717,14 @@ class CompanyController extends Controller
 
     public function detail(Request $request, $id)
     {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
+            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
+            if ((int)$id !== (int)$loggedInCompanyId) {
+                abort(404);
+            }
+        }
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -1596,8 +1734,7 @@ class CompanyController extends Controller
 
         View::share('modules', $modules);
 
-        try {
-
+        try {   
             $company = Company::with(['plan'])->findOrFail($id);
             $tab = $request->query('tab');
             View::share('edit', $company);
@@ -1615,6 +1752,21 @@ class CompanyController extends Controller
             } else if ($tab == 'mail-tab') {
                 View::share('mail_setting', $company?->MailSetting);
             } else if ($tab == 'subscription-tab') {
+
+                // Calculate plans for Filter by Plan: Master Admin sees all, Company sees only their assigned plans
+                $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+
+                if ($isMasterAdmin) {
+                    $subscriptionPlanList = PlanMaster::where('status', 'active')->orderBy('id', 'desc')->get();
+                } else {
+                    $companyPlanIds = CompanySubscriptionPlan::where('company_id', $id)->pluck('plan_id')->toArray();
+                    if ($company?->plan_id) {
+                        $companyPlanIds[] = $company->plan_id;
+                    }
+                    $companyPlanIds = array_unique(array_filter($companyPlanIds));
+                    $subscriptionPlanList = PlanMaster::whereIn('id', $companyPlanIds)->orderBy('id', 'desc')->get();
+                }
+                View::share('subscription_plan_list', $subscriptionPlanList);
 
                 if ($request->ajax()) {
                     $data = CompanySubscriptionPlan::with(['plan', 'company'])->select('*')
@@ -1711,10 +1863,12 @@ class CompanyController extends Controller
             }
 
             return view($modules['folder_path'] . '.update_company_detail');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface | \Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return $e->getMessage();
         } catch (\Throwable $th) {
-            //throw $th;
+            throw $th;
         }
     }
 }
