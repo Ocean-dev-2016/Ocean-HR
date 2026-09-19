@@ -29,7 +29,7 @@ return new class extends Migration
                 $table->string('time_format')->nullable();
                 $table->double('hra_percentage')->default(40);
                 $table->string('otp')->nullable();
-                $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+                $table->string('status', 50)->default('active');
                 $table->timestamps();
                 $table->softDeletes();
             });

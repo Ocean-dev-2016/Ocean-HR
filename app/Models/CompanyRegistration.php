@@ -49,4 +49,9 @@ class CompanyRegistration extends Model
     {
         return $this->belongsTo(MasterCity::class, 'city_id', 'id');
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'email', 'email');
+    }
 }

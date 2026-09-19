@@ -19,7 +19,10 @@
     $salutation = $gender === 'female' ? 'Mrs.' : 'Mr.';
     $companyName = $selectedEmployee?->company?->company_name ?? 'OceanHR';
     $today = \Carbon\Carbon::now()->format('d/m/Y');
-    $headerImage = $headerImage ?? asset('software/img/header.jpg');
+    $headerImage = $headerImage 
+        ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
+        ?? ($selectedEmployee?->company?->company_logo_url ?? null)
+        ?? asset('software/img/logo.png');
     $watermarkImage = $watermarkImage ?? asset('software/img/Ocean_HR.png');
 @endphp
 
@@ -77,12 +80,20 @@
         position: relative;
         z-index: 1;
         margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
     }
 
     .appointment-header img {
         display: block;
-        width: 100%;
+        max-height: 55px;
+        max-width: 260px;
+        width: auto;
         height: auto;
+        object-fit: contain;
+        margin: 0 auto;
     }
 
     .appointment-divider {
@@ -412,7 +423,7 @@
         <div class="section-block">
             <div class="heading">4. Place of Posting</div>
             <div class="text">
-                You will be posted at <strong>Lothda, Rajkot, Gujarat</strong>. You may however be
+                You will be posted at <strong>Rajkot, Gujarat</strong>. You may however be
                 required to work at any place of business at where Company has, or may later acquire.
             </div>
         </div>

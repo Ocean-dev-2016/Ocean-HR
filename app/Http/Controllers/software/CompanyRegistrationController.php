@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Yajra\DataTables\DataTables;
 
@@ -27,12 +28,12 @@ class CompanyRegistrationController extends Controller
         parent::__construct();
 
         $this->modules = [
-            'title' => 'Company Registration',
+            'title' => 'Website Company Registration',
             'folder_path' => 'software.modules.company_registration',
-            'route' => 'company-registration',
+            'route' => 'website-company-registration',
             'table_name' => (new CompanyRegistration())->getTable(),
-            'permisstion_prefix' => 'company-registration',
-            'module_name' => 'Company Registration'
+            'permisstion_prefix' => 'website-company-registration',
+            'module_name' => 'Website Company Registration'
         ];
     }
 
@@ -43,56 +44,218 @@ class CompanyRegistrationController extends Controller
 
         try {
             $columns = [
-                (object)['data' => 'id', 'name' => 'id', 'td_label' => 'ID', 'className' => ''],
-                (object)['data' => 'gst_no', 'name' => 'gst_no', 'td_label' => 'GST No', 'className' => ''],
-                (object)['data' => 'company_name', 'name' => 'company_name', 'td_label' => 'Company Name', 'className' => ''],
-                (object)['data' => 'person_name', 'name' => 'person_name', 'td_label' => 'Person Name', 'className' => ''],
-                (object)['data' => 'whatsapp_number', 'name' => 'whatsapp_number', 'td_label' => 'WhatsApp Number', 'className' => ''],
-                (object)['data' => 'email', 'name' => 'email', 'td_label' => 'Email', 'className' => ''],
-                (object)['data' => 'plan_name', 'name' => 'plan.title', 'td_label' => 'Plan Name', 'className' => ''],
-                (object)['data' => 'status', 'name' => 'status', 'td_label' => 'Status', 'className' => 'text-center'],
-                (object)['data' => 'created_at', 'name' => 'created_at', 'td_label' => 'Registered Date', 'className' => ''],
-                (object)['data' => 'action', 'name' => 'action', 'td_label' => 'Action', 'orderable' => false, 'searchable' => false, 'className' => 'w-10 text-center'],
+                (object)['data' => 'company_name', 'name' => 'company_name', 'td_label' => 'Company Name', 'className' => 'w-20', 'orderable' => true, 'searchable' => true],
+                (object)['data' => 'person_name', 'name' => 'person_name', 'td_label' => 'Person Details', 'className' => 'w-25 text-wrap', 'orderable' => true, 'searchable' => true],
+                (object)['data' => 'login_details', 'name' => 'whatsapp_number', 'td_label' => 'LOGIN DETAILS', 'className' => 'text-wrap text-left', 'orderable' => false, 'searchable' => false],
+                (object)['data' => 'plan_name', 'name' => 'plan.title', 'td_label' => 'Plan Name', 'className' => '', 'orderable' => true, 'searchable' => false],
+                (object)['data' => 'created_at', 'name' => 'created_at', 'td_label' => 'Registered Date', 'className' => '', 'orderable' => true, 'searchable' => false],
+                (object)['data' => 'status', 'name' => 'status', 'td_label' => 'STATUS', 'orderable' => true, 'searchable' => false, 'className' => 'text-center'],
+                (object)['data' => 'action', 'name' => 'action', 'td_label' => 'ACTION', 'orderable' => false, 'searchable' => false, 'className' => 'text-center'],
             ];
 
             View::share('modules', $modules);
             View::share('columns', $columns);
 
             if ($request->ajax()) {
-                $data = CompanyRegistration::with(['plan', 'country', 'state', 'city'])->latest();
+                $data = CompanyRegistration::with(['plan', 'country', 'state', 'city', 'company'])->latest();
+
+                if ($request->has('search') && !empty($request->search)) {
+                    $searchTerm = $request->search;
+                    $data->where(function ($q) use ($searchTerm) {
+                        $q->where('company_name', 'like', "%{$searchTerm}%")
+                            ->orWhere('person_name', 'like', "%{$searchTerm}%")
+                            ->orWhere('whatsapp_number', 'like', "%{$searchTerm}%")
+                            ->orWhere('email', 'like', "%{$searchTerm}%");
+                    });
+                }
+
+                if ($request->has('filter_plan') && !empty($request->filter_plan)) {
+                    $data->where('plan_id', $request->filter_plan);
+                }
+
+                if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
+                    $reqStatus = strtolower($request->status);
+                    if ($reqStatus === 'active') {
+                        $data->where(function ($q) {
+                            $q->whereIn('status', ['active', 'approved'])->orWhereNull('status');
+                        });
+                    } elseif ($reqStatus === 'inactive') {
+                        $data->whereIn('status', ['inactive', 'rejected']);
+                    } else {
+                        $data->where('status', $request->status);
+                    }
+                }
 
                 return DataTables::of($data)
                     ->addIndexColumn()
-                    ->addColumn('plan_name', function ($row) {
-                        return $row->plan?->title ?? $row->plan?->name ?? '-';
-                    })
-                    ->editColumn('status', function ($row) {
-                        if ($row->status === 'approved') {
-                            return '<span class="badge bg-success">Approved</span>';
-                        } elseif ($row->status === 'rejected') {
-                            return '<span class="badge bg-danger">Rejected</span>';
+                    ->addColumn('company_details', function ($row) {
+                        $html = '<strong>' . e($row->company_name) . '</strong><br>';
+                        if (!empty($row->gst_no)) {
+                            $html .= e($row->gst_no);
                         }
-                        return '<span class="badge bg-warning text-dark">Pending</span>';
+                        return $html;
+                    })
+                    ->addColumn('contact_info', function ($row) {
+                        $html = '';
+
+                        if (!empty($row->person_name)) {
+                            $html .= '<i class="fa fa-user me-1 text-primary"></i>' . e($row->person_name);
+                        }
+
+                        if (!empty($row->whatsapp_number)) {
+                            $wa_number = preg_replace('/[^0-9]/', '', $row->whatsapp_number);
+                            $wa_link = "https://wa.me/{$wa_number}";
+                            $html .= '<br><i class="fab fa-whatsapp text-success me-1"></i> <a href="' . $wa_link . '" target="_blank">' . e($row->whatsapp_number) . '</a>';
+                        }
+
+                        if (!empty($row->email)) {
+                            $html .= '<br><i class="fa fa-envelope text-danger me-1"></i> <a href="mailto:' . e($row->email) . '">' . e($row->email) . '</a>';
+                        }
+
+                        return $html;
+                    })
+                    ->addColumn('login_details', function ($row) {
+                        $company = $row->company ?? \App\Models\Company::where('email', $row->email)->first();
+                        $appKey = $company?->app_key;
+                        if (!$appKey) {
+                            $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $row->company_name ?? '');
+                            if (strlen($cleanName) < 3) {
+                                $cleanName = str_pad($cleanName, 3, 'X');
+                            }
+                            $prefix = ucfirst(strtolower(substr($cleanName, 0, 3)));
+                            $appKey = $prefix . '@' . ($row->created_at ? $row->created_at->format('Y') : date('Y'));
+                        }
+
+                        $username = $row->whatsapp_number ?? '-';
+                        $password = (string)($row->sp ?? '');
+
+                        $html = '<div><strong>App Key:</strong> ' . e($appKey) . '</div>';
+                        $html .= '<div><strong>Username:</strong> ' . e($username) . '</div>';
+                        $html .= '<div><strong>Password:</strong> ' . e($password ?: '-') . '</div>';
+
+                        $html .= '<button type="button" class="btn btn-xs btn-outline-primary copy-login-details mt-1" ';
+                        $html .= 'data-app-key="' . e($appKey) . '" ';
+                        $html .= 'data-username="' . e($username) . '" ';
+                        $html .= 'data-password="' . e($password) . '" ';
+                        $html .= 'title="Copy & Share">';
+                        $html .= '<i class="ti ti-copy me-1"></i>Copy Detail</button>';
+
+                        return $html;
+                    })
+                    ->addColumn('plan_info', function ($row) {
+                        $company = $row->company ?? \App\Models\Company::where('email', $row->email)->first();
+                        $companyId = $company?->id;
+
+                        $planName = $row->plan?->title ?? $row->plan?->name ?? $company?->plan?->name ?? '-';
+
+                        $html = '<strong>' . e($planName) . '</strong><br/>';
+
+                        if ($companyId) {
+                            $latestPlan = \App\Models\CompanySubscriptionPlan::where('company_id', $companyId)->orderBy('id', 'desc')->first();
+                            $totalPurchasePlan = \App\Models\CompanySubscriptionPlan::where('company_id', $companyId)->count();
+
+                            if (!empty($latestPlan?->plan_from)) {
+                                $plan_from = \Carbon\Carbon::parse($latestPlan->plan_from)->format('d-m-Y');
+                                $html .= '<strong>Plan From:</strong> ' . $plan_from . '<br/>';
+                            }
+
+                            if (!empty($latestPlan?->plan_expiry_date)) {
+                                $plan_expiry_date = \Carbon\Carbon::parse($latestPlan->plan_expiry_date)->format('d-m-Y');
+                                $html .= '<strong>Plan Expiry Date:</strong> ' . $plan_expiry_date . '<br/>';
+                            }
+
+                            if (!empty($latestPlan?->subscription_status)) {
+                                $html .= '<strong>Subscription Status: ' . ucfirst($latestPlan->subscription_status) . '</strong><br/>';
+                            }
+
+                            if ($totalPurchasePlan > 0) {
+                                $html .= '<strong>Total Purchase Plan: ' . $totalPurchasePlan . '</strong><br/>';
+                            }
+                        }
+
+                        return $html;
                     })
                     ->editColumn('created_at', function ($row) {
-                        return $row->created_at ? $row->created_at->format('d-m-Y H:i A') : '-';
+                        return $row->created_at ? $row->created_at->format('d-m-Y') : '-';
                     })
-                    ->addColumn('action', function ($row) {
+                    ->editColumn('status', function ($row) use ($modules) {
                         $btn = '';
-                        if ($row->status === 'pending') {
-                            $approveUrl = route('software.company-registration.approve', $row->id);
-                            $rejectUrl = route('software.company-registration.reject', $row->id);
+                        $company = $row->company ?? Company::where('email', $row->email)->first();
+                        $companyId = $company?->id;
+                        $latestPlan = $companyId ? CompanySubscriptionPlan::where('company_id', $companyId)->orderBy('id', 'desc')->first() : null;
 
-                            $btn .= '<button type="button" class="btn btn-sm btn-success me-1 btn-approve-request" data-url="' . $approveUrl . '" title="Approve"><i class="fa fa-check"></i> Approve</button>';
-                            $btn .= '<button type="button" class="btn btn-sm btn-danger me-1 btn-reject-request" data-url="' . $rejectUrl . '" title="Reject"><i class="fa fa-times"></i> Reject</button>';
+                        $status = strtolower($row->status ?? 'active');
+                        $updateStatusUrl = route('website-company-registration.status-update');
+
+                        $dropdown = '<ul class="dropdown-menu">';
+                        $btnExpired = '<li><a href="javascript:void(0)" class="dropdown-item waves-effect btn-label-dark update-status" data-url="' . $updateStatusUrl . '" data-id="' . $row->id . '" data-update_status="expired">Expire</a></li>';
+                        $btnActive = '<li><a href="javascript:void(0)" class="dropdown-item waves-effect btn-label-success update-status" data-url="' . $updateStatusUrl . '" data-id="' . $row->id . '" data-update_status="active">Active</a></li>';
+                        $btnInactive = '<li><a href="javascript:void(0)" class="dropdown-item waves-effect btn-label-danger update-status" data-url="' . $updateStatusUrl . '" data-id="' . $row->id . '" data-update_status="inactive">Inactive</a></li>';
+
+                        if (!empty($latestPlan?->subscription_status) && $latestPlan?->subscription_status == 'expired') {
+                            $btn .= '<button type="button" class="btn btn-dark btn-sm dropdown-toggle waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">Expired</button>';
+                            $dropdown .= $btnActive;
+                            $dropdown .= $btnInactive;
+                        } else {
+                            if ($status == "active" || $status == "approved") {
+                                $btn .= '<button type="button" class="btn btn-success btn-sm dropdown-toggle waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">Active</button>';
+                                $dropdown .= $btnInactive;
+                                $dropdown .= $btnExpired;
+                            } elseif ($status == "inactive" || $status == "rejected") {
+                                $btn .= '<button type="button" class="btn btn-danger btn-sm dropdown-toggle waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">Inactive</button>';
+                                $dropdown .= $btnActive;
+                                $dropdown .= $btnExpired;
+                            } elseif ($status == "expired") {
+                                $btn .= '<button type="button" class="btn btn-dark btn-sm dropdown-toggle waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">Expired</button>';
+                                $dropdown .= $btnActive;
+                                $dropdown .= $btnInactive;
+                            } else {
+                                $btn .= '<button type="button" class="btn btn-success btn-sm dropdown-toggle waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">Active</button>';
+                                $dropdown .= $btnInactive;
+                                $dropdown .= $btnExpired;
+                            }
                         }
+                        $dropdown .= '</ul>';
+                        $btn .= $dropdown;
+                        return $btn;
+                    })
 
-                        $deleteUrl = route('software.company-registration.destroy', $row->id);
-                        $btn .= '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-request" data-url="' . $deleteUrl . '" title="Delete"><i class="fa fa-trash"></i></button>';
+                    ->addColumn('action', function ($row) {
+                        $deleteUrl = Route::has('website-company-registration.destroy') ? route('website-company-registration.destroy', $row->id) : route('software.company-registration.destroy', $row->id);
+                        
+                        $companyId = $row->company?->id ?? Company::where('email', $row->email)->value('id');
+                        $editUrl = $companyId ? route('company.edit', $companyId) : route('website-company-registration.edit', $row->id);
+
+                        $btn = '<a href="' . $editUrl . '" class="btn btn-light btn-icon mx-1" title="Edit Company"><i class="fa-solid fa-pen-to-square"></i></a>';
+
+                        $btn .= '
+                            <div style="display:inline-block">
+                                <button class="btn btn-icon waves-effect waves-light" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+                                    <i class="ti ti-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="' . $editUrl . '">
+                                            <i class="tf-icons ti ti-edit"></i> Edit Company
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item view-company-modal-btn" href="javascript:void(0)" data-id="' . $row->id . '">
+                                            <i class="tf-icons ti ti-eye"></i> View Details
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item deletebutton text-danger" href="javascript:void(0)" data-id="' . $row->id . '" data-did="' . $deleteUrl . '">
+                                            <i class="tf-icons ti ti-trash"></i> Delete Registration
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        ';
 
                         return $btn;
                     })
-                    ->rawColumns(['status', 'action'])
+                    ->rawColumns(['company_details', 'contact_info', 'login_details', 'plan_info', 'status', 'action'])
                     ->make(true);
             }
 
@@ -103,139 +266,73 @@ class CompanyRegistrationController extends Controller
         }
     }
 
-    public function approve($id)
+    public function edit($id)
     {
         try {
-            $regRequest = CompanyRegistration::findOrFail($id);
-
-            if ($regRequest->status === 'approved') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'This registration has already been approved.'
-                ], 400);
-            }
-
-            DB::beginTransaction();
-
-            $country = !empty($regRequest->country_id) ? MasterCountry::find($regRequest->country_id) : null;
-            $planId = $regRequest->plan_id;
-            if (empty($planId)) {
-                $defaultPlan = PlanMaster::where('status', 'active')->first();
-                $planId = $defaultPlan?->id;
-            }
-            $plan = !empty($planId) ? PlanMaster::find($planId) : null;
-
-            $regCompName = trim($regRequest->company_name);
-            $cleanRegCompName = preg_replace('/[^A-Za-z0-9]/', '', $regCompName);
-            if (strlen($cleanRegCompName) < 3) {
-                $cleanRegCompName = str_pad($cleanRegCompName, 3, 'X');
-            }
-            $regPrefix = ucfirst(strtolower(substr($cleanRegCompName, 0, 3)));
-
-            $defaultValues = [
-                'mobile_min' => 10,
-                'mobile_max' => 10,
-                'branch_type' => 'single',
-                'status' => 'active',
-                'employee_code_auto_generation' => 'auto',
-                'phonecode' => $country?->code ?? '',
-                'panel_url' => url('/software/login'),
-                'app_key' => $regPrefix . '@' . date('Y'),
-            ];
-
-            if ($plan) {
-                $defaultValues['max_employee_user_count'] = $plan->max_employee_user_count;
-                $defaultValues['app_right'] = $plan->app_right;
-                $defaultValues['panel_right'] = $plan->panel_right;
-            }
-
-            $companyData = array_merge([
-                'gst_no' => $regRequest->gst_no,
-                'company_name' => $regRequest->company_name,
-                'person_name' => $regRequest->person_name,
-                'whatsapp_number' => $regRequest->whatsapp_number,
-                'email' => $regRequest->email,
-                'password' => $regRequest->password,
-                'sp' => $regRequest->sp,
-                'country_id' => $regRequest->country_id,
-                'state_id' => $regRequest->state_id,
-                'city_id' => $regRequest->city_id,
-                'plan_id' => $planId,
-                'date_format' => $regRequest->date_format ?: Helper::getDefaultDateFormat(),
-                'time_format' => $regRequest->time_format ?: Helper::getDefaultTimeFormat(),
-                'hra_percentage' => $regRequest->hra_percentage ?? 40,
-            ], $defaultValues);
-
-            $company = Company::create($companyData);
-
-            if ($company) {
-                CompanyDetails::updateOrCreate(
-                    ['company_id' => $company->id],
-                    []
-                );
-
-                if (!empty($company->plan_id)) {
-                    $plan_from = date('Y-m-d');
-                    $plan_to = !empty($plan?->plan_valid_day) ? date('Y-m-d', strtotime('+' . $plan->plan_valid_day . ' days')) : date('Y-m-d', strtotime('+365 days'));
-
-                    CompanySubscriptionPlan::create([
-                        'company_id' => $company->id,
-                        'plan_id' => $company->plan_id,
-                        'plan_from' => $plan_from,
-                        'plan_expiry_date' => $plan_to,
-                        'subscription_status' => 'active',
-                    ]);
+            $regRequest = CompanyRegistration::find($id);
+            if ($regRequest) {
+                $company = Company::where('email', $regRequest->email)->first();
+                if ($company) {
+                    return redirect()->route('company.edit', $company->id);
                 }
-
-                $regRequest->update(['status' => 'approved']);
-
-                DB::commit();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Company registration approved successfully! Company account created.'
-                ]);
             }
-
-            DB::rollBack();
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to create company from registration.'
-            ], 400);
+            return back()->withErrors('Matching company record not found to edit.');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Approve registration error: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return back()->withErrors($e->getMessage());
         }
     }
 
-    public function reject($id)
+    public function status_update(Request $request)
     {
         try {
-            $regRequest = CompanyRegistration::findOrFail($id);
+            $id = $request->id;
+            $status = $request->update_status ?? $request->status;
+            $data = CompanyRegistration::find($id);
+            if ($data) {
+                $data->status = $status;
+                $data->save();
 
-            if ($regRequest->status === 'approved') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Cannot reject an already approved registration.'
-                ], 400);
+                if ($data->email) {
+                    $company = Company::where('email', $data->email)->first();
+                    if ($company) {
+                        if ($status == 'expired') {
+                            $companySubscriptionPlan = CompanySubscriptionPlan::where('company_id', $company->id)
+                                ->where('plan_id', $company->plan_id)
+                                ->where('subscription_status', 'active')
+                                ->orderBy('id', 'desc')
+                                ->first();
+
+                            if ($companySubscriptionPlan) {
+                                $companySubscriptionPlan->subscription_status = 'expired';
+                                $companySubscriptionPlan->plan_expiry_date = date('Y-m-d');
+                                $companySubscriptionPlan->platform = 'manually';
+                                $companySubscriptionPlan->save();
+                            }
+                        } else {
+                            $company->status = $status;
+                            $company->save();
+                        }
+                    }
+                }
+
+                return response()->json(['status' => true, 'message' => 'Status updated successfully.']);
             }
-
-            $regRequest->update(['status' => 'rejected']);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Company registration rejected.'
-            ]);
+            return response()->json(['status' => false, 'message' => 'Record not found.']);
         } catch (\Exception $e) {
-            Log::error('Reject registration error: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(['status' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $data = CompanyRegistration::with(['plan', 'country', 'state', 'city', 'company'])->find($id);
+            if ($data) {
+                return response()->json(['status' => true, 'data' => $data]);
+            }
+            return response()->json(['status' => false, 'message' => 'Record not found.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()]);
         }
     }
 
@@ -243,6 +340,16 @@ class CompanyRegistrationController extends Controller
     {
         try {
             $regRequest = CompanyRegistration::findOrFail($id);
+            $email = $regRequest->email;
+
+            if ($email) {
+                $company = Company::where('email', $email)->first();
+                if ($company) {
+                    Employee::where('company_id', $company->id)->delete();
+                    $company->delete();
+                }
+            }
+
             $regRequest->delete();
 
             return response()->json([

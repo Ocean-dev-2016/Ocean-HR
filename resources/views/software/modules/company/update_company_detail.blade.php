@@ -287,6 +287,57 @@
                                                     value="{{ $edit->order_footer_logo }}">
                                             </div>
                                         </div>
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            @php
+                                                $compSlug = \Illuminate\Support\Str::slug($edit->id . ' ' . $edit->company_name);
+                                                $handbookDir = public_path('uploads/' . $compSlug . '/handbook/');
+                                                $handbookRelPath = null;
+                                                $handbookType = 'PDF / Image';
+                                                if (is_dir($handbookDir)) {
+                                                    foreach (['handbook.pdf', 'handbook.webp', 'handbook.png', 'handbook.jpg', 'handbook.jpeg'] as $f) {
+                                                        if (file_exists($handbookDir . $f)) {
+                                                            $handbookRelPath = 'uploads/' . $compSlug . '/handbook/' . $f;
+                                                            $handbookType = strtoupper(pathinfo($f, PATHINFO_EXTENSION));
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                $handbookExists = !empty($handbookRelPath) && file_exists(public_path($handbookRelPath));
+                                                $handbookUrl = $handbookExists ? asset($handbookRelPath) . '?v=' . filemtime(public_path($handbookRelPath)) : '#';
+                                            @endphp
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <label class="form-label mb-0 fw-semibold">
+                                                    Employee Handbook & Policies
+                                                    <small class="text-muted">({{ $handbookType }})</small>
+                                                </label>
+                                                @if($handbookExists)
+                                                    <span class="badge bg-label-success px-2 py-0" style="font-size: 0.72rem;"><i class="ti ti-check me-1"></i>Uploaded ({{ $handbookType }})</span>
+                                                @else
+                                                    <span class="badge bg-label-warning px-2 py-0" style="font-size: 0.72rem;">Not Uploaded</span>
+                                                @endif
+                                            </div>
+                                            <div class="border border-secondary rounded d-flex flex-column align-items-center justify-content-center p-3"
+                                                style="height: 150px; background-color: #f9f9f9; position: relative">
+                                                <input type="file" class="form-control"
+                                                    style="opacity: 0; height: 150px; width: 100%; position: absolute; top:0; left:0; cursor: pointer;"
+                                                    id="handbook_file" name="handbook_file" accept=".pdf,application/pdf,image/png,image/jpeg,image/jpg,image/webp"
+                                                    onchange="if(this.files[0]){ document.getElementById('handbookSelectedName').innerText = this.files[0].name; document.getElementById('handbookSelectedBox').style.display='block'; }">
+                                                <i class="ti ti-file-text text-primary fs-1 mb-1"></i>
+                                                <p class="text-muted m-0 small text-center">Click or Drop <strong>PDF / Image</strong> here</p>
+                                                <small class="text-muted" style="font-size: 0.7rem;">Allowed: PDF, PNG, JPG, WebP (Auto-optimized to WebP)</small>
+                                            </div>
+                                            <div id="handbookSelectedBox" style="display: none; margin-top: 8px;" class="p-2 bg-label-primary rounded small">
+                                                <i class="ti ti-paperclip me-1"></i> Selected: <span id="handbookSelectedName" class="fw-semibold"></span>
+                                            </div>
+                                            @if($handbookExists)
+                                                <div style="margin-top: 8px;">
+                                                    <a href="{{ $handbookUrl }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                                        <i class="ti ti-eye me-1"></i> View Current Handbook ({{ $handbookType }})
+                                                    </a>
+                                                </div>
+                                            @endif
+                                        </div>
+
                                         <div class="col-12 d-flex ">
                                             <button type="submit" id="submit" class="btn btn-primary btn-submit waves-effect waves-light">Submit</button>
                                         </div>
@@ -458,9 +509,13 @@
                                         <div class="form-group">
                                             <label class="form-label">Filter by Plan</label>
                                             <select id="plan_id" name="plan_id"
-                                                class="form-control search_by_plan select2 select_filter"
-                                                data-append="search_by_plan">
+                                                class="form-control select2 select_filter">
                                                 <option value="">Filter by Plan</option>
+                                                @if(isset($subscription_plan_list) && count($subscription_plan_list) > 0)
+                                                    @foreach($subscription_plan_list as $planItem)
+                                                        <option value="{{ $planItem->id }}">{{ $planItem->name }}</option>
+                                                    @endforeach
+                                                @endif
                                             </select>
                                         </div>
                                     </div>

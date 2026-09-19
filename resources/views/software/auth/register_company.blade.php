@@ -6,10 +6,6 @@
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/@form-validation/form-validation.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/css/pages/page-auth.css') }}" />
     <style>
-        html, body {
-            overflow-x: hidden !important;
-        }
-
         .reg-hero-card {
             border: 1px solid #fed7aa !important;
             border-radius: 18px !important;
@@ -215,222 +211,191 @@
 @endsection
 
 @section('content')
-    <div class="container-xxl py-4 px-3 px-md-4">
-        <div class="row justify-content-center">
-            <div class="col-12">
-                <div class="card reg-hero-card">
-                    <!-- Header -->
-                    <div class="reg-hero-header text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <h3 class="fw-bold mb-1 d-flex align-items-center" style="color: #7c2d12 !important;">
-                                <i class="ti ti-building-store me-2" style="color: #ea580c !important;"></i> Register New Company
-                            </h3>
-                            <p class="mb-0" style="color: #9a3412 !important; font-size: 0.875rem; font-weight: 600;">Fill out the form below to initiate your company account registration.</p>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-white text-dark fw-bold rounded-pill px-3 py-2 shadow-sm d-inline-flex align-items-center" style="color: #f97316 !important;">
-                                <i class="ti ti-gift me-1 text-danger"></i> 7-Day Free Trial Included
-                            </span>
-                            <a href="{{ route('software.login') }}" class="btn btn-sm bg-white text-dark fw-bold rounded-pill px-3 py-2 shadow-sm border-0">
-                                <i class="ti ti-arrow-left me-1 text-danger fw-bold"></i> <span class="text-dark fw-bold">Back to Login</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Form Body -->
-                    <div class="card-body px-3 px-md-4 py-3 pt-3">
-                        <!-- 7 Days Trial Plan Alert Banner -->
-                        <div class="alert border-0 rounded-4 mb-3 p-2.5 px-3 d-flex align-items-center shadow-sm" style="background: #fff7ed; border-left: 5px solid #f97316 !important;">
-                            <div class="me-3 p-2 rounded-circle text-white d-flex align-items-center justify-content-center" style="background: #f97316; width: 42px; height: 42px; min-width: 42px;">
-                                <i class="ti ti-gift fs-4"></i>
-                            </div>
+    <div class="min-vh-100 d-flex flex-column justify-content-center align-items-center py-3 py-md-4 px-2 px-md-4" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); width: 100%;">
+        <div class="container-xxl">
+            <div class="row justify-content-center">
+                <div class="col-12">
+                    <div class="card reg-hero-card">
+                        <!-- Header -->
+                        <div class="reg-hero-header text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
-                                <h6 class="mb-0 fw-bold" style="color: #9a3412;">Special 7-Day Free Trial Plan Included</h6>
-                                <p class="mb-0 small text-muted">Register today and enjoy full platform access with our complimentary 7-Day Free Trial Plan!</p>
+                                <h3 class="fw-bold mb-1 d-flex align-items-center" style="color: #7c2d12 !important;">
+                                    <i class="ti ti-building-store me-2" style="color: #ea580c !important;"></i> Register New Company
+                                </h3>
+                                <p class="mb-0" style="color: #9a3412 !important; font-size: 0.875rem; font-weight: 600;">Fill out the form below to initiate your company account registration.</p>
                             </div>
-                        </div>
-                        <form action="{{ route('software.register.company.submit') }}" method="POST" enctype="multipart/form-data" id="companyAddForm">
-                            @csrf
-                            <input type="hidden" name="otp" value="" id="otp">
-
-                            <!-- Section 1: Company Profile -->
-                            <div class="reg-section-box">
-                                <div class="reg-section-title">
-                                    <i class="ti ti-building"></i> Company Information
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">GST No</label>
-                                        <input id="gst_no" type="text"
-                                            class="form-control @error('gst_no') is-invalid @enderror" name="gst_no"
-                                            value="{{ old('gst_no') }}" autocomplete="gst_no" placeholder="Enter GST No (Optional)"
-                                            data-name="gst_no">
-                                        @error('gst_no')
-                                            <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">Company Name <span class="text-danger">*</span></label>
-                                        <input id="company_name" type="text"
-                                            class="form-control @error('company_name') is-invalid @enderror required"
-                                            name="company_name" value="{{ old('company_name') }}" autocomplete="company_name"
-                                            placeholder="Enter company name" data-name="company_name">
-                                        @error('company_name')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">Person Name <span class="text-danger">*</span></label>
-                                        <input id="person_name" type="text"
-                                            class="form-control @error('person_name') is-invalid @enderror required" name="person_name"
-                                            value="{{ old('person_name') }}" autocomplete="person_name" placeholder="Enter contact person name"
-                                            data-name="person_name">
-                                        @error('person_name')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Section 2: Contact & Security -->
-                            <div class="reg-section-box">
-                                <div class="reg-section-title">
-                                    <i class="ti ti-lock"></i> Account & Contact Details
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-lg-3 col-md-6 col-sm-12">
-                                        <label class="form-label">WhatsApp Number (Used at Login) <span class="text-danger">*</span></label>
-                                        <input id="whatsapp_number" type="text"
-                                            class="length10 form-control @error('whatsapp_number') is-invalid @enderror required"
-                                            name="whatsapp_number" value="{{ old('whatsapp_number') }}" autocomplete="whatsapp_number"
-                                            placeholder="Enter 10-digit mobile number" data-name="whatsapp_number"
-                                            onkeypress="return isNumber(event)">
-                                        @error('whatsapp_number')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-sm-12">
-                                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                                        <input id="email" type="text"
-                                            class="form-control @error('email') is-invalid @enderror required" name="email"
-                                            value="{{ old('email') }}" autocomplete="email" placeholder="Enter valid email"
-                                            data-name="email">
-                                        @error('email')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-sm-12">
-                                        <label class="form-label">Password <span class="text-danger">*</span></label>
-                                        <div class="input-group">
-                                            <input id="password" type="password"
-                                                class="form-control @error('password') is-invalid @enderror required" name="password"
-                                                value="{{ old('password') }}" placeholder="Create password" aria-describedby="password"
-                                                data-name="password">
-                                            <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword('password', 'togglePasswordIcon')">
-                                                <i class="ti ti-eye-off" id="togglePasswordIcon"></i>
-                                            </span>
-                                        </div>
-                                        @error('password')
-                                            <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 col-sm-12">
-                                        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                                        <div class="input-group">
-                                            <input id="password_confirmation" type="password"
-                                                class="form-control @error('password_confirmation') is-invalid @enderror required" name="password_confirmation"
-                                                value="{{ old('password_confirmation') }}" placeholder="Re-enter password" aria-describedby="password_confirmation"
-                                                data-name="confirm_password">
-                                            <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword('password_confirmation', 'toggleConfirmPasswordIcon')">
-                                                <i class="ti ti-eye-off" id="toggleConfirmPasswordIcon"></i>
-                                            </span>
-                                        </div>
-                                        @error('password_confirmation')
-                                            <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Section 3: Location Details -->
-                            <div class="reg-section-box">
-                                <div class="reg-section-title">
-                                    <i class="ti ti-map-pin"></i> Location Details
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">Select Country <span class="text-danger">*</span></label>
-                                        <select name="country_id" id="country_id" data-name="country"
-                                            class="form-control @error('country_id') is-invalid @enderror search_by_country select2 required"
-                                            data-append="search_by_country" data-selectedCountryId="{{ old('country_id') }}"
-                                            data-selectedStateId="{{ old('state_id') }}">
-                                            <option value="" disabled selected>Select Country</option>
-                                        </select>
-                                        @error('country_id')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">Select State <span class="text-danger">*</span></label>
-                                        <select name="state_id" id="state_id" data-name="state"
-                                            class="form-control @error('state_id') is-invalid @enderror search_by_state select2 required"
-                                            data-append="search_by_state" data-selectedStateId="{{ old('state_id') }}">
-                                            <option value="" disabled selected>Select State</option>
-                                        </select>
-                                        @error('state_id')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4 col-sm-12">
-                                        <label class="form-label">Select City <span class="text-danger">*</span></label>
-                                        <select id="city_id" name="city_id" data-name="city"
-                                            class="form-control @error('city_id') is-invalid @enderror search_by_city select2 required"
-                                            data-append="search_by_city" data-selectedCityId="{{ old('city_id') }}">
-                                            <option value="" disabled selected>Select City</option>
-                                        </select>
-                                        @error('city_id')
-                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                        @enderror
-                                    </div>
-
-                                    <!-- Hidden default values for Plan, Date Format, Time Format, and HRA Percentage -->
-                                    <input type="hidden" name="plan_id" id="plan_id" value="{{ old('plan_id', $plans->first()?->id) }}">
-                                    <input type="hidden" name="date_format" id="date_format" value="{{ old('date_format', \App\Helpers\Helper::getDefaultDateFormat()) }}">
-                                    <input type="hidden" name="time_format" id="time_format" value="{{ old('time_format', \App\Helpers\Helper::getDefaultTimeFormat()) }}">
-                                    <input type="hidden" name="hra_percentage" id="hra_percentage" value="{{ old('hra_percentage', 40) }}">
-                                </div>
-                            </div>
-
-                            <!-- Password Requirement Checklist -->
-                            <div class="pass-requirement-card mb-4">
-                                <div class="fw-bold text-dark mb-3 small"><i class="ti ti-shield-check me-1" style="color: #ea580c;"></i> Password Security Requirements:</div>
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <ul class="mb-0 ps-0">
-                                            <li id="minimumlength" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">Minimum</span><strong>8 characters</strong></li>
-                                            <li id="leastlowercase" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one lowercase</strong><span>letter (a-z)</span></li>
-                                        </ul>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <ul class="mb-0 ps-0">
-                                            <li id="leastuppercase" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one uppercase</strong><span>letter (A-Z)</span></li>
-                                            <li id="onenumber" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one number</strong><span>(0-9)</span></li>
-                                            <li id="specialcharacter" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one special character</strong><span>(!@#$%^&*)</span></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Form Actions -->
-                            <div class="text-center pt-2">
-                                <button type="button" class="btn btn-submit-reg me-3" id="submit_btn">
-                                    <i class="ti ti-check me-1"></i> Submit Registration
-                                </button>
-                                <a href="{{ route('software.login') }}" class="btn btn-cancel-reg">
-                                    <i class="ti ti-x me-1"></i> Cancel
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-white text-dark fw-bold rounded-pill px-3 py-2 shadow-sm d-inline-flex align-items-center" style="color: #f97316 !important;">
+                                    <i class="ti ti-gift me-1 text-danger"></i> 7-Day Free Trial Included
+                                </span>
+                                <a href="{{ route('software.login') }}" class="btn btn-sm bg-white text-dark fw-bold rounded-pill px-3 py-2 shadow-sm border-0">
+                                    <i class="ti ti-arrow-left me-1 text-danger fw-bold"></i> <span class="text-dark fw-bold">Back to Login</span>
                                 </a>
                             </div>
-                        </form>
+                        </div>
+
+                        <!-- Form Body -->
+                        <div class="card-body px-3 px-md-4 py-3 pt-3">
+                            <!-- 7 Days Trial Plan Alert Banner -->
+                            <div class="alert border-0 rounded-4 mb-3 p-2.5 px-3 d-flex align-items-center shadow-sm" style="background: #fff7ed; border-left: 5px solid #f97316 !important;">
+                                <div class="me-3 p-2 rounded-circle text-white d-flex align-items-center justify-content-center" style="background: #f97316; width: 42px; height: 42px; min-width: 42px;">
+                                    <i class="ti ti-gift fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold" style="color: #9a3412;">Special 7-Day Free Trial Plan Included</h6>
+                                    <p class="mb-0 small text-muted">Register today and enjoy full platform access with our complimentary 7-Day Free Trial Plan!</p>
+                                </div>
+                            </div>
+
+
+                            <form action="{{ route('software.register.company.submit') }}" method="POST" enctype="multipart/form-data" id="companyAddForm">
+                                @csrf
+                                <input type="hidden" name="otp" value="" id="otp">
+
+                                <!-- Section 1: Company Profile -->
+                                <div class="reg-section-box">
+                                    <div class="reg-section-title">
+                                        <i class="ti ti-building"></i> Company Information
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="form-label">GST No</label>
+                                            <input id="gst_no" type="text"
+                                                class="form-control @error('gst_no') is-invalid @enderror" name="gst_no"
+                                                value="{{ old('gst_no') }}" autocomplete="gst_no" placeholder="Enter GST No (Optional)"
+                                                data-name="gst_no">
+                                            @error('gst_no')
+                                                <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="form-label">Company Name <span class="text-danger">*</span></label>
+                                            <input id="company_name" type="text"
+                                                class="form-control @error('company_name') is-invalid @enderror required"
+                                                name="company_name" value="{{ old('company_name') }}" autocomplete="company_name"
+                                                placeholder="Enter company name" data-name="company_name">
+                                            @error('company_name')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="form-label">Person Name <span class="text-danger">*</span></label>
+                                            <input id="person_name" type="text"
+                                                class="form-control @error('person_name') is-invalid @enderror required" name="person_name"
+                                                value="{{ old('person_name') }}" autocomplete="person_name" placeholder="Enter contact person name"
+                                                data-name="person_name">
+                                            @error('person_name')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Section 2: Contact & Security -->
+                                <div class="reg-section-box">
+                                    <div class="reg-section-title">
+                                        <i class="ti ti-lock"></i> Account & Contact Details
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-lg-3 col-md-6 col-sm-12">
+                                            <label class="form-label">WhatsApp Number (Used at Login) <span class="text-danger">*</span></label>
+                                            <input id="whatsapp_number" type="text"
+                                                class="length10 form-control @error('whatsapp_number') is-invalid @enderror required"
+                                                name="whatsapp_number" value="{{ old('whatsapp_number') }}" autocomplete="whatsapp_number"
+                                                placeholder="Enter 10-digit mobile number" data-name="whatsapp_number"
+                                                onkeypress="return isNumber(event)">
+                                            @error('whatsapp_number')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-lg-3 col-md-6 col-sm-12">
+                                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                                            <input id="email" type="text"
+                                                class="form-control @error('email') is-invalid @enderror required" name="email"
+                                                value="{{ old('email') }}" autocomplete="email" placeholder="Enter valid email"
+                                                data-name="email">
+                                            @error('email')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-lg-3 col-md-6 col-sm-12">
+                                            <label class="form-label">Password <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input id="password" type="password"
+                                                    class="form-control @error('password') is-invalid @enderror required" name="password"
+                                                    value="{{ old('password') }}" placeholder="Create password" aria-describedby="password"
+                                                    data-name="password">
+                                                <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword('password', 'togglePasswordIcon')">
+                                                    <i class="ti ti-eye-off" id="togglePasswordIcon"></i>
+                                                </span>
+                                            </div>
+                                            @error('password')
+                                                <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-lg-3 col-md-6 col-sm-12">
+                                            <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input id="password_confirmation" type="password"
+                                                    class="form-control @error('password_confirmation') is-invalid @enderror required" name="password_confirmation"
+                                                    value="{{ old('password_confirmation') }}" placeholder="Re-enter password" aria-describedby="password_confirmation"
+                                                    data-name="confirm_password">
+                                                <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword('password_confirmation', 'toggleConfirmPasswordIcon')">
+                                                    <i class="ti ti-eye-off" id="toggleConfirmPasswordIcon"></i>
+                                                </span>
+                                            </div>
+                                            @error('password_confirmation')
+                                                <span class="invalid-feedback d-block"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden default values for Country, State, City, Plan, Date Format, Time Format, and HRA Percentage -->
+                                <input type="hidden" name="country_id" id="country_id" value="{{ old('country_id', 1) }}">
+                                <input type="hidden" name="state_id" id="state_id" value="{{ old('state_id', 1) }}">
+                                <input type="hidden" name="city_id" id="city_id" value="{{ old('city_id', 1) }}">
+                                <input type="hidden" name="plan_id" id="plan_id" value="{{ old('plan_id', $plans->first()?->id) }}">
+                                <input type="hidden" name="date_format" id="date_format" value="{{ old('date_format', \App\Helpers\Helper::getDefaultDateFormat()) }}">
+                                <input type="hidden" name="time_format" id="time_format" value="{{ old('time_format', \App\Helpers\Helper::getDefaultTimeFormat()) }}">
+                                <input type="hidden" name="hra_percentage" id="hra_percentage" value="{{ old('hra_percentage', 40) }}">
+
+                                <!-- Password Requirement Checklist -->
+                                <div class="pass-requirement-card mb-4">
+                                    <div class="fw-bold text-dark mb-3 small"><i class="ti ti-shield-check me-1" style="color: #ea580c;"></i> Password Security Requirements:</div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <ul class="mb-0 ps-0">
+                                                <li id="minimumlength" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">Minimum</span><strong>8 characters</strong></li>
+                                                <li id="leastlowercase" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one lowercase</strong><span>letter (a-z)</span></li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="mb-0 ps-0">
+                                                <li id="leastuppercase" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one uppercase</strong><span>letter (A-Z)</span></li>
+                                                <li id="onenumber" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one number</strong><span>(0-9)</span></li>
+                                                <li id="specialcharacter" class="mb-2"><i class="ti ti-circle-dot me-2"></i><span class="me-1">At least</span><strong class="me-1">one special character</strong><span>(!@#$%^&*)</span></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Actions -->
+                                <div class="text-center pt-2">
+                                    <button type="button" class="btn btn-submit-reg me-3" id="submit_btn">
+                                        <i class="ti ti-check me-1"></i> Submit Registration
+                                    </button>
+                                    <a href="{{ route('software.login') }}" class="btn btn-cancel-reg">
+                                        <i class="ti ti-x me-1"></i> Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3 mb-1">
+                        <p class="mb-0 text-muted small">
+                            Powered By <a href="https://oceaninfotech.co.in/" target="_blank" class="fw-bold" style="color: #ea580c !important; text-decoration: none;">Ocean Infotech</a>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -594,14 +559,15 @@
                         "closeButton": true,
                         "progressBar": true,
                         "positionClass": "toast-top-right",
-                        "timeOut": "3000",
+                        "timeOut": "4000",
                         "extendedTimeOut": "1000"
                     };
-                    toastr.success('Your company successfully created!', 'Success');
+                    var successMsg = (response && response.message) ? response.message : 'Company created successfully! Login credentials sent to your email.';
+                    toastr.success(successMsg, 'Success');
 
                     setTimeout(function() {
                         window.location.href = response.redirect_url || "{{ route('software.login') }}";
-                    }, 2500);
+                    }, 3000);
                 },
                 error: function(xhr) {
                     $btn.prop('disabled', false).html(originalHtml);

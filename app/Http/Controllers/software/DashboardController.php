@@ -257,6 +257,8 @@ class DashboardController extends Controller
             'company-subscription-plan.index',
             'user.index',
             'application-version.index',
+            'software.company-registration.index',
+            'website-company-registration.index',
         ];
 
         // Step 1: Remove excluded routes from database (SubMenu)

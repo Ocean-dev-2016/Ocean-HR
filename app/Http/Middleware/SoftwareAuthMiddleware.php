@@ -29,6 +29,13 @@ class SoftwareAuthMiddleware
             $user = Auth::guard('employees')->user();
             if ($user && $user->company_id) {
                 $company = Company::find($user->company_id);
+                if (!$company) {
+                    Auth::guard('employees')->logout();
+                    if ($request->hasSession()) {
+                        $request->session()->invalidate();
+                    }
+                    return Redirect::route('software.login')->with('error', 'Company account not found or has been removed.');
+                }
                 if ($company && $company->plan_id) {
                     $latestPlan = CompanySubscriptionPlan::where('company_id', $company->id)
                         ->where('plan_id', $company->plan_id)

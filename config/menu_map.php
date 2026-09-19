@@ -222,10 +222,11 @@
     array (
       0 => 
       array (
-        'name' => 'Employees',
-        'route_name' => 'employees.index',
+        'name' => 'Employee Onboarding',
+        'route_name' => 'onboarding.index',
         'created_by' => '1',
         'updated_by' => '1',
+        'status' => 'active',
       ),
       1 => 
       array (

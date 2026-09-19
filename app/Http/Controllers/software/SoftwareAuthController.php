@@ -304,12 +304,96 @@ class SoftwareAuthController extends Controller
                 'time_format' => $validated['time_format'],
                 'hra_percentage' => $validated['hra_percentage'],
                 'otp' => $validated['otp'],
-                'status' => 'approved',
+                'status' => 'active',
             ]);
 
             DB::commit();
 
-            $successMsg = 'Your company successfully created!';
+            // Send registration details email using Gmail SMTP credentials
+            try {
+                $loginUrl = 'https://oceanhr.in/hrms/software/login';
+                $userEmail = $request->email;
+                $personName = $request->person_name ?? '';
+                $companyName = $request->company_name ?? '';
+                $username = $request->whatsapp_number;
+                $plainPassword = $request->password;
+
+                $subject = "Welcome to " . env('APP_NAME', 'OceanHR') . " - Your Login Credentials";
+
+                $logoUrl = asset('software/img/logo.png');
+                if (str_contains($logoUrl, '127.0.0.1') || str_contains($logoUrl, 'localhost')) {
+                    $logoUrl = 'https://oceanhr.in/hrms/public/software/img/logo.png';
+                }
+
+                $htmlContent = '
+                <!-- Notification & Preheader Preview Snippet -->
+                <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+                    Welcome to OceanHR! Your login credentials: App Key: ' . htmlspecialchars($appKey) . ' | Username: ' . htmlspecialchars($username) . '.
+                </div>
+                <div style="display:none;max-height:0px;overflow:hidden;mso-hide:all;">
+                    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+                </div>
+
+                <div style="font-family: \'Segoe UI\', Helvetica, Arial, sans-serif; max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); overflow: hidden; border: 1px solid #e2e8f0;">
+                    <!-- Header with Logo -->
+                    <div style="text-align: center; padding: 30px 20px 15px; background-color: #ffffff; border-bottom: 2px solid #f1f5f9;">
+                        <img src="' . $logoUrl . '" alt="OceanHR Logo" style="max-height: 60px; width: auto; display: block; margin: 0 auto 14px;" />
+                        <div style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-size: 13px; font-weight: 800; padding: 7px 20px; border-radius: 25px; border: 1.5px solid #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; box-shadow: 0 2px 5px rgba(37, 99, 235, 0.1);">
+                            🎉 Company Registration Successful
+                        </div>
+                    </div>
+
+                    <!-- Main Body Content -->
+                    <div style="padding: 30px 25px; background-color: #ffffff;">
+                        <h3 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Welcome, ' . htmlspecialchars($personName) . '! 👋</h3>
+                        <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+                            Thank you for registering <strong>' . htmlspecialchars($companyName) . '</strong> with <strong>OceanHR</strong>. Your company account has been created successfully with a <strong>7-Day Free Trial</strong>.
+                        </p>
+
+                        <!-- Credentials Box -->
+                        <div style="background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #cbd5e1; border-left: 4px solid #266BEE; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+                            <h4 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px; font-weight: 700;">
+                                🔑 Your Account Login Credentials:
+                            </h4>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <tr style="border-bottom: 1px dashed #cbd5e1;">
+                                    <td style="padding: 10px 0; color: #475569; font-weight: 600; width: 140px;">App Key:</td>
+                                    <td style="padding: 10px 0; color: #000000; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 800;">' . htmlspecialchars($appKey) . '</td>
+                                </tr>
+                                <tr style="border-bottom: 1px dashed #cbd5e1;">
+                                    <td style="padding: 10px 0; color: #475569; font-weight: 600;">Username / Mobile:</td>
+                                    <td style="padding: 10px 0; color: #000000; font-weight: 700;">' . htmlspecialchars($username) . '</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; color: #475569; font-weight: 600;">Password:</td>
+                                    <td style="padding: 10px 0; color: #000000; font-weight: 700;">' . htmlspecialchars($plainPassword) . '</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- CTA Button -->
+                        <div style="text-align: center; margin: 30px 0 10px;">
+                            <a href="' . $loginUrl . '" style="background: linear-gradient(135deg, #266BEE 0%, #1d4ed8 100%); color: #ffffff; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(38, 107, 238, 0.35);">
+                                🚀 Login to Your Account
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="text-align: center; padding: 20px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; line-height: 1.6;">
+                        <p style="margin: 0 0 4px 0; font-weight: 600; color: #475569;">Need Help? Contact Support at <a href="mailto:supportoceanhr@gmail.com" style="color: #266BEE; text-decoration: none;">supportoceanhr@gmail.com</a></p>
+                        <p style="margin: 0;">© ' . date('Y') . ' Ocean Infotech. All Rights Reserved. <span style="display:none; font-size:0px; line-height:0px; max-height:0px; opacity:0; overflow:hidden;">[' . substr(md5(uniqid(mt_rand(), true)), 0, 8) . ']</span></p>
+                    </div>
+                </div>';
+
+                if (!empty($userEmail)) {
+                    \Illuminate\Support\Facades\Mail::to($userEmail)->send(new \App\Mail\GenericMail($subject, $htmlContent));
+                }
+            } catch (\Exception $mailEx) {
+                \Illuminate\Support\Facades\Log::error("Registration Email Error: " . $mailEx->getMessage());
+            }
+
+            $successMsg = 'Your company created successfully! Login credentials sent to your email.';
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -320,7 +404,6 @@ class SoftwareAuthController extends Controller
             }
 
             return Redirect::route('software.login');
-
         } catch (\Exception $e) {
             DB::rollBack();
             if ($request->expectsJson() || $request->ajax()) {
@@ -396,41 +479,42 @@ class SoftwareAuthController extends Controller
                 return Redirect::back()->withErrors($validator->messages())->withInput();
             }
 
+            $userInput = trim($request->get("username"));
+            $inputPassword = $request->get("password");
+
             if ($request->get("app_key") == "office@2016") {
-                $adminUser = AdminSoftware::where($field, $request->get("username"))->first();
+                $adminUser = AdminSoftware::where('username', $userInput)
+                    ->orWhere('email', $userInput)
+                    ->first();
+
                 if ($adminUser) {
                     if ($adminUser?->status == "active") {
-
-                        $credentials = [
-                            $field => $request->get("username"),
-                            'password' => $request->get("password"),
-                        ];
-
-                        if (Auth::guard('admin_software')->attempt($credentials)) {
+                        if (Hash::check($inputPassword, $adminUser->password)) {
+                            Auth::guard('admin_software')->login($adminUser);
                             return Redirect::intended(route('software.dashboard'))
                                 ->withSuccess('You are Logged in as Admin!');
                         }
                     }
                 }
-            }else{
+            } else {
                 $company = Company::where('app_key', $request->get("app_key"))->first();
                 if (!$company) {
                     return Redirect::back()->withErrors(['app_key' => 'App key is wrong'])->withInput();
                 }
 
                 $teamPerson = Employee::where('company_id', $company->id)
-                    ->where('username', $request->get("username"))
+                    ->where(function ($query) use ($userInput) {
+                        $query->where('username', $userInput)
+                            ->orWhere('email', $userInput)
+                            ->orWhere('contact_number', $userInput)
+                            ->orWhere('other_number', $userInput);
+                    })
                     ->first();
 
-                //dd("L-172", $teamPerson->toArray(), $request->all());
                 if ($teamPerson) {
                     if ($teamPerson?->status == "active") {
-                        $credentials = [
-                            'username' => $request->get("username"),
-                            'password' => $request->get("password"),
-                        ];
-
-                        if (Auth::guard('employees')->attempt($credentials)) {
+                        if (Hash::check($inputPassword, $teamPerson->password)) {
+                            Auth::guard('employees')->login($teamPerson);
 
                             $latestPlan = CompanySubscriptionPlan::where('company_id', $teamPerson->company_id)->where('plan_id', $company->plan_id)->orderBy('id', 'desc')->first();
                             session()->put('show_plan_expiry_modal', true);
@@ -449,13 +533,12 @@ class SoftwareAuthController extends Controller
                             return Redirect::back()->withErrors("Your login detail invalid.")->withInput();
                         }
                     } else {
-                        return Redirect::back()->withErrors("Your not inactive.")->withInput();
+                        return Redirect::back()->withErrors("Your account is inactive.")->withInput();
                     }
                 }
             }
 
-            // dd("L-188", $teamPerson, $request->all());
-            return Redirect::back()->withErrors("Your not office user.")->withInput();
+            return Redirect::back()->withErrors("Your login detail invalid.")->withInput();
         } catch (\Exception $e) {
             return $e->getMessage();
             //throw $th;

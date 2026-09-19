@@ -3,7 +3,10 @@
     $previewMode = $previewMode ?? false;
     $bodyView = $bodyView ?? null;
     $bodyData = $bodyData ?? [];
-    $headerImage = $headerImage ?? asset('software/img/header.jpg');
+    $headerImage = $headerImage 
+        ?? ($bodyData['selectedEmployee']?->company?->order_header_logo_url ?? null)
+        ?? ($bodyData['selectedEmployee']?->company?->company_logo_url ?? null)
+        ?? asset('software/img/logo.png');
     $watermarkImage = $watermarkImage ?? null;
 @endphp
 
@@ -23,18 +26,23 @@
 
     .employee-document-header {
         width: 100%;
-        margin-bottom: 6px;
-        padding-bottom: 6px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
         border-bottom: 1px solid #111827;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
     }
 
     .employee-document-header img {
         display: block;
-        width: 100%;
+        max-height: 55px;
+        max-width: 260px;
+        width: auto;
         height: auto;
-        object-fit: cover;
-        opacity: 0.56;
-        filter: grayscale(0.1) contrast(0.96);
+        object-fit: contain;
+        margin: 0 auto;
     }
 
     .employee-document-title {

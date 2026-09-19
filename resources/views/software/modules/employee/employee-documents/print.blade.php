@@ -31,7 +31,9 @@
         @include('software.modules.employee.employee-documents.partials.document-shell', [
             'documentTitle' => $printDocumentTitle,
             'previewMode' => false,
-            'headerImage' => asset('software/img/header.jpg'),
+            'headerImage' => $selectedEmployee?->company?->order_header_logo_url 
+                ?? $selectedEmployee?->company?->company_logo_url 
+                ?? asset('software/img/logo.png'),
             'watermarkImage' => in_array($selectedDocumentType, ['advance-form', 'increment', 'appointment', 'experience', 'offer', 'job-rotation', 'job-application-form', 'no-due-clearance', 'loan-form', 'full-final-form', 'salary-certificate', 'relieving-letter'], true)
                 ? asset('software/img/Ocean_HR.png')
                 : null,

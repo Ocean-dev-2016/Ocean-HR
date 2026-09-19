@@ -204,12 +204,14 @@
                             </div>
                         </a>
                     </li>
-                    @if (isset($parent_type_id) && $parent_type_id == 0 && isset($company_id) && !empty($company_id))
+                    @php
+                        $effectiveCompanyId = !empty($company_id) ? $company_id : ($currentUserProfile->company_id ?? ($isAdminSoftware ? $selectedCompanyId : null));
+                    @endphp
+                    @if (!empty($effectiveCompanyId))
                         <li>
-                            <a class="dropdown-item" href="{{ route('company.detail', $company_id) }}?tab=profile-tab">
-                                <div class="flex-grow-1">
-                                    <span class="fw-medium d-block">Company Details</span>
-                                </div>
+                            <a class="dropdown-item" href="{{ route('company.detail', $effectiveCompanyId) }}?tab=profile-tab">
+                                <i class="ti ti-building me-2 ti-sm"></i>
+                                <span class="align-middle">Company Details</span>
                             </a>
                         </li>
                     @endif
