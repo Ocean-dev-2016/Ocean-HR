@@ -116,6 +116,7 @@
                                 <a href="{{ route('software.register.company') }}" class="btn btn-outline-dull-orange w-100 py-2.5 fw-bold text-nowrap d-flex align-items-center justify-content-center">
                                     <i class="ti ti-building-plus me-1"></i> Register with Demo
                                 </a>
+                            </div>
                         </div>
                         <div class="divider my-3">
                             <div class="divider-text text-muted small fw-semibold">OR CONTINUE WITH GOOGLE</div>
