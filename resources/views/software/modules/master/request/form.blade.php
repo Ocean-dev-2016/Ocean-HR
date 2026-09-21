@@ -70,7 +70,7 @@
                             <select id="request_from_employee_name"
                                 class="form-control select2 @error('request_from_employee_name') is-invalid @enderror"
                                 name="request_from_employee_name"
-                                data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? '') }}">
+                                data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? (Auth::guard('employees')->check() ? Auth::guard('employees')->id() : '')) }}">
                                 <option value="">Select Employee</option>
                             </select>
 
@@ -244,6 +244,7 @@
 
                         $('#request_from_employee_name').html(fromOptions).select2();
                         $('#request_to_employee_name').html(toOptions).select2();
+                        syncEmployeeDropdowns();
                     } else {
                         $('#request_from_employee_name, #request_to_employee_name').html('<option value="">No Employees Found</option>').select2();
                     }
