@@ -50,6 +50,7 @@ class CompanyRequest extends FormRequest
         return [
             'platform' => ['nullable', 'max:255'],
             'api_key' => ['nullable', 'max:255'],
+            'app_key' => ['nullable', 'max:255'],
             'gst_no' => [
                 'nullable',
                 'size:15', // GSTIN must be exactly 15 characters

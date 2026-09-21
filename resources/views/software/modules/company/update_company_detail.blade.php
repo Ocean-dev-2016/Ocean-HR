@@ -129,8 +129,8 @@
                                     <input type="hidden" name="tab" value="profile-tab" />
                                     <div class="row gy-4 gx-6 mb-6">
                                         {{-- Company Name --}}
-                                        <div class="col-md-3 col-sm-12 mb-3">
-                                            <label class="form-label" for="company_name">Company Name <span class="text-danger">*</span></label>
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            <label class="form-label" for="company_name">Company Name</label>
                                             <input type="text" id="company_name" name="company_name"
                                                 class="form-control @error('company_name') is-invalid @enderror"
                                                 value="{{ old('company_name', $edit->company_name) }}" placeholder="Company Name" />
@@ -142,7 +142,7 @@
                                         </div>
 
                                         {{-- Person Name --}}
-                                        <div class="col-md-3 col-sm-12 mb-3">
+                                        <div class="col-md-4 col-sm-12 mb-3">
                                             <label class="form-label" for="person_name">Person Name <span class="text-danger">*</span></label>
                                             <input type="text" id="person_name" name="person_name"
                                                 class="form-control @error('person_name') is-invalid @enderror"
@@ -155,7 +155,7 @@
                                         </div>
 
                                         {{-- Mobile Number --}}
-                                        <div class="col-md-3 col-sm-12 mb-3">
+                                        <div class="col-md-4 col-sm-12 mb-3">
                                             <label class="form-label" for="whatsapp_number">Mobile Number <span class="text-danger">*</span></label>
                                             <input type="text" id="whatsapp_number" name="whatsapp_number"
                                                 class="form-control @error('whatsapp_number') is-invalid @enderror"
@@ -168,8 +168,21 @@
                                             @enderror
                                         </div>
 
+                                        {{-- GST No --}}
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            <label class="form-label" for="gst_no">GST No</label>
+                                            <input type="text" id="gst_no" name="gst_no"
+                                                class="form-control @error('gst_no') is-invalid @enderror"
+                                                value="{{ old('gst_no', $edit->gst_no) }}" placeholder="GST No" style="text-transform: uppercase;" />
+                                            @error('gst_no')
+                                                <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
                                         {{-- Pan Card Number --}}
-                                        <div class="col-md-3 col-sm-12 mb-3">
+                                        <div class="col-md-4 col-sm-12 mb-3">
                                             <label class="form-label" for="pan_card">Pan Card Number</label>
                                             <input type="text" id="pan_card" name="pan_card"
                                                 class="form-control @error('pan_card') is-invalid @enderror"
@@ -180,6 +193,24 @@
                                                 oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);" />
                                             @error('pan_card')
                                                 <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        {{-- App Key --}}
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            <label class="form-label" for="app_key">App Key</label>
+                                            <div class="input-group">
+                                                <input type="text" id="app_key" name="app_key"
+                                                    class="form-control @error('app_key') is-invalid @enderror"
+                                                    value="{{ old('app_key', $edit->app_key) }}" placeholder="App Key" />
+                                                <button class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3" type="button" onclick="const k=document.getElementById('app_key').value; if(navigator.clipboard){navigator.clipboard.writeText(k);}else{const t=document.createElement('textarea');t.value=k;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);} if(typeof toastr !== 'undefined'){ toastr.success('App Key copied!'); } else { alert('App Key copied!'); }" title="Copy App Key">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                                </button>
+                                            </div>
+                                            @error('app_key')
+                                                <span class="invalid-feedback d-block">
                                                     <strong>{{ $message }}</strong>
                                                 </span>
                                             @enderror
