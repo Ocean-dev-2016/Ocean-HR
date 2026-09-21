@@ -250,7 +250,7 @@ class SoftwareAuthController extends Controller
             // 6. Designation
             Designation::create([
                 'company_id' => $company_id,
-                'name' => 'Super-Admin',
+                'name' => 'Admin',
                 'status' => 'active',
                 'created_by' => 0,
             ]);

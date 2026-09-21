@@ -498,7 +498,7 @@ class CompanyController extends Controller
             //Designation
             Designation::create([
                 'company_id' => $company_id,
-                'name' => 'Super-Admin',
+                'name' => 'Admin',
                 'status' => 'active',
                 'created_by' => $validated['created_by'],
             ]);
