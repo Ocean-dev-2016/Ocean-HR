@@ -86,6 +86,15 @@
                             @enderror
                         </div>
                     </div>
+                    @php
+                        $authEmp = Auth::guard('employees')->user();
+                        $isTeamMember = $authEmp && (
+                            (!empty($authEmp->created_by) && (string)$authEmp->created_by !== '0') ||
+                            (!empty($authEmp->parent_id) && (string)$authEmp->parent_id !== '0') ||
+                            ($authEmp->employee_code !== 'EMP-001')
+                        );
+                        $defaultEmpId = $isTeamMember ? $authEmp->id : '';
+                    @endphp
                     {{-- Employee name --}}
                     <div class="{{ $colums ?? 'col-12' }}">
                         <div class="form-group">
@@ -93,7 +102,7 @@
                             <select id="employee_id"
                                 class="form-control select2 search_by_employee @error('employee_id') is-invalid @enderror"
                                 name="employee_id"
-                                data-selectedemployeeid="{{ old('employee_id') ?? ($edit->employee_id ?? '') }}"
+                                data-selectedemployeeid="{{ old('employee_id', $edit->employee_id ?? $defaultEmpId) }}"
                                 data-exclude-contractor="1">
                                 <option value="">Select Employee</option>
                             </select>

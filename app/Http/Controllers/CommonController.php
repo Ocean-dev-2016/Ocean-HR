@@ -919,11 +919,23 @@ class CommonController extends Controller
 
             // Exclude contractor employees when requested (used by Leave Application)
             if ($request->has('exclude_contractor') && $request->exclude_contractor) {
-                $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->pluck('id');
+                $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
                 if ($contractTypeIds->isNotEmpty()) {
                     $employeeQuery->whereDoesntHave('employmentDetail', function ($q) use ($contractTypeIds) {
                         $q->whereIn('employment_type', $contractTypeIds);
                     });
+                }
+            }
+
+            // Include ONLY contractor employees when requested (used by Contractor Leave Application, etc.)
+            if (($request->has('employee_type') && $request->employee_type === 'contractor') || ($request->has('only_contractor') && $request->only_contractor)) {
+                $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                if ($contractTypeIds->isNotEmpty()) {
+                    $employeeQuery->whereHas('employmentDetail', function ($q) use ($contractTypeIds) {
+                        $q->whereIn('employment_type', $contractTypeIds);
+                    });
+                } else {
+                    $employeeQuery->whereRaw('1 = 0');
                 }
             }
             

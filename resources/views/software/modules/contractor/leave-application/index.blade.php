@@ -70,6 +70,7 @@
                                 <label class="form-label">Filter by Employee</label>
                                 <select id="employee_id" name="employee_id"
                                     class="form-control search_by_employee select2 select_filter"
+                                    data-employee-type="contractor"
                                     data-append="search_by_employee">
                                     <option value="">Filter by Employee</option>
                                 </select>
