@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('account_ledgers', function (Blueprint $table) {
             $table->id();
-            $table->string('company_id');
-            $table->string('employee_id');
+            $table->string('company_id')->nullable();
+            $table->string('account_head_id')->nullable();
+            $table->string('employee_id')->nullable();
             $table->date('entry_date')->nullable();
             $table->string('receipt_id')->nullable();
             $table->enum('payment_mode', ['debit', 'credit'])->nullable();

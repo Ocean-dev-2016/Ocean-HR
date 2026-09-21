@@ -13,15 +13,18 @@ return new class extends Migration
     {
         Schema::create('account_heads', function (Blueprint $table) {
             $table->id();
-            $table->string('company_id');
+            $table->string('company_id')->nullable();
+            $table->string('name')->nullable();
+            $table->string('account_head_id')->nullable();
             $table->date('date')->nullable();
             $table->string('description')->nullable();
             $table->string('debit_amount')->nullable();
+            $table->string('credit_amount')->nullable();
             $table->string('credit_admount')->nullable();
             $table->string('balance')->nullable();
             $table->date('to_date')->nullable();
             $table->date('from_date')->nullable();
-             $table->string('status')->default('active')->comment('active, inactive');
+            $table->string('status')->default('active')->comment('active, inactive');
             $table->string('created_by')->nullable();
             $table->string('updated_by')->nullable();
             $table->timestamps();
