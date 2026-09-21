@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('account_ledgers', function (Blueprint $table) {
-            $table->string('account_head_id')->nullable()->after('company_id');
-            $table->string('employee_id')->nullable()->change();
+            if (!Schema::hasColumn('account_ledgers', 'account_head_id')) {
+                $table->string('account_head_id')->nullable()->after('company_id');
+            }
+            if (Schema::hasColumn('account_ledgers', 'employee_id')) {
+                $table->string('employee_id')->nullable()->change();
+            }
         });
     }
 
@@ -23,8 +27,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('account_ledgers', function (Blueprint $table) {
-            $table->dropColumn('account_head_id');
-            $table->string('employee_id')->nullable(false)->change();
+            if (Schema::hasColumn('account_ledgers', 'account_head_id')) {
+                $table->dropColumn('account_head_id');
+            }
+            if (Schema::hasColumn('account_ledgers', 'employee_id')) {
+                $table->string('employee_id')->nullable(false)->change();
+            }
         });
     }
 };

@@ -12,10 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('account_heads', function (Blueprint $table) {
-            $table->string('company_id')->nullable()->change();
-            $table->string('name')->nullable()->after('company_id');
-            $table->string('account_head_id')->nullable()->after('name');
-            $table->string('credit_amount')->nullable()->after('debit_amount');
+            if (Schema::hasColumn('account_heads', 'company_id')) {
+                $table->string('company_id')->nullable()->change();
+            } else {
+                $table->string('company_id')->nullable()->after('id');
+            }
+
+            if (!Schema::hasColumn('account_heads', 'name')) {
+                $table->string('name')->nullable()->after('company_id');
+            }
+
+            if (!Schema::hasColumn('account_heads', 'account_head_id')) {
+                $table->string('account_head_id')->nullable()->after('name');
+            }
+
+            if (!Schema::hasColumn('account_heads', 'credit_amount')) {
+                $table->string('credit_amount')->nullable()->after('debit_amount');
+            }
         });
     }
 
@@ -25,8 +38,19 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('account_heads', function (Blueprint $table) {
-            $table->dropColumn(['name', 'account_head_id', 'credit_amount']);
-            $table->string('company_id')->nullable(false)->change();
+            $columnsToDrop = [];
+            if (Schema::hasColumn('account_heads', 'credit_amount')) {
+                $columnsToDrop[] = 'credit_amount';
+            }
+            if (Schema::hasColumn('account_heads', 'account_head_id')) {
+                $columnsToDrop[] = 'account_head_id';
+            }
+            if (Schema::hasColumn('account_heads', 'name')) {
+                $columnsToDrop[] = 'name';
+            }
+            if (!empty($columnsToDrop)) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
     }
 };
