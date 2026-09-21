@@ -11,11 +11,10 @@
     $docCompany = $selectedEmployee?->company 
         ?? (isset($selectedCompanyId) && $selectedCompanyId ? \App\Models\Company::find($selectedCompanyId) : null);
 
-    $companyWatermark = ($docCompany && $docCompany->company_favicon && file_exists(public_path($docCompany->company_favicon)))
-        ? asset($docCompany->company_favicon)
-        : (($docCompany && $docCompany->company_logo && file_exists(public_path($docCompany->company_logo)))
-            ? asset($docCompany->company_logo)
-            : asset('software/img/ring.png'));
+    $companyWatermark = $docCompany?->watermark_logo_url
+        ?? $docCompany?->company_favicon_url 
+        ?? $docCompany?->company_logo_url 
+        ?? asset('software/img/ring.png');
 
     $previewWatermarkImage = in_array(($selectedDocumentType ?? ''), ['advance-form', 'increment', 'appointment', 'experience', 'offer', 'job-rotation', 'job-application-form', 'no-due-clearance', 'loan-form', 'full-final-form', 'salary-certificate', 'relieving-letter'], true)
         ? $companyWatermark

@@ -52,6 +52,7 @@ return new class extends Migration
 
             $table->text('company_logo')->nullable();
             $table->text('company_favicon')->nullable();
+            $table->text('watermark_logo')->nullable();
             $table->text('white_labeling_logo')->nullable();
             $table->text('app_logo')->nullable();
             $table->text('order_header_logo')->nullable();

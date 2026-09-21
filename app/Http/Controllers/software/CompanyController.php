@@ -847,6 +847,38 @@ class CompanyController extends Controller
                 }
             }
 
+            if ($request->hasFile('watermark_logo')) {
+                if ($updateData?->watermark_logo && file_exists($updateData?->watermark_logo)) {
+                    unlink($updateData?->watermark_logo);
+                }
+
+                $image_name = Helper::make_slug('watermark_logo ' . (string) $loginUserId . ' ' . $company_name . ' ' . date('Ymd-His'));
+
+                $file = $request->file('watermark_logo');
+
+                $extenstion = $file->getClientOriginalExtension();
+
+                $filename = $image_name . '.' . $extenstion;
+
+                $uploadedPath = public_path($sub_folder_path);
+
+                if (!file_exists($uploadedPath)) {
+                    mkdir($uploadedPath, 0777, true);
+                }
+
+                if ($file->move($uploadedPath, $filename)) {
+                    $uploadedImage = $sub_folder_path . $filename;
+                    if (in_array($extenstion, ["jpeg", "png", "jpg"])) {
+                        $webP = Helper::existingImageConverToWebp($extenstion, $uploadedPath, $filename, $image_name, 60, true);
+                        if ($webP) {
+                            $uploadedImage = $sub_folder_path . $webP;
+                            $extenstion = "webp";
+                        }
+                    }
+                    $input['watermark_logo'] = $uploadedImage;
+                }
+            }
+
             if ($request->hasFile('app_logo')) {
                 if ($updateData?->app_logo && file_exists($updateData?->app_logo)) {
                     unlink($updateData?->app_logo);

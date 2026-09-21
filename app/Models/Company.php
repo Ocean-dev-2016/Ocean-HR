@@ -14,7 +14,7 @@ class Company extends Model
 
     public static $folderPath = 'companies/';
 
-    protected $appends = ['company_logo_url', 'company_favicon_url', 'white_labeling_logo_url', 'app_logo_url', 'order_header_logo_url', 'order_footer_logo_url'];
+    protected $appends = ['company_logo_url', 'company_favicon_url', 'watermark_logo_url', 'white_labeling_logo_url', 'app_logo_url', 'order_header_logo_url', 'order_footer_logo_url'];
 
     protected $fillable = [
         'gst_no',
@@ -51,6 +51,7 @@ class Company extends Model
         'branch_type',
         'company_logo',
         'company_favicon',
+        'watermark_logo',
         'white_labeling_logo',
         'app_logo',
         'order_header_logo',
@@ -149,6 +150,18 @@ class Company extends Model
         if ($this->company_favicon) {
             if (file_exists(public_path($this->company_favicon))) {
                 return asset($this->company_favicon);
+            }
+        }
+
+        return null;
+    }
+
+    public function getWatermarkLogoUrlAttribute()
+    {
+        // watermark_logo_url
+        if ($this->watermark_logo) {
+            if (file_exists(public_path($this->watermark_logo))) {
+                return asset($this->watermark_logo);
             }
         }
 

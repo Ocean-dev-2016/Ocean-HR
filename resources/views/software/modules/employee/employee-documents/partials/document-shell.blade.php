@@ -3,11 +3,23 @@
     $previewMode = $previewMode ?? false;
     $bodyView = $bodyView ?? null;
     $bodyData = $bodyData ?? [];
+    $docCompany = $bodyData['selectedEmployee']?->company 
+        ?? ($bodyData['selectedCompany'] ?? null)
+        ?? (isset($bodyData['selectedCompanyId']) && $bodyData['selectedCompanyId'] ? \App\Models\Company::find($bodyData['selectedCompanyId']) : null);
+
     $headerImage = $headerImage 
-        ?? ($bodyData['selectedEmployee']?->company?->order_header_logo_url ?? null)
-        ?? ($bodyData['selectedEmployee']?->company?->company_logo_url ?? null)
+        ?? ($docCompany?->order_header_logo_url ?? null)
+        ?? ($docCompany?->company_logo_url ?? null)
         ?? asset('software/img/logo.png');
-    $watermarkImage = $watermarkImage ?? null;
+
+    $watermarkImage = $watermarkImage 
+        ?? ($docCompany?->watermark_logo_url ?? null)
+        ?? ($docCompany?->company_favicon_url ?? null)
+        ?? ($docCompany?->company_logo_url ?? null)
+        ?? asset('software/img/ring.png');
+
+    $bodyData['headerImage'] = $headerImage;
+    $bodyData['watermarkImage'] = $watermarkImage;
 @endphp
 
 <style>

@@ -1,11 +1,22 @@
+@php
+    $documentMeta = $documentMeta ?? ['title' => $documentTypes[$selectedDocumentType] ?? 'Employee Document', 'requires_employee' => true];
+    $printDocumentTitle = $documentMeta['title'] ?? ($documentTypes[$selectedDocumentType] ?? 'Employee Document');
+    $docCompany = $selectedEmployee?->company 
+        ?? (isset($selectedCompanyId) && $selectedCompanyId ? \App\Models\Company::find($selectedCompanyId) : null);
+
+    $companyWatermark = $docCompany?->watermark_logo_url
+        ?? $docCompany?->company_favicon_url 
+        ?? $docCompany?->company_logo_url 
+        ?? asset('software/img/ring.png');
+
+    $watermark = in_array($selectedDocumentType, ['advance-form', 'increment', 'appointment', 'experience', 'offer', 'job-rotation', 'job-application-form', 'no-due-clearance', 'loan-form', 'full-final-form', 'salary-certificate', 'relieving-letter'], true)
+        ? $companyWatermark
+        : null;
+@endphp
 <!DOCTYPE html>
 <html>
 
 <head>
-    @php
-        $documentMeta = $documentMeta ?? ['title' => $documentTypes[$selectedDocumentType] ?? 'Employee Document', 'requires_employee' => true];
-        $printDocumentTitle = $documentMeta['title'] ?? ($documentTypes[$selectedDocumentType] ?? 'Employee Document');
-    @endphp
     <meta charset="UTF-8">
     <title>{{ $printDocumentTitle }} - Print</title>
     <style>
@@ -34,20 +45,6 @@
             'headerImage' => $selectedEmployee?->company?->order_header_logo_url 
                 ?? $selectedEmployee?->company?->company_logo_url 
                 ?? asset('software/img/logo.png'),
-            @php
-                $docCompany = $selectedEmployee?->company 
-                    ?? (isset($selectedCompanyId) && $selectedCompanyId ? \App\Models\Company::find($selectedCompanyId) : null);
-
-                $companyWatermark = ($docCompany && $docCompany->company_favicon && file_exists(public_path($docCompany->company_favicon)))
-                    ? asset($docCompany->company_favicon)
-                    : (($docCompany && $docCompany->company_logo && file_exists(public_path($docCompany->company_logo)))
-                        ? asset($docCompany->company_logo)
-                        : asset('software/img/ring.png'));
-
-                $watermark = in_array($selectedDocumentType, ['advance-form', 'increment', 'appointment', 'experience', 'offer', 'job-rotation', 'job-application-form', 'no-due-clearance', 'loan-form', 'full-final-form', 'salary-certificate', 'relieving-letter'], true)
-                    ? $companyWatermark
-                    : null;
-            @endphp
             'watermarkImage' => $watermark,
             'bodyView' => 'software.modules.employee.employee-documents.partials.' . $selectedDocumentType,
             'bodyData' => [

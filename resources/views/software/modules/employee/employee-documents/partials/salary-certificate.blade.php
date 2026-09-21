@@ -127,7 +127,11 @@
         ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
         ?? ($selectedEmployee?->company?->company_logo_url ?? null)
         ?? asset('software/img/logo.png');
-    $watermarkImage = $watermarkImage ?? asset('software/img/ring.png');
+    $watermarkImage = $watermarkImage 
+        ?? ($selectedEmployee?->company?->watermark_logo_url ?? null)
+        ?? ($selectedEmployee?->company?->company_favicon_url ?? null)
+        ?? ($selectedEmployee?->company?->company_logo_url ?? null)
+        ?? asset('software/img/ring.png');
     $today = \Carbon\Carbon::now()->format('d/m/Y');
 @endphp
 

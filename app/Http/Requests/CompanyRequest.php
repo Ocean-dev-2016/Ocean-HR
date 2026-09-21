@@ -93,6 +93,7 @@ class CompanyRequest extends FormRequest
             'company_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'white_labeling_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'company_favicon' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'watermark_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'app_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'header_image' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'footer_image' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],

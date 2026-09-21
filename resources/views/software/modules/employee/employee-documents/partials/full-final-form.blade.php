@@ -15,7 +15,11 @@
         ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
         ?? ($selectedEmployee?->company?->company_logo_url ?? null)
         ?? asset('software/img/logo.png');
-    $watermarkImage = $watermarkImage ?? asset('software/img/ring.png');
+    $watermarkImage = $watermarkImage 
+        ?? ($selectedEmployee?->company?->watermark_logo_url ?? null)
+        ?? ($selectedEmployee?->company?->company_favicon_url ?? null)
+        ?? ($selectedEmployee?->company?->company_logo_url ?? null)
+        ?? asset('software/img/ring.png');
 @endphp
 
 <style>
@@ -297,6 +301,9 @@
 
 <div class="full-final-form">
     <div class="full-final-page">
+        @if ($watermarkImage)
+            <img class="full-final-watermark" src="{{ $watermarkImage }}" alt="Watermark">
+        @endif
         <div class="full-final-header">
             <img src="{{ $headerImage }}" alt="Header">
         </div>
@@ -375,6 +382,9 @@
     </div>
 
     <div class="full-final-page">
+        @if ($watermarkImage)
+            <img class="full-final-watermark" src="{{ $watermarkImage }}" alt="Watermark">
+        @endif
         <div class="full-final-header">
             <img src="{{ $headerImage }}" alt="Header">
         </div>
@@ -447,6 +457,9 @@
     </div>
 
     <div class="full-final-page">
+        @if ($watermarkImage)
+            <img class="full-final-watermark" src="{{ $watermarkImage }}" alt="Watermark">
+        @endif
         <div class="full-final-header">
             <img src="{{ $headerImage }}" alt="Header">
         </div>

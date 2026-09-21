@@ -254,7 +254,7 @@
                                         <div class="col-md-4 col-sm-12 mb-3">
                                             <label class="form-label">
                                                 Favicon Icon
-                                                <!-- <small class="text-muted">minimum image size 800 x 120</small> -->
+                                                <small class="text-muted">minimum image size 32 x 32</small>
                                             </label>
                                             <div class="border border-secondary rounded d-flex align-items-center justify-content-center"
                                                 style="height: 150px; background-color: #f9f9f9;position: relative">
@@ -271,6 +271,29 @@
                                                     onerror="this.onerror=null; this.src=''; this.style.display='none';">
                                                 <input type="hidden" name="company_favicon_old"
                                                     value="{{ $edit->company_favicon }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            <label class="form-label">
+                                                Watermark Logo
+                                                <small class="text-muted">(Used as Employee Document Watermark)</small>
+                                            </label>
+                                            <div class="border border-secondary rounded d-flex align-items-center justify-content-center"
+                                                style="height: 150px; background-color: #f9f9f9;position: relative">
+                                                <input type="file" class="form-control"
+                                                    style="opacity: 0; height: 150px; width: 100%; position: absolute;"
+                                                    id="watermark_logo" name="watermark_logo"
+                                                    onchange="previewImage(event, 'WatermarkLogoPreview')" accept="image/*">
+                                                <p class="text-muted m-0">Drop in your image or click the box to add one!</p>
+                                            </div>
+                                            <!-- Image Preview Box -->
+                                            <div style="margin-top: 10px;">
+                                                <img id="WatermarkLogoPreview" src="<?php echo $edit->watermark_logo && $edit->watermark_logo_url ? $edit->watermark_logo_url : '#'; ?>" alt="Image Preview"
+                                                    style="display: <?php echo $edit->watermark_logo ? 'block' : 'none'; ?>; width: 200px;  object-fit: cover; border: 1px solid #ddd;"
+                                                    onerror="this.onerror=null; this.src=''; this.style.display='none';">
+                                                <input type="hidden" name="watermark_logo_old"
+                                                    value="{{ $edit->watermark_logo }}">
                                             </div>
                                         </div>
 
