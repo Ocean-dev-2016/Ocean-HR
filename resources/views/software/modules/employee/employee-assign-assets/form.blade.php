@@ -71,7 +71,7 @@
                             <select id="employee_id"
                                 class="form-control select2 search_by_employee @error('employee_id') is-invalid @enderror"
                                 name="employee_id"
-                                data-selectedEmployeeId="{{ old('employee_id') ?? ($edit->employee_id ?? ($preselectedEmployeeId ?? '')) }}">
+                                data-selectedEmployeeId="{{ old('employee_id') ?? ($edit->employee_id ?? ($preselectedEmployeeId ?? (Auth::guard('employees')->check() && Auth::guard('employees')->user()?->parent_type_id != 0 ? Auth::guard('employees')->id() : ''))) }}">
                                 <option value="">Select Employee</option>
                             </select>
 

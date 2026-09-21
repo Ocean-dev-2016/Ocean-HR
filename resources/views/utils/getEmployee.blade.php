@@ -1,12 +1,12 @@
 <script>
     $(document).ready(function () {
-        if ($('meta[name="company_id"]').attr('value')) {
+        if ($('meta[name="company_id"]').attr('value') || $('input.search_by_company').val()) {
             fetch_employee();
         }
     });
 
     $(document).on('change', '.search_by_company', function () {
-        if ($(".search_by_company option:selected").val()) {
+        if ($(".search_by_company option:selected").val() || $('input.search_by_company').val()) {
             fetch_employee();
         }
     });
@@ -21,7 +21,7 @@
     });
 
     function fetch_employee() {
-        let company_id = $(".search_by_company option:selected").val();
+        let company_id = $(".search_by_company option:selected").val() || $('input.search_by_company').val();
         let branch_id = $(".search_by_branch option:selected").val();
         const instance = $('.search_by_employee');
         const selected_id = instance.data("selectedemployeeid") || '';

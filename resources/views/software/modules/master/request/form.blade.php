@@ -70,7 +70,7 @@
                             <select id="request_from_employee_name"
                                 class="form-control select2 @error('request_from_employee_name') is-invalid @enderror"
                                 name="request_from_employee_name"
-                                data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? (Auth::guard('employees')->check() ? Auth::guard('employees')->id() : '')) }}">
+                                data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? (Auth::guard('employees')->check() && Auth::guard('employees')->user()?->parent_type_id != 0 ? Auth::guard('employees')->id() : '')) }}">
                                 <option value="">Select Employee</option>
                             </select>
 
