@@ -1166,9 +1166,9 @@
                                             <div>
                                                 @if (!$onboarding->employee_id)
                                                     @if(empty($is_view_only))
-                                                        <button type="button" class="btn btn-primary waves-effect waves-light" id="btn-convert-employee">
+                                                        <a href="{{ route('onboarding.convert-employee', $onboarding->id) }}" class="btn btn-primary waves-effect waves-light">
                                                             <i class="ti ti-user-plus me-1"></i> Activate & Create Full Employee
-                                                        </button>
+                                                        </a>
                                                     @else
                                                         <span class="badge bg-label-warning px-3 py-2"><i class="ti ti-clock me-1"></i> Employee Record Pending Activation</span>
                                                     @endif

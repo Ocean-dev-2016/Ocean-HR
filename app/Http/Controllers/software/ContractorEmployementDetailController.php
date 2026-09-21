@@ -107,8 +107,8 @@ class ContractorEmployementDetailController extends Controller
                         }
                     });
 
-                // Show only Contractor Salary
-                $contractTypeId = \App\Models\EmployeeType::where('name', 'Contractor Salary')->pluck('id');
+                // Show only Contractor Salary / Contract types
+                $contractTypeId = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
                 $data->whereIn('employment_type', $contractTypeId);
 
                 $data->orderBy('id', 'DESC');

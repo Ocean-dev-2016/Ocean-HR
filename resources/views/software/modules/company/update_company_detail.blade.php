@@ -123,14 +123,68 @@
                                         @method('PUT')
                                     @endisset
 
-                                    <input type="hidden" id="company_name" name="company_name" value="{{ $edit->company_name }}" />
-                                    <input type="hidden" id="person_name" name="person_name" value="{{ $edit->person_name }}" />
-                                    <input type="hidden" id="whatsapp_number" name="whatsapp_number" value="{{ $edit->whatsapp_number }}" />
                                     <input type="hidden" id="email" name="email" value="{{ $edit->email }}" />
                                     <input type="hidden" id="country_id" name="country_id" value="{{ $edit->country_id }}" />
                                     <input type="hidden" name="team_set" value="team_update" />
                                     <input type="hidden" name="tab" value="profile-tab" />
                                     <div class="row gy-4 gx-6 mb-6">
+                                        {{-- Company Name --}}
+                                        <div class="col-md-3 col-sm-12 mb-3">
+                                            <label class="form-label" for="company_name">Company Name <span class="text-danger">*</span></label>
+                                            <input type="text" id="company_name" name="company_name"
+                                                class="form-control @error('company_name') is-invalid @enderror"
+                                                value="{{ old('company_name', $edit->company_name) }}" placeholder="Company Name" />
+                                            @error('company_name')
+                                                <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        {{-- Person Name --}}
+                                        <div class="col-md-3 col-sm-12 mb-3">
+                                            <label class="form-label" for="person_name">Person Name <span class="text-danger">*</span></label>
+                                            <input type="text" id="person_name" name="person_name"
+                                                class="form-control @error('person_name') is-invalid @enderror"
+                                                value="{{ old('person_name', $edit->person_name) }}" placeholder="Person Name" />
+                                            @error('person_name')
+                                                <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        {{-- Mobile Number --}}
+                                        <div class="col-md-3 col-sm-12 mb-3">
+                                            <label class="form-label" for="whatsapp_number">Mobile Number <span class="text-danger">*</span></label>
+                                            <input type="text" id="whatsapp_number" name="whatsapp_number"
+                                                class="form-control @error('whatsapp_number') is-invalid @enderror"
+                                                value="{{ old('whatsapp_number', $edit->whatsapp_number) }}" maxlength="10"
+                                                placeholder="Mobile Number" />
+                                            @error('whatsapp_number')
+                                                <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        {{-- Pan Card Number --}}
+                                        <div class="col-md-3 col-sm-12 mb-3">
+                                            <label class="form-label" for="pan_card">Pan Card Number</label>
+                                            <input type="text" id="pan_card" name="pan_card"
+                                                class="form-control @error('pan_card') is-invalid @enderror"
+                                                value="{{ old('pan_card', $edit->pan_card) }}" maxlength="10"
+                                                placeholder="ABCDE1234F" style="text-transform: uppercase;"
+                                                pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}"
+                                                title="Please enter exactly 10 characters PAN card (e.g. ABCDE1234F)"
+                                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);" />
+                                            @error('pan_card')
+                                                <span class="invalid-feedback">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
                                         <div class="col-md-6 col-sm-12 mb-3">
                                             <label class="form-label" for="bank_details">Bank Details</label>
                                             <textarea name="bank_details" id="bank_details" class="ckeditor_common_cls form-control @error('bank_details') is-invalid @enderror"

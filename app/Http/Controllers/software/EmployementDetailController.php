@@ -107,9 +107,12 @@ class EmployementDetailController extends Controller
                         }
                     });
 
-                // Show only Company Payroll
-                $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-                $data->whereIn('employment_type', $payrollTypeId);
+                // Show regular employees (exclude contractor types)
+                $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                $data->where(function ($query) use ($contractTypeIds) {
+                    $query->whereNotIn('employment_type', $contractTypeIds)
+                        ->orWhereNull('employment_type');
+                });
 
                 $data->orderBy('id', 'DESC');
 
@@ -587,6 +590,12 @@ class EmployementDetailController extends Controller
                 })
                 ->with(['company'])
                 ->orderBy('id', 'DESC');
+
+            $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+            $query->where(function ($q) use ($contractTypeIds) {
+                $q->whereNotIn('employment_type', $contractTypeIds)
+                    ->orWhereNull('employment_type');
+            });
 
 
             $companyId = $request->input('company') ?? $request->input('filter_company');

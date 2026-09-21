@@ -50,13 +50,13 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4 mb-2">
+                        <div class="col-md-3 mb-2">
                             <label class="form-label">Filter by Name</label>
                             <input type="search" class="form-control search" name="search" placeholder="search..."
                                 autofocus>
                         </div>
 
-                        <div class="col-md-8 d-flex align-items-end mb-2">
+                        <div class="col-md-9 d-flex align-items-end mb-2">
                             <div class="flex-grow-1 me-2">
                                 <label class="form-label">Filter by Plan</label>
                                 <select id="plan_id" name="plan_id"
@@ -65,8 +65,16 @@
                                 </select>
                             </div>
                             <div class="flex-grow-1 me-2">
+                                <label for="register_type_filter" class="form-label">Register Type</label>
+                                <select id="register_type_filter" name="register_type" class="form-select select2 select_filter">
+                                    <option value="all">All Types</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="google">Google</option>
+                                </select>
+                            </div>
+                            <div class="flex-grow-1 me-2">
                                 <label for="status_filter" class="form-label">Filter by Status</label>
-                                <select id="status_filter" name="status" class="form-select select2">
+                                <select id="status_filter" name="status" class="form-select select2 select_filter">
                                     <option value="all">All</option>
                                     <option value="active" selected>Active</option>
                                     <option value="inactive">Inactive</option>
@@ -94,6 +102,7 @@
                                 <tr>
                                     <th>Sr No.</th>
                                     <th>Company Details</th>
+                                    <th>Register Type</th>
                                     <th>Contact Info</th>
                                     <th>Login Details</th>
                                     <th>Plan Info</th>
@@ -164,6 +173,7 @@
                     data: function(data) {
                         data.search = $('input[name="search"]').val();
                         data.filter_plan = $('select[name="plan_id"] option:selected').val();
+                        data.register_type = $('#register_type_filter').val();
                         data.status = $('#status_filter').val();
                     }
                 },
@@ -176,6 +186,11 @@
                     {
                         data: 'company_details',
                         name: 'company_details'
+                    },
+                    {
+                        data: 'register_type',
+                        name: 'register_type',
+                        className: 'text-center'
                     },
                     {
                         data: 'contact_info',
@@ -240,10 +255,14 @@
                     type: 'GET',
                     success: function(res) {
                         if (res.status && res.data) {
-                            var d = res.data;
-                            var planTitle = d.plan ? (d.plan.title || d.plan.name) : '-';
+                            var regType = (d.register_type || 'manual').toLowerCase();
+                            var regTypeBadge = regType === 'google' 
+                                ? '<span class="badge bg-label-danger"><i class="fab fa-google me-1"></i> Google</span>' 
+                                : '<span class="badge bg-label-info"><i class="fa fa-user-pen me-1"></i> Manual</span>';
+
                             var html = '<div class="row g-3">';
                             html += '<div class="col-md-6"><div class="border rounded p-3 bg-light-subtle"><small class="text-muted d-block mb-1">Company Name</small><strong class="fs-6">' + (d.company_name || '-') + '</strong></div></div>';
+                            html += '<div class="col-md-6"><div class="border rounded p-3 bg-light-subtle"><small class="text-muted d-block mb-1">Register Type</small>' + regTypeBadge + '</div></div>';
                             html += '<div class="col-md-6"><div class="border rounded p-3 bg-light-subtle"><small class="text-muted d-block mb-1">GST Number</small><strong>' + (d.gst_no || 'N/A') + '</strong></div></div>';
                             html += '<div class="col-md-6"><div class="border rounded p-3 bg-light-subtle"><small class="text-muted d-block mb-1">Person Name</small><strong>' + (d.person_name || '-') + '</strong></div></div>';
                             html += '<div class="col-md-6"><div class="border rounded p-3 bg-light-subtle"><small class="text-muted d-block mb-1">WhatsApp Number</small><strong>' + (d.whatsapp_number || '-') + '</strong></div></div>';

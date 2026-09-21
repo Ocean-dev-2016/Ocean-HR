@@ -125,8 +125,8 @@ class ContractorEmployeeController extends Controller
                         }
                     });
 
-                // Show only Contractor Salary
-                $contractTypeId = \App\Models\EmployeeType::where('name', 'Contractor Salary')->pluck('id');
+                // Show only Contractor Salary / Contract types
+                $contractTypeId = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
                 $data->whereHas('employmentDetail', function ($q) use ($contractTypeId) {
                     $q->whereIn('employment_type', $contractTypeId);
                 });
@@ -394,11 +394,50 @@ class ContractorEmployeeController extends Controller
             $validated['password'] = Hash::make($request?->password);
             $validated['sp'] = Helper::generateSP($request?->password);
             // dd($request->all(), $validated);
-            Employee::create($validated);
+            $employee = Employee::create($validated);
+
+            if ($employee) {
+                $targetCompanyId = $employee->company_id ?? $modules['company_id'];
+                $contractType = \App\Models\EmployeeType::where('company_id', $targetCompanyId)
+                    ->where(function ($q) {
+                        $q->where('name', 'like', '%contract%')
+                            ->orWhere('name', 'like', '%contractor%');
+                    })
+                    ->first();
+
+                if (!$contractType) {
+                    $contractType = \App\Models\EmployeeType::create([
+                        'company_id' => $targetCompanyId,
+                        'name' => 'Contractor Salary',
+                        'status' => 'active',
+                        'created_by' => $loginUserId,
+                    ]);
+                }
+
+                $firstDept = \App\Models\Department::where('company_id', $targetCompanyId)->first();
+                $firstDesig = \App\Models\Designation::where('company_id', $targetCompanyId)->first();
+                $firstShift = \App\Models\Shift::where('company_id', $targetCompanyId)->first();
+
+                \App\Models\EmploymentDetail::firstOrCreate(
+                    ['employee_id' => $employee->id],
+                    [
+                        'company_id' => $targetCompanyId,
+                        'designation_type' => 'employee',
+                        'department_id' => $firstDept?->id ?: 1,
+                        'designation_id' => $firstDesig?->id ?: 1,
+                        'shift' => $firstShift?->id ?: 1,
+                        'date_of_joining' => Carbon::now()->format('Y-m-d'),
+                        'payment_mode' => 'NEFT',
+                        'employment_type' => $contractType->id,
+                        'outdoor_attendance' => 'no',
+                        'status' => 'active',
+                        'created_by' => $loginUserId,
+                    ]
+                );
+            }
 
             return Redirect::route($modules['route'] . '.index')->withSuccess($modules['title'] . ' create successfully');
         } catch (\Exception $e) {
-            return $e->getMessage();
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
     }

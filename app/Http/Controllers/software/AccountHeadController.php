@@ -218,9 +218,16 @@ class AccountHeadController extends Controller
         View::share('modules', $modules);
         $validated = $request->validated();
 
-
         try {
-
+            $headNames = [
+                '101' => 'Cash',
+                '102' => 'Bank',
+                '103' => 'Expenses',
+                '104' => 'Revenue',
+            ];
+            if (empty($validated['name']) && !empty($validated['account_head_id'])) {
+                $validated['name'] = $headNames[$validated['account_head_id']] ?? ('Head ' . $validated['account_head_id']);
+            }
             $validated['created_by'] = $loginUserId;
 
             AccountHead::create($validated);
@@ -232,6 +239,7 @@ class AccountHeadController extends Controller
                 ->withErrors($e->getMessage());
         }
     }
+
     public function getLedgerData(Request $request)
     {
         $accountHeadId = $request->account_head_id;
@@ -245,7 +253,7 @@ class AccountHeadController extends Controller
             return response()->json([
                 'status' => true,
                 'data' => [
-                    'date' => $ledger->entry_date,
+                    'date' => $ledger->entry_date ? \Carbon\Carbon::parse($ledger->entry_date)->format('d-m-Y') : '',
                     'description' => $ledger->description,
                     'debit_amount' => $ledger->debit_amount,
                     'credit_amount' => $ledger->credit_amount,
@@ -273,22 +281,226 @@ class AccountHeadController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['update_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+        try {
+            View::share('modules', $modules);
+
+            $query = AccountHead::query();
+            if (!empty($modules['company_id'])) {
+                $query->where('company_id', $modules['company_id']);
+            }
+            $edit = $query->findOrFail($id);
+            View::share('edit', $edit);
+
+            return view($modules['folder_path'] . '.form');
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(AccountHeadRequest $request, string $id)
     {
-        //
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['update_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+        View::share('modules', $modules);
+
+        $validated = $request->validated();
+        try {
+            $headNames = [
+                '101' => 'Cash',
+                '102' => 'Bank',
+                '103' => 'Expenses',
+                '104' => 'Revenue',
+            ];
+            if (empty($validated['name']) && !empty($validated['account_head_id'])) {
+                $validated['name'] = $headNames[$validated['account_head_id']] ?? ('Head ' . $validated['account_head_id']);
+            }
+            $validated['updated_by'] = $loginUserId;
+            $query = AccountHead::query();
+            if (!empty($modules['company_id'])) {
+                $query->where('company_id', $modules['company_id']);
+            }
+            $updateData = $query->findOrFail($id);
+            if ($updateData) {
+                unset($validated['id']);
+                $updateData->update($validated);
+
+                return Redirect::route($modules['route'] . '.index')->withSuccess($modules['title'] . ' updated successfully.');
+            }
+            return Redirect::back()->withErrors('Something went wrong, please try again later.')->withInput();
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        //
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['delete_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        $query = AccountHead::query();
+        if (!empty($modules['company_id'])) {
+            $query->where('company_id', $modules['company_id']);
+        }
+        $dataDelete = $query->findOrFail($id);
+        $isAjax = ($request->ajax()) ? true : false;
+        try {
+            if ($dataDelete) {
+                $dataDelete->deleted_by = $loginUserId;
+                $dataDelete->save();
+
+                if ($dataDelete->delete()) {
+                    if ($isAjax) {
+                        return $this->sendResponse([], $modules['title'] . ' deleted successfully');
+                    }
+                    return true;
+                }
+            }
+            if ($isAjax) {
+                return $this->sendResponse([], "something went wrong please try again later");
+            }
+            return false;
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
+    }
+
+    public function restore($id)
+    {
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['restore_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $query = AccountHead::withTrashed();
+            if (!empty($modules['company_id'])) {
+                $query->where('company_id', $modules['company_id']);
+            }
+            $restore_data = $query->findOrFail($id);
+            $restore_data->restore();
+
+            return Redirect::back()->withSuccess($modules['title'] . ' restored successfully!');
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
+    }
+
+    public function status_update(Request $request)
+    {
+        $isAjax = ($request->ajax()) ? true : false;
+
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['update_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'id' => ['required', 'exists:account_heads,id'],
+            'update_status' => ['required', 'in:active,inactive']
+        ]);
+
+        if ($validator->fails() && $isAjax) {
+            return $this->sendError($validator->messages()->first(), $validator->messages(), [], 401);
+        }
+
+        try {
+            $query = AccountHead::withTrashed();
+            if (!empty($modules['company_id'])) {
+                $query->where('company_id', $modules['company_id']);
+            }
+            $item = $query->findOrFail($request?->id);
+            if ($item) {
+                $item->status = $request->update_status;
+                $item->updated_by = $loginUserId;
+                $item->save();
+                if ($isAjax) {
+                    return $this->sendResponse($item, $modules['title'] . ' status updated successfully.');
+                }
+                return Redirect::route($modules['route'] . '.index')->withSuccess($modules['title'] . ' status updated successfully.');
+            }
+            if ($isAjax) {
+                return $this->sendError('something went wrong please try again later');
+            }
+            return Redirect::back()->withErrors('something went wrong please try again later')->withInput();
+        } catch (\Exception $e) {
+            if ($isAjax) {
+                return $this->sendError($e->getMessage(), $e->getMessage(), [], 401);
+            }
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
     }
 }

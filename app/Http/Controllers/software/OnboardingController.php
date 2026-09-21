@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Yajra\DataTables\DataTables;
 
@@ -169,10 +170,10 @@ class OnboardingController extends Controller
                 ->addColumn('action', function ($row) use ($modules) {
                     $btn = '<div class="d-flex align-items-center">';
                     $btn .= '<a href="' . route('onboarding.show', $row->id) . '" class="btn btn-sm btn-icon btn-text-secondary rounded-pill waves-effect" title="View & Process Onboarding"><i class="ti ti-eye"></i></a>';
-                    if ($modules['edit_permission']) {
+                    if (!empty($modules['update_permission'])) {
                         $btn .= '<a href="' . route('onboarding.edit', $row->id) . '" class="btn btn-sm btn-icon btn-text-secondary rounded-pill waves-effect" title="Edit"><i class="ti ti-pencil"></i></a>';
                     }
-                    if ($modules['delete_permission']) {
+                    if (!empty($modules['delete_permission'])) {
                         $btn .= '<button type="button" class="btn btn-sm btn-icon btn-text-danger rounded-pill waves-effect delete-record" data-id="' . $row->id . '" title="Delete"><i class="ti ti-trash"></i></button>';
                     }
                     $btn .= '</div>';
@@ -512,7 +513,7 @@ class OnboardingController extends Controller
             }
         }
 
-        if (!$modules['edit_permission']) {
+        if (empty($modules['update_permission'])) {
             abort(403, 'Unauthorized');
         }
 
@@ -1061,14 +1062,18 @@ class OnboardingController extends Controller
                         'employee_id' => $emp->id,
                         'company_id' => $emp->company_id,
                     ]);
-                    $employment->department_id = $onboarding->department_id;
-                    $employment->sub_department_id = $onboarding->sub_department_id;
-                    $employment->designation_id = $onboarding->designation_id;
-                    $employment->shift = $onboarding->shift_id;
-                    $employment->date_of_joining = $onboarding->joining_date ? $onboarding->joining_date->format('Y-m-d') : Carbon::now()->format('Y-m-d');
-                    $employment->employment_confirmation_date = $onboarding->probation_end_date ? $onboarding->probation_end_date->format('Y-m-d') : null;
-                    $employment->employment_type = $onboarding->employment_type;
+                    $employment->designation_type = $employment->designation_type ?: 'employee';
+                    $employment->department_id = $onboarding->department_id ?: ($employment->department_id ?: 1);
+                    $employment->sub_department_id = $onboarding->sub_department_id ?: $employment->sub_department_id;
+                    $employment->designation_id = $onboarding->designation_id ?: ($employment->designation_id ?: 1);
+                    $employment->shift = $onboarding->shift_id ?: ($employment->shift ?: 1);
+                    $employment->date_of_joining = $onboarding->joining_date ? $onboarding->joining_date->format('Y-m-d') : ($employment->date_of_joining ?: Carbon::now()->format('Y-m-d'));
+                    $employment->employment_confirmation_date = $onboarding->probation_end_date ? $onboarding->probation_end_date->format('Y-m-d') : $employment->employment_confirmation_date;
+                    $employment->payment_mode = $employment->payment_mode ?: 'NEFT';
+                    $employment->employment_type = $onboarding->employment_type ?: ($employment->employment_type ?: 1);
+                    $employment->outdoor_attendance = $employment->outdoor_attendance ?: 'no';
                     $employment->status = 'active';
+                    $employment->created_by = $employment->created_by ?: Auth::id();
                     $employment->save();
                 }
             }
@@ -1159,13 +1164,16 @@ class OnboardingController extends Controller
             EmploymentDetail::create([
                 'company_id' => $company_id,
                 'employee_id' => $employee->id,
-                'department_id' => $onboarding->department_id,
+                'designation_type' => 'employee',
+                'department_id' => $onboarding->department_id ?: 1,
                 'sub_department_id' => $onboarding->sub_department_id,
-                'designation_id' => $onboarding->designation_id,
-                'shift' => $onboarding->shift_id,
+                'designation_id' => $onboarding->designation_id ?: 1,
+                'shift' => $onboarding->shift_id ?: 1,
                 'date_of_joining' => $onboarding->joining_date ? $onboarding->joining_date->format('Y-m-d') : Carbon::now()->format('Y-m-d'),
                 'employment_confirmation_date' => $onboarding->probation_end_date ? $onboarding->probation_end_date->format('Y-m-d') : null,
-                'employment_type' => $onboarding->employment_type,
+                'payment_mode' => 'NEFT',
+                'employment_type' => $onboarding->employment_type ?: 1,
+                'outdoor_attendance' => 'no',
                 'status' => 'active',
                 'created_by' => Auth::id(),
             ]);

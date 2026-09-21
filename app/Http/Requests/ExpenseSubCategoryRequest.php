@@ -28,10 +28,10 @@ class ExpenseSubCategoryRequest extends FormRequest
      */
     public function rules(): array
     {
-        $expenseSubCategory = $this->route('expense-subcategory');
+        $expenseSubCategory = $this->route('expense_subcategory') ?? $this->route('expense-subcategory');
         $id = $expenseSubCategory instanceof ExpenseSubCategory
             ? $expenseSubCategory->id
-            : ($this->input('edit_id') ?? 0);
+            : ($expenseSubCategory ?: ($this->input('edit_id') ?? $this->input('id') ?? 0));
 
         $branchRequiredNullable = 'nullable';
         $companyId = $this->company_id;
@@ -60,8 +60,12 @@ class ExpenseSubCategoryRequest extends FormRequest
                 Rule::exists((new ExpenseCategory())->getTable(), 'id')
                     ->where(function ($query) {
                         $query->where('company_id', $this->company_id);
-                        if ($this->branch_id) {
+                        if (!empty($this->branch_id)) {
                             $query->where('branch_id', $this->branch_id);
+                        } else {
+                            $query->where(function ($q) {
+                                $q->whereNull('branch_id')->orWhere('branch_id', 0)->orWhere('branch_id', '');
+                            });
                         }
                     }),
             ],
@@ -73,8 +77,12 @@ class ExpenseSubCategoryRequest extends FormRequest
                     ->where(function ($query) {
                         $query->where('company_id', $this->company_id)
                             ->where('expense_category_id', $this->expense_category_id);
-                        if ($this->branch_id) {
+                        if (!empty($this->branch_id)) {
                             $query->where('branch_id', $this->branch_id);
+                        } else {
+                            $query->where(function ($q) {
+                                $q->whereNull('branch_id')->orWhere('branch_id', 0)->orWhere('branch_id', '');
+                            });
                         }
                         // Ensure uniqueness for each selected team person
                         if (is_array($this->team_person_ids) && count($this->team_person_ids)) {

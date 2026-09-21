@@ -58,16 +58,17 @@
     </div>
 
     <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
-        {{-- <!-- Search -->
+        <!-- Search -->
         <div class="navbar-nav align-items-center">
             <div class="nav-item navbar-search-wrapper mb-0">
-                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0" href="javascript:void(0);">
-                    <i class="ti ti-search ti-md me-2"></i>
-                    <span class="d-none d-md-inline-block text-muted">Search (Ctrl+/)</span>
-                </a>
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-search ti-md me-2 text-muted"></i>
+                    <input type="text" class="form-control border-0 shadow-none bg-transparent ps-0" id="sidebar-menu-search" placeholder="Search (Ctrl+/)" style="width: 260px;" autocomplete="off">
+                    <span id="clear-menu-search" class="d-none text-muted" style="cursor: pointer;" title="Clear"><i class="ti ti-x ti-xs"></i></span>
+                </div>
             </div>
         </div>
-        <!-- /Search --> --}}
+        <!-- /Search -->
 
 
         <ul class="navbar-nav flex-row align-items-center ms-auto">
@@ -393,3 +394,118 @@
     }
 </style>
 @endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('sidebar-menu-search');
+        const clearBtn = document.getElementById('clear-menu-search');
+        const sidebarMenu = document.querySelector('#layout-menu .menu-inner');
+
+        if (!searchInput || !sidebarMenu) return;
+
+        function filterSidebar(query) {
+            query = query.trim().toLowerCase();
+            const mainMenuItems = sidebarMenu.querySelectorAll(':scope > li.menu-item');
+            
+            // Remove previous no result message if any
+            const existingNoResult = sidebarMenu.querySelector('.menu-search-no-results');
+            if (existingNoResult) existingNoResult.remove();
+
+            if (query === '') {
+                if (clearBtn) clearBtn.classList.add('d-none');
+                mainMenuItems.forEach(function(item) {
+                    item.style.display = '';
+                    const subMenu = item.querySelector('.menu-sub');
+                    if (subMenu) {
+                        const subItems = subMenu.querySelectorAll('li.menu-item');
+                        subItems.forEach(function(sub) {
+                            sub.style.display = '';
+                        });
+                        if (!item.classList.contains('active')) {
+                            item.classList.remove('open');
+                        }
+                    }
+                });
+                return;
+            }
+
+            if (clearBtn) clearBtn.classList.remove('d-none');
+            let totalMatches = 0;
+
+            mainMenuItems.forEach(function(item) {
+                if (item.querySelector('.divider')) {
+                    item.style.display = 'none';
+                    return;
+                }
+
+                const toggleLink = item.querySelector(':scope > a.menu-link');
+                const parentDiv = toggleLink ? toggleLink.querySelector('div') : null;
+                const parentText = parentDiv ? parentDiv.textContent.toLowerCase() : (toggleLink ? toggleLink.textContent.toLowerCase() : '');
+                const subMenu = item.querySelector('.menu-sub');
+
+                if (subMenu) {
+                    const subItems = subMenu.querySelectorAll('li.menu-item');
+                    let childMatched = false;
+
+                    subItems.forEach(function(sub) {
+                        const childDiv = sub.querySelector('div');
+                        const childText = childDiv ? childDiv.textContent.toLowerCase() : sub.textContent.toLowerCase();
+
+                        if (childText.includes(query) || parentText.includes(query)) {
+                            sub.style.display = '';
+                            childMatched = true;
+                            totalMatches++;
+                        } else {
+                            sub.style.display = 'none';
+                        }
+                    });
+
+                    if (childMatched || parentText.includes(query)) {
+                        item.style.display = '';
+                        item.classList.add('open');
+                    } else {
+                        item.style.display = 'none';
+                    }
+                } else {
+                    if (parentText.includes(query)) {
+                        item.style.display = '';
+                        totalMatches++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+
+            if (totalMatches === 0) {
+                const noResultLi = document.createElement('li');
+                noResultLi.className = 'menu-item menu-search-no-results text-center py-3 px-2 text-muted';
+                noResultLi.innerHTML = '<small><i class="ti ti-search-off me-1"></i> No menu found</small>';
+                sidebarMenu.appendChild(noResultLi);
+            }
+        }
+
+        searchInput.addEventListener('input', function() {
+            filterSidebar(this.value);
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                filterSidebar('');
+                searchInput.focus();
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+                searchInput.value = '';
+                filterSidebar('');
+                searchInput.blur();
+            }
+        });
+    });
+</script>

@@ -11,6 +11,7 @@ use App\Models\CompanySubscriptionPlan;
 use App\Models\Designation;
 use App\Models\DocumentType;
 use App\Models\Employee;
+use App\Models\EmployeeType;
 use App\Models\LeaveType;
 use App\Models\MainMenu;
 use App\Models\PlanMaster;
@@ -326,6 +327,7 @@ class GoogleAuthController extends Controller
                 'mobile_max' => 10,
                 'branch_type' => 'single',
                 'status' => 'active',
+                'register_type' => 'google',
                 'created_by' => 0,
             ];
 
@@ -432,6 +434,16 @@ class GoogleAuthController extends Controller
                 'created_by' => 0,
             ]);
 
+            // 8.1 Default Employee Types
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Company Payroll'],
+                ['status' => 'active', 'created_by' => 0]
+            );
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Contractor Salary'],
+                ['status' => 'active', 'created_by' => 0]
+            );
+
             // 9. Subscription Plan
             CompanySubscriptionPlan::create([
                 'company_id' => $company_id,
@@ -461,6 +473,7 @@ class GoogleAuthController extends Controller
                 'time_format' => Helper::getDefaultTimeFormat(),
                 'hra_percentage' => 40,
                 'status' => 'active',
+                'register_type' => 'google',
             ]);
 
             DB::commit();
@@ -607,7 +620,7 @@ class GoogleAuthController extends Controller
                         Please use the following 6-digit One Time Password (OTP) to complete your Google Sign-Up for <strong>OceanHR</strong>:
                     </p>
 
-                    <div style="display: inline-block; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #60a5fa; font-family: \'Courier New\', monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; padding: 15px 35px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <div style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-family: \'Courier New\', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; padding: 14px 35px; border-radius: 12px; margin-bottom: 25px; border: 1.5px solid #93c5fd; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);">
                         ' . $otp . '
                     </div>
 

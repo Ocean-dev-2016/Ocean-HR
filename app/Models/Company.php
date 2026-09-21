@@ -60,6 +60,7 @@ class Company extends Model
         'reset_password',
         'phonecode',
         'status',
+        'register_type',
         'created_by',
         'updated_by',
         'deleted_by',

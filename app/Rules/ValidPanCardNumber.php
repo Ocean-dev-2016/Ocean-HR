@@ -9,8 +9,11 @@ class ValidPanCardNumber implements Rule
 {
     public function passes($attribute, $value)
     {
-        // Remove spaces/dashes
-        $value = preg_replace('/[\s-]+/', '', $value);
+        if (empty($value)) {
+            return true;
+        }
+        // Remove spaces/dashes and convert to uppercase
+        $value = strtoupper(preg_replace('/[\s-]+/', '', $value));
         
         return preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/', $value);
     }

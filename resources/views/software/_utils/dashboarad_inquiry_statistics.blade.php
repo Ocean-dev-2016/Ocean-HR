@@ -168,8 +168,8 @@
 </div>
 
 
-{{-- Operation Statistics --}}
-@if (isset($modules['operations_rate_list_view']) && $modules['operations_rate_list_view'] && isset($operationStats) && count($operationStats) > 0)
+{{-- Operation Statistics (Hidden) --}}
+{{-- @if (isset($modules['operations_rate_list_view']) && $modules['operations_rate_list_view'] && isset($operationStats) && count($operationStats) > 0)
     <div class="row mb-1 mt-4">
         <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold"><i class="ti ti-chart-pie-2 me-2"></i>Operation Wise Total Amount</h5>
@@ -221,7 +221,7 @@
             </div>
         @endforeach
     </div>
-@endif
+@endif --}}
 
 {{-- Attendance Statistics --}}
 @if (isset($attendanceStats) && is_array($attendanceStats))

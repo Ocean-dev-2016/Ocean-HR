@@ -28,6 +28,7 @@ class CompanyRegistration extends Model
         'hra_percentage',
         'otp',
         'status',
+        'register_type',
     ];
 
     public function plan()

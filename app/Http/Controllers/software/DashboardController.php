@@ -548,7 +548,7 @@ class DashboardController extends Controller
                     $operationStatsQuery = OperationsRateList::query();
                     $payrollQuery = \App\Models\Salary::query()
                         ->whereHas('employee.employmentDetail.employee_type', function ($q) {
-                            $q->where('name', 'Company Payroll');
+                            $q->where('name', 'not like', '%contract%');
                         });
 
                     if ($modules['company_id']) {
@@ -922,18 +922,17 @@ class DashboardController extends Controller
                 $leaveQuery->where('company_id', $companyId);
             }
 
-            // Distinguish between regular employees and contractors using exact types from controllers
-            $payrollTypeIds = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-            $contractorTypeIds = \App\Models\EmployeeType::where('name', 'Contractor Salary')->pluck('id');
+            // Distinguish between regular employees and contractors using employee types
+            $contractorTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
 
-            $regularEmployeeQuery = (clone $employeeQuery);
-            if ($payrollTypeIds->isNotEmpty()) {
-                $regularEmployeeQuery->whereHas('employmentDetail', function ($q) use ($payrollTypeIds) {
-                    $q->whereIn('employment_type', $payrollTypeIds);
+            $regularEmployeeQuery = (clone $employeeQuery)
+                ->where(function ($q) use ($contractorTypeIds) {
+                    $q->whereHas('employmentDetail', function ($innerQ) use ($contractorTypeIds) {
+                        $innerQ->whereNotIn('employment_type', $contractorTypeIds)
+                            ->orWhereNull('employment_type');
+                    })
+                    ->orDoesntHave('employmentDetail');
                 });
-            } else {
-                $regularEmployeeQuery->whereRaw('1 = 0');
-            }
             $totalRegularEmployees = $regularEmployeeQuery->count();
 
             $contractorQuery = (clone $employeeQuery);

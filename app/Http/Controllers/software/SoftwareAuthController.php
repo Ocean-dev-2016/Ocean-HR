@@ -18,6 +18,7 @@ use App\Models\MainMenu;
 use App\Models\SubMenu;
 use App\Models\Designation;
 use App\Models\DocumentType;
+use App\Models\EmployeeType;
 use App\Models\LeaveType;
 use App\Models\MasterCountry;
 use Carbon\Carbon;
@@ -140,6 +141,13 @@ class SoftwareAuthController extends Controller
                 'branch_type' => 'single',
                 'status' => 'active',
                 'created_by' => 0,
+
+
+
+
+
+
+
             ];
 
             $validated = array_merge($validated, $defaultValues);
@@ -154,6 +162,7 @@ class SoftwareAuthController extends Controller
             $prefix = ucfirst(strtolower(substr($cleanName, 0, 3)));
             $appKey = $prefix . "@" . date("Y");
             $validated['app_key'] = $appKey;
+            $validated['register_type'] = 'manual';
 
             // 1. Create Active Company
             $company = Company::create($validated);
@@ -265,6 +274,16 @@ class SoftwareAuthController extends Controller
                 'created_by' => 0,
             ]);
 
+            // 8.1 Default Employee Types
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Company Payroll'],
+                ['status' => 'active', 'created_by' => 0]
+            );
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Contractor Salary'],
+                ['status' => 'active', 'created_by' => 0]
+            );
+
             // 9. Subscription Plan
             $today = Carbon::today();
             $subscription_status = 'active';
@@ -305,6 +324,7 @@ class SoftwareAuthController extends Controller
                 'hra_percentage' => $validated['hra_percentage'],
                 'otp' => $validated['otp'],
                 'status' => 'active',
+                'register_type' => 'manual',
             ]);
 
             DB::commit();

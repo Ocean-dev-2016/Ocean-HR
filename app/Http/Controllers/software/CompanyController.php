@@ -260,7 +260,9 @@ class CompanyController extends Controller
                                     <i class="ti ti-dots-vertical"></i>
                                 </button>
                                 <ul class="dropdown-menu">';
-                        if ($latestPlan && $latestPlan?->subscription_status === 'expired') {
+                        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+
+                        if ($latestPlan && $latestPlan?->subscription_status === 'expired' && $isMasterAdmin) {
                             $btn .= '<li>
                                 <a class="dropdown-item" href="' . route('company.upgrade_plan', [$row["id"]]) . '">
                                     <i class="fa-plus"></i> Upgrade Plan
@@ -273,18 +275,22 @@ class CompanyController extends Controller
                             <a class="dropdown-item" href="' . route('company.mail_setting', [$row["id"]]) . '">
                                 <i class="tf-icons ti ti-mail-cog"></i> Mail Configration
                             </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="' . route('company.license_setting', [$row["id"]]) . '">
-                                <i class="tf-icons ti ti-settings"></i> License Setting
-                            </a>
-                        </li>
-                        <li>
+                        </li>';
+
+                        if ($isMasterAdmin) {
+                            $btn .= '<li>
+                                <a class="dropdown-item" href="' . route('company.license_setting', [$row["id"]]) . '">
+                                    <i class="tf-icons ti ti-settings"></i> License Setting
+                                </a>
+                            </li>';
+                        }
+
+                        $btn .= '<li>
                             <a class="dropdown-item" href="' . route('company-subscription-plan.show', [$row["id"]]) . '">
                                 <i class="tf-icons ti ti-history"></i> Subscription History
                             </a>
                         </li>';
-                        if (Auth::guard('admin_software')->check() && Auth::guard('admin_software')->id() == 1) {
+                        if ($isMasterAdmin) {
                             $btn .= '<li>
                                 <a class="dropdown-item deletebutton text-danger" href="javascript:void(0)" data-id="' . $row->id . '" data-did="' . route($modules["route"] . ".destroy", [$row["id"]]) . '">
                                     <i class="tf-icons ti ti-trash"></i> Delete Company & Related Data
@@ -516,6 +522,16 @@ class CompanyController extends Controller
                 'status' => 'active',
                 'created_by' => $validated['created_by'],
             ]);
+
+            // Default Employee Types
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Company Payroll'],
+                ['status' => 'active', 'created_by' => $validated['created_by']]
+            );
+            EmployeeType::firstOrCreate(
+                ['company_id' => $company_id, 'name' => 'Contractor Salary'],
+                ['status' => 'active', 'created_by' => $validated['created_by']]
+            );
 
             /*
             // Expense Category
@@ -1477,11 +1493,11 @@ class CompanyController extends Controller
     public function license_setting(Request $request, $id)
     {
         $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
-        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
-            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
-            if ((int)$id !== (int)$loggedInCompanyId) {
-                abort(404);
+        if (!$isMasterAdmin) {
+            if ($request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
             }
+            return redirect()->route('software.dashboard')->withErrors('Unauthorized');
         }
 
         $modules = $this->modules;
@@ -1610,11 +1626,11 @@ class CompanyController extends Controller
     public function upgrade_plan(Request $request, $id)
     {
         $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
-        if (!$isMasterAdmin && Auth::guard('employees')->check()) {
-            $loggedInCompanyId = Auth::guard('employees')->user()->company_id;
-            if ((int)$id !== (int)$loggedInCompanyId) {
-                abort(404);
+        if (!$isMasterAdmin) {
+            if ($request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
             }
+            return redirect()->route('software.dashboard')->withErrors('Unauthorized');
         }
 
         $modules = $this->modules;

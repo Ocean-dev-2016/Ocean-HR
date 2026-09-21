@@ -8,8 +8,17 @@
     $selectedEmployeeId = $selectedEmployeeId ?? request()->route('employee_id') ?? request('employee_id') ?? optional($selectedEmployee)->id;
     $documentMeta = $documentMeta ?? ['title' => $documentTypes[$selectedDocumentType] ?? 'Employee Document', 'requires_employee' => true];
     $previewDocumentTitle = $documentMeta['title'] ?? ($documentTypes[$selectedDocumentType] ?? 'Employee Document');
+    $docCompany = $selectedEmployee?->company 
+        ?? (isset($selectedCompanyId) && $selectedCompanyId ? \App\Models\Company::find($selectedCompanyId) : null);
+
+    $companyWatermark = ($docCompany && $docCompany->company_favicon && file_exists(public_path($docCompany->company_favicon)))
+        ? asset($docCompany->company_favicon)
+        : (($docCompany && $docCompany->company_logo && file_exists(public_path($docCompany->company_logo)))
+            ? asset($docCompany->company_logo)
+            : asset('software/img/ring.png'));
+
     $previewWatermarkImage = in_array(($selectedDocumentType ?? ''), ['advance-form', 'increment', 'appointment', 'experience', 'offer', 'job-rotation', 'job-application-form', 'no-due-clearance', 'loan-form', 'full-final-form', 'salary-certificate', 'relieving-letter'], true)
-        ? asset('software/img/Ocean_HR.png')
+        ? $companyWatermark
         : null;
 @endphp
 

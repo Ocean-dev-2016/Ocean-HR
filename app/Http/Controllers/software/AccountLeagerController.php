@@ -85,18 +85,22 @@ class AccountLeagerController extends Controller
     public function getLedgerReport(Request $request)
     {
         try {
-            $request->validate([
-                'company_id'    => 'required|integer',
-                'employee_id'   => 'required|integer',
-                'followup_date' => 'required|string',
-            ]);
-
-            $company_id = $request->company_id;
+            $company_id = null;
             if (Auth::guard('employees')->check()) {
                 $company_id = Auth::guard('employees')->user()->company_id;
             } elseif (!empty($this->authenticateLoginUserDetails?->company_id)) {
                 $company_id = $this->authenticateLoginUserDetails->company_id;
+            } elseif (session('selected_company_id')) {
+                $company_id = session('selected_company_id');
+            } else {
+                $company_id = $request->company_id;
             }
+
+            $request->validate([
+                'employee_id'   => 'required',
+                'followup_date' => 'required|string',
+            ]);
+
             $employee_id = $request->employee_id;
             $fromToDate = $request->followup_date;
 

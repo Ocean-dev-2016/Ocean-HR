@@ -39,10 +39,13 @@
                 method="POST" enctype="multipart/form-data">
                 <input type="hidden" id="edit_id" name="edit_id"
                     value="{{ isset($edit) && $edit?->id ? $edit?->id : '' }}" />
+                @if(isset($onboarding_id) && $onboarding_id)
+                    <input type="hidden" name="onboarding_id" value="{{ $onboarding_id }}" />
+                @endif
                 @csrf
-                @isset($edit)
+                @if(isset($edit) && $edit?->id)
                     @method('PUT')
-                @endisset
+                @endif
 
                 <div class="row">
 
@@ -284,7 +287,7 @@
                             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
                                 <input type="password" id="password"
                                     class="form-control @error('password') is-invalid @enderror " name="password"
-                                    placeholder="Password" aria-describedby="password" value="{{ old('password') }}" />
+                                    placeholder="Password" aria-describedby="password" value="{{ old('password', $edit->sp ?? '') }}" />
                                 <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword()">
                                     <i class="ti ti-eye-off" id="togglePasswordIcon"></i>
                                 </span>
@@ -568,7 +571,7 @@
                     <div class="{{ $colums ?? 'col-12' }}">
                         <div class="form-group">
                             <label class="form-label"> IFSC Code </label>
-                            <input id="ifsc_code" type="text"
+                            <input id="ifsc_code" type="text" maxlength="11"
                                 class="form-control @error('ifsc_code') is-invalid @enderror" name="ifsc_code"
                                 value="{{ isset($edit) && $edit?->ifsc_code ? $edit?->ifsc_code : old('ifsc_code') }}"
                                 placeholder="Enter IFSC Code">
@@ -581,16 +584,21 @@
                     {{-- Status --}}
                     <div class="{{ $colums ?? 'col-12' }}">
                         <div class="form-group">
-                            <label class="form-label">Status</label>
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            @php
+                                $selectedStatus = old('status', $edit->status ?? 'active');
+                            @endphp
                             <select class="form-control select2 w-100 @error('status') is-invalid @enderror"
                                 name="status" required>
-                                <option disabled selected>Select Status</option>
                                 @foreach (['active', 'inactive'] as $status)
-                                    <option value="{{ $status }}"
-                                        @if (isset($edit)) @if ($edit->status == $status) {{ 'selected' }} @endif
-                                    @else @if (old('status', 'active') == $status) {{ 'selected' }} @endif @endif> {{ ucfirst($status) }}</option>
+                                    <option value="{{ $status }}" {{ $selectedStatus == $status ? 'selected' : '' }}>
+                                        {{ ucfirst($status) }}
+                                    </option>
                                 @endforeach
                             </select>
+                            @error('status')
+                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                            @enderror
                         </div>
                     </div>
 
@@ -602,7 +610,7 @@
                     {{-- Submit Buttons --}}
                     <div class="col-md-12 text-center">
                         <button type="submit" class="btn btn-success mt-1 mb-1">
-                            {{ isset($edit) ? 'Update' : 'Submit' }}
+                            {{ isset($edit) && $edit?->id ? 'Update' : 'Submit' }}
                         </button>
                         <a href="{{ route($route . '.index') }}" class="btn btn-danger mt-1 mb-1">Cancel</a>
                     </div>
@@ -800,7 +808,7 @@
     @if (!$company_id)
         @include('utils.getCompany')
     @else
-        @if (!isset($edit))
+        @if (!isset($edit) || !$edit?->id)
             <script>
                 $(document).ready(function() {
                     // Check company setting on page load
@@ -808,7 +816,7 @@
                 });
             </script>
         @endif
-        @if ($company_id && !isset($edit) && isset($isManual) && $isManual)
+        @if ($company_id && (!isset($edit) || !$edit?->id) && isset($isManual) && $isManual)
             <script>
                 $(document).ready(function() {
                     getEmployeeCode();

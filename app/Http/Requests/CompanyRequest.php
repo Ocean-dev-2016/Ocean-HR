@@ -25,6 +25,20 @@ class CompanyRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
+    protected function prepareForValidation()
+    {
+        if ($this->has('pan_card') && !empty($this->pan_card)) {
+            $this->merge([
+                'pan_card' => strtoupper(trim(str_replace(' ', '', $this->pan_card))),
+            ]);
+        }
+        if ($this->has('gst_no') && !empty($this->gst_no)) {
+            $this->merge([
+                'gst_no' => strtoupper(trim(str_replace(' ', '', $this->gst_no))),
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         $id = $this->route('company') ?? $this->route('id') ?? $this->input('id') ?? $this->input('company_id') ?? 0;
@@ -41,6 +55,11 @@ class CompanyRequest extends FormRequest
                 'size:15', // GSTIN must be exactly 15 characters
                 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
                 Rule::unique((new Company())->getTable())->ignore($companyId)->whereNull('deleted_at'),
+            ],
+            'pan_card' => [
+                'nullable',
+                'size:10',
+                'regex:/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/',
             ],
             'company_name' => $isTeamUpdate ? ['nullable', 'max:255'] : [
                 'required',

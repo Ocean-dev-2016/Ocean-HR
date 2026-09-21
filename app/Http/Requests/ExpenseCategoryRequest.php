@@ -26,10 +26,10 @@ class ExpenseCategoryRequest extends FormRequest
      */
     public function rules(Request $request): array
     {
-        $expenseCategory = $request->route('expense-category');
+        $expenseCategory = $request->route('expense_category') ?? $request->route('expense-category');
         $id = $expenseCategory instanceof ExpenseCategory
             ? $expenseCategory->id
-            : ($request->edit_id ?? 0);
+            : ($expenseCategory ?: ($request->edit_id ?? $request->id ?? 0));
 
         $rules = [
             'company_id' => [
@@ -50,10 +50,12 @@ class ExpenseCategoryRequest extends FormRequest
                 Rule::unique((new ExpenseCategory())->getTable(), 'name')
                     ->where(function ($query) use ($request) {
                         $query->where('company_id', $request->company_id);
-                        if ($request->branch_id) {
+                        if (!empty($request->branch_id)) {
                             $query->where('branch_id', $request->branch_id);
                         } else {
-                            $query->whereNull('branch_id');
+                            $query->where(function ($q) {
+                                $q->whereNull('branch_id')->orWhere('branch_id', 0)->orWhere('branch_id', '');
+                            });
                         }
                     })
                     ->ignore($id),

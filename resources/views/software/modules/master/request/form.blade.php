@@ -68,7 +68,7 @@
                         <div class="form-group @error('request_from_employee_name') is-invalid @enderror">
                             <label class="form-label">Select From Employee <span class="text-danger">*</span></label>
                             <select id="request_from_employee_name"
-                                class="form-control select2 search_by_employee @error('request_from_employee_name') is-invalid @enderror"
+                                class="form-control select2 @error('request_from_employee_name') is-invalid @enderror"
                                 name="request_from_employee_name"
                                 data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? '') }}">
                                 <option value="">Select Employee</option>
@@ -85,7 +85,7 @@
                         <div class="form-group @error('request_to_employee_name') is-invalid @enderror">
                             <label class="form-label">Select To Employee <span class="text-danger">*</span></label>
                             <select id="request_to_employee_name"
-                                class="form-control select2 search_by_employee @error('request_to_employee_name') is-invalid @enderror"
+                                class="form-control select2 @error('request_to_employee_name') is-invalid @enderror"
                                 name="request_to_employee_name"
                                 data-selectedemployeeid="{{ old('request_to_employee_name') ?? ($edit->request_to_employee_name ?? '') }}">
                                 <option value="">Select Employee</option>
@@ -207,32 +207,87 @@
                 }
             }
         }
-        $(document).ready(function() {
-            $('#request_from_employee_name').on('change', function() {
-                let fromId = $(this).data('selectedemployeeid');
+        function fetchEmployeesForRequestForm() {
+            let company_id = $('select[name="company_id"]').val() || $('input[name="company_id"]').val() || $('meta[name="company_id"]').attr('value');
+            if (!company_id) return;
 
-                $('#request_to_employee_name option').prop('disabled', false); // reset
-                if (fromId) {
-                    $('#request_to_employee_name option[value="' + fromId + '"]').prop('disabled', true);
+            let fromSelected = $('#request_from_employee_name').data('selectedemployeeid') || $('#request_from_employee_name').val() || '';
+            let toSelected = $('#request_to_employee_name').data('selectedemployeeid') || $('#request_to_employee_name').val() || '';
+
+            $('#request_from_employee_name, #request_to_employee_name').html('<option value="">Loading...</option>');
+
+            $.ajax({
+                type: 'POST',
+                url: '{{ url("api/get-employee") }}',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                data: {
+                    company_id: company_id
+                },
+                success: function (response) {
+                    if (response.status && Array.isArray(response.data)) {
+                        let fromOptions = '<option value="">Select Employee</option>';
+                        let toOptions = '<option value="">Select Employee</option>';
+
+                        $.each(response.data, function (i, item) {
+                            let isFromSelected = (fromSelected != '' && fromSelected.toString() == item.id.toString());
+                            let isToSelected = (toSelected != '' && toSelected.toString() == item.id.toString());
+
+                            let fromSel = isFromSelected ? 'selected' : '';
+                            let toSel = isToSelected ? 'selected' : '';
+                            let toDisabled = (fromSelected != '' && fromSelected.toString() == item.id.toString()) ? 'disabled' : '';
+
+                            fromOptions += `<option value="${item.id}" ${fromSel}>${item.employee_code} - ${item.full_name}</option>`;
+                            toOptions += `<option value="${item.id}" ${toSel} ${toDisabled}>${item.employee_code} - ${item.full_name}</option>`;
+                        });
+
+                        $('#request_from_employee_name').html(fromOptions).select2();
+                        $('#request_to_employee_name').html(toOptions).select2();
+                    } else {
+                        $('#request_from_employee_name, #request_to_employee_name').html('<option value="">No Employees Found</option>').select2();
+                    }
+                },
+                error: function (err) {
+                    console.error('Employee fetch failed', err);
+                    $('#request_from_employee_name, #request_to_employee_name').html('<option value="">Error loading employees</option>').select2();
                 }
+            });
+        }
 
-                // $('#request_to_employee_name').trigger('change'); // refresh
+        function syncEmployeeDropdowns() {
+            let fromId = $('#request_from_employee_name').val();
+            let toId = $('#request_to_employee_name').val();
 
-                // If request_to already has saved value (edit mode), reselect it
-                let toSelectedId = $('#request_to_employee_name').data('selectedemployeeid');
-                if (toSelectedId) {
-                    $('#request_to_employee_name').val(toSelectedId).trigger(
-                    'change'); // 👈 select correct option
+            $('#request_to_employee_name option').each(function() {
+                let val = $(this).val();
+                if (val && fromId && val.toString() === fromId.toString()) {
+                    $(this).prop('disabled', true);
+                } else {
+                    $(this).prop('disabled', false);
                 }
             });
 
-            setTimeout(() => {
-                $('#request_from_employee_name').trigger('change'); // refresh
-            }, 1500);
+            if (toId && fromId && toId.toString() === fromId.toString()) {
+                $('#request_to_employee_name').val('').trigger('change');
+            } else {
+                $('#request_to_employee_name').select2();
+            }
+        }
+
+        $(document).ready(function() {
+            fetchEmployeesForRequestForm();
+
+            $(document).on('change', 'select[name="company_id"], .search_by_company', function() {
+                fetchEmployeesForRequestForm();
+            });
+
+            $(document).on('change', '#request_from_employee_name', function() {
+                syncEmployeeDropdowns();
+            });
         });
     </script>
     @if (!$company_id)
         @include('utils.getCompany')
     @endif
-    @include('utils.getEmployee')
 @endpush

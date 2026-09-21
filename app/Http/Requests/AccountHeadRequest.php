@@ -28,13 +28,15 @@ class AccountHeadRequest extends FormRequest
 
         return [
             'company_id' => ['required', Rule::exists((new Company())->getTable(), 'id')],
-            'date' => ['nullable', 'date'],
+            'account_head_id' => ['required'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'date' => ['nullable'],
             'description' => ['nullable', 'string', 'max:500'],
             'debit_amount' => ['nullable', 'numeric', 'min:0'],
             'credit_amount' => ['nullable', 'numeric', 'min:0'],
             'balance' => ['nullable', 'numeric'],
-            'to_date' => ['nullable', 'date'],
-            'from_date' => ['nullable', 'date'],
+            'from_date' => ['required'],
+            'to_date' => ['required'],
             'status' => ['required', 'in:active,inactive'],
             'created_by' => ['nullable', 'string', 'max:255'],
             'updated_by' => ['nullable', 'string', 'max:255'],
@@ -49,7 +51,10 @@ class AccountHeadRequest extends FormRequest
         return [
             'company_id.required' => 'Please select a company.',
             'company_id.exists' => 'The selected company is invalid.',
+            'account_head_id.required' => 'Please select an account head.',
 
+            'from_date.required' => 'Please select From Date.',
+            'to_date.required' => 'Please select To Date.',
             'date.date' => 'Please enter a valid date.',
             'to_date.date' => 'Please enter a valid To Date.',
             'from_date.date' => 'Please enter a valid From Date.',

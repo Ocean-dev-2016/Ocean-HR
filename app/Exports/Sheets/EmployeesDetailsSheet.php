@@ -95,15 +95,17 @@ class EmployeesDetailsSheet implements FromCollection, WithHeadings, WithMapping
         }
 
         $route = $this->modules['route'] ?? null;
+        $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
         if ($route === 'contractor-employees') {
-            $contractTypeId = \App\Models\EmployeeType::where('name', 'Contractor Salary')->pluck('id');
-            $query->whereHas('employmentDetail', function ($q) use ($contractTypeId) {
-                $q->whereIn('employment_type', $contractTypeId);
+            $query->whereHas('employmentDetail', function ($q) use ($contractTypeIds) {
+                $q->whereIn('employment_type', $contractTypeIds);
             });
         } elseif ($route === 'employees') {
-            $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-            $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
-                $q->whereIn('employment_type', $payrollTypeId);
+            $query->where(function ($q) use ($contractTypeIds) {
+                $q->whereHas('employmentDetail', function ($innerQ) use ($contractTypeIds) {
+                    $innerQ->whereNotIn('employment_type', $contractTypeIds)
+                        ->orWhereNull('employment_type');
+                })->orDoesntHave('employmentDetail');
             });
         }
 

@@ -58,6 +58,17 @@ class EmploymentDetailExport implements FromCollection, WithHeadings, WithMappin
             }
         }
 
+        $route = $this->modules['route'] ?? null;
+        $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+        if ($route === 'contractor-employment-details') {
+            $query->whereIn('employment_type', $contractTypeIds);
+        } elseif ($route === 'employment-details') {
+            $query->where(function ($q) use ($contractTypeIds) {
+                $q->whereNotIn('employment_type', $contractTypeIds)
+                    ->orWhereNull('employment_type');
+            });
+        }
+
 
         $search = trim($this->filter_params->search ?? '');
         if ($search !== '') {

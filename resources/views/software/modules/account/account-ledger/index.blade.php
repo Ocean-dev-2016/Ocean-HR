@@ -260,21 +260,29 @@
         </script>
 
         <script>
+            const isMasterAdmin = {{ empty($company_id) ? 'true' : 'false' }};
+
             function getCompanyId() {
-                return $('#company_id').val() || '{{ $company_id ?? '' }}';
+                return $('#company_id').val() || '{{ $company_id ?? '' }}' || '{{ session('selected_company_id') ?? '' }}' || '{{ $authLoginUserDetail?->company_id ?? '' }}';
             }
+
             $('#view_ledger_btn').on('click', function(e) {
                 e.preventDefault();
 
-                // let company_id = $('#company_id').val();
                 let company_id = getCompanyId();
                 let employee_id = $('#employee_id').val();
                 let followup_date = $('input[name="followup_date"]').val().replace(' to ', ' - ');
 
-                // console.log(followup_date);
-                if (!company_id || !employee_id || !followup_date) {
-                    toastr.error("Please select Company, Employee, and Date range.");
-                    return;
+                if (isMasterAdmin) {
+                    if (!company_id || !employee_id || !followup_date) {
+                        toastr.error("Please select Company, Employee, and Date range.");
+                        return;
+                    }
+                } else {
+                    if (!employee_id || !followup_date) {
+                        toastr.error("Please select Employee, and Date range.");
+                        return;
+                    }
                 }
 
                 $.ajax({
@@ -338,9 +346,21 @@
 
         <script>
             document.getElementById("print_ledger_btn")?.addEventListener("click", function() {
-                const company_id = document.getElementById("company_id")?.value;
+                const company_id = getCompanyId();
                 const employee_id = document.getElementById("employee_id")?.value;
                 let followup_date = document.querySelector('input[name="followup_date"]')?.value || '';
+
+                if (isMasterAdmin) {
+                    if (!company_id || !employee_id || !followup_date) {
+                        toastr.error("Please select Company, Employee, and Date range.");
+                        return;
+                    }
+                } else {
+                    if (!employee_id || !followup_date) {
+                        toastr.error("Please select Employee, and Date range.");
+                        return;
+                    }
+                }
 
                 // ✅ Fix for "Trailing data" error — normalize format
                 if (followup_date.includes(' to ')) {

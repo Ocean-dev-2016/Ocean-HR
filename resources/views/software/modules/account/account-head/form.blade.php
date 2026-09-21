@@ -10,11 +10,7 @@
 
 @endphp
 @section('page_leavel_style')
-    {{-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"> --}}
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css" />
-
-
+    <link rel="stylesheet" href="{{ asset('software/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 @section('title', $page_title)
 
@@ -121,12 +117,12 @@
 
 
 
-                    {{-- Date (Read Only) --}}
+                    {{-- Date --}}
                     <div class="{{ $colums ?? 'col-md-4' }}">
                         <div class="form-group">
                             <label class="form-label">Date</label>
-                            <input type="text" name="date" class="form-control"
-                                value="{{ old('date', $edit->date ?? '') }}" readonly>
+                            <input type="text" id="date" name="date" class="form-control"
+                                value="{{ old('date', (isset($edit) && $edit?->date) ? \Carbon\Carbon::parse($edit->date)->format('d-m-Y') : date('d-m-Y')) }}" placeholder="DD-MM-YYYY">
                         </div>
                     </div>
 
@@ -165,16 +161,16 @@
                                 value="{{ old('balance', $edit->balance ?? '') }}" readonly>
                         </div>
                     </div>
-                    {{-- To Date --}}
+                    {{-- From Date --}}
                     <div class="{{ $colums ?? 'col-12' }}">
                         <div class="form-group">
-                            <label class="form-label">To Date <span class="text-danger">*</span> </label>
+                            <label class="form-label">From Date <span class="text-danger">*</span> </label>
 
-                            <input type="text" id="to_date" name="to_date"
-                                class="form-control plan-form @error('to_date') is-invalid @enderror"
-                                value="{{ isset($edit) && $edit?->to_date ? $edit->to_date : (request()->isMethod('post') ? old('to_date') : '') }}"
-                                placeholder=" To Date" />
-                            @error('to_date')
+                            <input type="text" id="from_date" name="from_date"
+                                class="form-control plan-form @error('from_date') is-invalid @enderror"
+                                value="{{ old('from_date', (isset($edit) && $edit?->from_date) ? \Carbon\Carbon::parse($edit->from_date)->format('d-m-Y') : '') }}"
+                                placeholder="DD-MM-YYYY" required />
+                            @error('from_date')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                             @enderror
                         </div>
@@ -182,13 +178,13 @@
                     {{-- To Date --}}
                     <div class="{{ $colums ?? 'col-12' }}">
                         <div class="form-group">
-                            <label class="form-label">From Date <span class="text-danger">*</span> </label>
+                            <label class="form-label">To Date <span class="text-danger">*</span> </label>
 
-                            <input type="text" id="from_date" name="from_date"
-                                class="form-control plan-form @error('from_date') is-invalid @enderror"
-                                value="{{ isset($edit) && $edit?->from_date ? $edit->from_date : (request()->isMethod('post') ? old('from_date') : '') }}"
-                                placeholder=" From Date" />
-                            @error('from_date')
+                            <input type="text" id="to_date" name="to_date"
+                                class="form-control plan-form @error('to_date') is-invalid @enderror"
+                                value="{{ old('to_date', (isset($edit) && $edit?->to_date) ? \Carbon\Carbon::parse($edit->to_date)->format('d-m-Y') : '') }}"
+                                placeholder="DD-MM-YYYY" required />
+                            @error('to_date')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                             @enderror
                         </div>
@@ -224,21 +220,28 @@
 @endsection
 
 @push('page_scripts')
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="{{ asset('software/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 
     <script type="text/javascript">
-        flatpickr("#to_date", {
-            defaultDate: null,
-            // Remove minDate so past dates are selectable
-            dateFormat: "Y-m-d"
+        flatpickr("#date", {
+            dateFormat: "d-m-Y",
+            allowInput: true,
+            defaultDate: "{{ old('date', (isset($edit) && $edit?->date) ? \Carbon\Carbon::parse($edit->date)->format('d-m-Y') : date('d-m-Y')) }}"
         });
-    </script>
-    <script type="text/javascript">
-        flatpickr("#from_date", {
-            defaultDate: null,
-            // Remove minDate so past dates are selectable
-            dateFormat: "Y-m-d"
+
+        const toPicker = flatpickr("#to_date", {
+            dateFormat: "d-m-Y",
+            allowInput: true
+        });
+
+        const fromPicker = flatpickr("#from_date", {
+            dateFormat: "d-m-Y",
+            allowInput: true,
+            onChange: function(selectedDates, dateStr) {
+                if (dateStr && toPicker) {
+                    toPicker.set('minDate', dateStr);
+                }
+            }
         });
     </script>
     <script>
@@ -257,13 +260,22 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.status && response.data) {
-                    $('input[name="date"]').val(response.data.date ?? '');
+                    if (document.querySelector('#date') && document.querySelector('#date')._flatpickr) {
+                        document.querySelector('#date')._flatpickr.setDate(response.data.date ?? '', true);
+                    } else {
+                        $('input[name="date"]').val(response.data.date ?? '');
+                    }
                     $('input[name="description"]').val(response.data.description ?? '');
                     $('input[name="debit_amount"]').val(response.data.debit_amount ?? '');
                     $('input[name="credit_amount"]').val(response.data.credit_amount ?? '');
                     $('input[name="balance"]').val(response.data.balance ?? '');
                 } else {
-                    $('input[name="date"], input[name="description"], input[name="debit_amount"], input[name="credit_amount"], input[name="balance"]').val('');
+                    if (document.querySelector('#date') && document.querySelector('#date')._flatpickr) {
+                        document.querySelector('#date')._flatpickr.clear();
+                    } else {
+                        $('input[name="date"]').val('');
+                    }
+                    $('input[name="description"], input[name="debit_amount"], input[name="credit_amount"], input[name="balance"]').val('');
                 }
             }
         });

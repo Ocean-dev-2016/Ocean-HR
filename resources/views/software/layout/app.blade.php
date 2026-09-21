@@ -150,6 +150,15 @@
                     <div class="content-wrapper">
                         <!-- Content -->
                         <div class="container-fuild flex-grow-1 container-p-y container-p-x">
+                            @if (!Auth::guard('admin_software')->check())
+                                <!-- Free 7-Day Trial Plan Marquee Notice -->
+                                <div class="trial-marquee-container mb-3" style="min-height: 24px; line-height: 24px; overflow: hidden;">
+                                    <marquee behavior="scroll" direction="left" scrollamount="6" onmouseover="this.stop();" onmouseout="this.start();" class="text-dark fw-semibold mb-0" style="font-size: 13.5px; line-height: 24px; display: block; cursor: pointer;">
+                                        🎉 <strong>Free 7-Day Trial Plan:</strong> You are currently using the <strong>Free 7-Day Trial Plan</strong>. If you want to continue without interruption or upgrade your plan, please contact <strong>Admin / Support</strong>.
+                                    </marquee>
+                                </div>
+                            @endif
+
                             @yield('content')
                         </div>
                     </div>

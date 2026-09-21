@@ -121,15 +121,13 @@ class EmployeeController extends Controller
                             }
                         });
 
-                    $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-                    $gridQuery->where(function ($query) use ($payrollTypeId) {
-                        $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
-                            $q->whereIn('employment_type', $payrollTypeId);
+                    $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                    $gridQuery->where(function ($query) use ($contractTypeIds) {
+                        $query->whereHas('employmentDetail', function ($q) use ($contractTypeIds) {
+                            $q->whereNotIn('employment_type', $contractTypeIds)
+                                ->orWhereNull('employment_type');
                         })
-                            ->orWhereDoesntHave('employmentDetail')
-                            ->orWhereHas('employmentDetail', function ($q) {
-                                $q->whereNull('employment_type');
-                            });
+                            ->orDoesntHave('employmentDetail');
                     });
 
                     if (isset($modules['restore_permission']) && $modules['restore_permission']) {
@@ -195,16 +193,14 @@ class EmployeeController extends Controller
                         }
                     });
 
-                // Show only Company Payroll OR employees without any employment details record or with unassigned employment type
-                $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-                $data->where(function ($query) use ($payrollTypeId) {
-                    $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
-                        $q->whereIn('employment_type', $payrollTypeId);
+                // Show regular employees (exclude contractor types) OR employees without any employment details record or with unassigned employment type
+                $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                $data->where(function ($query) use ($contractTypeIds) {
+                    $query->whereHas('employmentDetail', function ($q) use ($contractTypeIds) {
+                        $q->whereNotIn('employment_type', $contractTypeIds)
+                            ->orWhereNull('employment_type');
                     })
-                        ->orWhereDoesntHave('employmentDetail')
-                        ->orWhereHas('employmentDetail', function ($q) {
-                            $q->whereNull('employment_type');
-                        });
+                        ->orDoesntHave('employmentDetail');
                 });
 
                 if (isset($modules['restore_permission']) && $modules['restore_permission']) {
@@ -378,15 +374,13 @@ class EmployeeController extends Controller
                     }
                 });
 
-            $payrollTypeId = \App\Models\EmployeeType::where('name', 'Company Payroll')->pluck('id');
-            $initialGridQuery->where(function ($query) use ($payrollTypeId) {
-                $query->whereHas('employmentDetail', function ($q) use ($payrollTypeId) {
-                    $q->whereIn('employment_type', $payrollTypeId);
+            $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+            $initialGridQuery->where(function ($query) use ($contractTypeIds) {
+                $query->whereHas('employmentDetail', function ($q) use ($contractTypeIds) {
+                    $q->whereNotIn('employment_type', $contractTypeIds)
+                        ->orWhereNull('employment_type');
                 })
-                    ->orWhereDoesntHave('employmentDetail')
-                    ->orWhereHas('employmentDetail', function ($q) {
-                        $q->whereNull('employment_type');
-                    });
+                    ->orDoesntHave('employmentDetail');
             });
 
             if (isset($modules['restore_permission']) && $modules['restore_permission']) {
@@ -434,6 +428,113 @@ class EmployeeController extends Controller
             }
             $team_roles = $team_roles->get();
             View::share('team_roles', $team_roles);
+
+            if ($request->filled('onboarding_id')) {
+                $onboarding = \App\Models\Onboarding::with(['documents'])->find($request->onboarding_id);
+                if ($onboarding) {
+                    $aadharDoc = $onboarding->documents ? $onboarding->documents->where('document_type', 'aadhar_card')->first() : null;
+                    $panDoc = $onboarding->documents ? $onboarding->documents->where('document_type', 'pan_card')->first() : null;
+
+                    $edit = new \App\Models\Employee();
+                    $edit->forceFill([
+                        'company_id' => $onboarding->company_id,
+                        'branch_id' => $onboarding->branch_id,
+                        'parent_id' => $onboarding->reporting_manager_id,
+                        'role_id' => $onboarding->role_id,
+                        'first_name' => $onboarding->first_name,
+                        'middle_name' => $onboarding->middle_name,
+                        'father_name' => $onboarding->father_name,
+                        'last_name' => $onboarding->last_name,
+                        'full_name' => $onboarding->full_name,
+                        'email' => $onboarding->email,
+                        'contact_number' => $onboarding->contact_number,
+                        'other_number' => $onboarding->other_number,
+                        'date_of_birth' => $onboarding->date_of_birth ? Carbon::parse($onboarding->date_of_birth)->format('d-m-Y') : '',
+                        'gender' => $onboarding->gender,
+                        'blood_group' => $onboarding->blood_group,
+                        'marital_status' => $onboarding->marital_status,
+                        'current_address' => $onboarding->current_address,
+                        'permanent_address' => $onboarding->permanent_address,
+                        'aadhar_card_number' => $aadharDoc?->document_number ?? '',
+                        'pan_card_number' => $panDoc?->document_number ?? '',
+                        'status' => 'active',
+                    ]);
+                    $edit->id = null;
+
+                    View::share('edit', $edit);
+                    View::share('onboarding_id', $onboarding->id);
+                }
+            }
+
+            return view($modules['folder_path'] . '.form');
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
+    }
+
+    public function convert_employee($id, Request $request)
+    {
+        $modules = $this->modules;
+        $modules['addPermission'] = Gate::check('hasPermission', ['add', $modules['module_name']]);
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['currentGuard'] = ($this->currentGuard) ? $this->currentGuard : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['add_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        View::share('modules', $modules);
+
+        try {
+            $team_roles = TeamRole::where('status', 'active');
+            if ($modules['company_id']) {
+                $team_roles->where('company_id', $modules['company_id']);
+            }
+            $team_roles = $team_roles->get();
+            View::share('team_roles', $team_roles);
+
+            $onboarding = \App\Models\Onboarding::with(['documents'])->findOrFail($id);
+            $aadharDoc = $onboarding->documents ? $onboarding->documents->where('document_type', 'aadhar_card')->first() : null;
+            $panDoc = $onboarding->documents ? $onboarding->documents->where('document_type', 'pan_card')->first() : null;
+
+            $edit = new \App\Models\Employee();
+            $edit->forceFill([
+                'company_id' => $onboarding->company_id,
+                'branch_id' => $onboarding->branch_id,
+                'parent_id' => $onboarding->reporting_manager_id,
+                'role_id' => $onboarding->role_id,
+                'first_name' => $onboarding->first_name,
+                'middle_name' => $onboarding->middle_name,
+                'father_name' => $onboarding->father_name,
+                'last_name' => $onboarding->last_name,
+                'full_name' => $onboarding->full_name,
+                'email' => $onboarding->email,
+                'contact_number' => $onboarding->contact_number,
+                'other_number' => $onboarding->other_number,
+                'date_of_birth' => $onboarding->date_of_birth ? Carbon::parse($onboarding->date_of_birth)->format('d-m-Y') : '',
+                'gender' => $onboarding->gender,
+                'blood_group' => $onboarding->blood_group,
+                'marital_status' => $onboarding->marital_status,
+                'current_address' => $onboarding->current_address,
+                'permanent_address' => $onboarding->permanent_address,
+                'aadhar_card_number' => $aadharDoc?->document_number ?? '',
+                'pan_card_number' => $panDoc?->document_number ?? '',
+                'status' => 'active',
+            ]);
+            $edit->id = null;
+
+            View::share('edit', $edit);
+            View::share('onboarding_id', $onboarding->id);
 
             return view($modules['folder_path'] . '.form');
         } catch (\Exception $e) {
@@ -496,7 +597,57 @@ class EmployeeController extends Controller
             $validated['password'] = Hash::make($request?->password);
             $validated['sp'] = Helper::generateSP($request?->password);
             // dd($request->all(), $validated);
-            Employee::create($validated);
+            $employee = Employee::create($validated);
+
+            if ($request->filled('onboarding_id')) {
+                $onboarding = \App\Models\Onboarding::find($request->onboarding_id);
+                if ($onboarding) {
+                    $onboarding->employee_id = $employee->id;
+                    $onboarding->status = 'completed';
+                    $onboarding->completed_at = Carbon::now();
+                    $onboarding->completed_by = Auth::id();
+                    $onboarding->progress_percentage = 100;
+                    $onboarding->save();
+
+                    // Create or sync EmploymentDetail
+                    \App\Models\EmploymentDetail::updateOrCreate([
+                        'employee_id' => $employee->id,
+                        'company_id' => $employee->company_id,
+                    ], [
+                        'designation_type' => 'employee',
+                        'department_id' => $onboarding->department_id ?: 1,
+                        'sub_department_id' => $onboarding->sub_department_id,
+                        'designation_id' => $onboarding->designation_id ?: 1,
+                        'shift' => $onboarding->shift_id ?: 1,
+                        'date_of_joining' => $onboarding->joining_date ? $onboarding->joining_date->format('Y-m-d') : Carbon::now()->format('Y-m-d'),
+                        'employment_confirmation_date' => $onboarding->probation_end_date ? $onboarding->probation_end_date->format('Y-m-d') : null,
+                        'payment_mode' => 'NEFT',
+                        'employment_type' => $onboarding->employment_type ?: 1,
+                        'outdoor_attendance' => 'no',
+                        'status' => 'active',
+                        'created_by' => Auth::id(),
+                    ]);
+
+                    // Sync assigned assets
+                    if (method_exists($onboarding, 'assets')) {
+                        foreach ($onboarding->assets()->whereIn('status', ['assigned', 'handed_over'])->get() as $asset) {
+                            \App\Models\EmployeeAsignAssets::create([
+                                'company_id' => $employee->company_id,
+                                'employee_id' => $employee->id,
+                                'assets_id' => $asset->assets_allocation_master_id ?: 1,
+                                'date' => $asset->issued_date ? $asset->issued_date->format('Y-m-d') : Carbon::now()->format('Y-m-d'),
+                                'reference_no' => $asset->asset_code_or_serial ?: 'ONB-' . $asset->id,
+                                'descrption' => $asset->asset_name . ' (' . ($asset->specification_or_size ?: '') . ')',
+                                'status' => 'active',
+                                'created_by' => Auth::id(),
+                            ]);
+                        }
+                    }
+
+                    return Redirect::route('onboarding.show', $onboarding->id)
+                        ->withSuccess('Employee created and linked to onboarding successfully!');
+                }
+            }
 
             return Redirect::route($modules['route'] . '.index')->withSuccess($modules['title'] . ' create successfully');
         } catch (\Exception $e) {

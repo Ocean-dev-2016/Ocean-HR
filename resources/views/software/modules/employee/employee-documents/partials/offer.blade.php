@@ -10,7 +10,7 @@
         ?? ($selectedEmployee?->company?->order_header_logo_url ?? null)
         ?? ($selectedEmployee?->company?->company_logo_url ?? null)
         ?? asset('software/img/logo.png');
-    $watermarkImage = $watermarkImage ?? asset('software/img/Ocean_HR.png');
+    $watermarkImage = $watermarkImage ?? asset('software/img/ring.png');
     $referenceNo = 'ASIPL_Offer_26-27_xxxxxxxx';
     $today = \Carbon\Carbon::now()->format('d-m-Y');
 @endphp

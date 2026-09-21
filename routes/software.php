@@ -436,6 +436,7 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::post('onboarding/{id}/asset-assign', [OnboardingController::class, 'assignAsset'])->name('onboarding.asset.assign');
     Route::post('onboarding/{id}/step6-finalize', [OnboardingController::class, 'assignReportingAndFinalize'])->name('onboarding.step6.finalize');
     Route::post('onboarding/{id}/convert-to-employee', [OnboardingController::class, 'convertToEmployee'])->name('onboarding.employee.convert');
+    Route::get('convert-employee/{id}', [EmployeeController::class, 'convert_employee'])->name('onboarding.convert-employee');
 
     //Employee Assets Allocation Details
     Route::resource('employee-assign-assets', EmployeeAssignAssetsController::class);

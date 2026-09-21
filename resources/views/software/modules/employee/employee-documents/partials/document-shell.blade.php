@@ -59,8 +59,9 @@
         left: 50%;
         top: 52%;
         transform: translate(-50%, -50%);
-        width: min(140mm, 82%);
-        height: auto;
+        width: min(120mm, 70%);
+        max-height: 120mm;
+        object-fit: contain;
         opacity: 0.10;
         pointer-events: none;
         z-index: 0;

@@ -45,6 +45,12 @@ class EmployeeRequest extends FormRequest
                 'full_name' => implode(' ', $parts),
             ]);
         }
+
+        if ($this->has('ifsc_code') && !empty($this->ifsc_code)) {
+            $this->merge([
+                'ifsc_code' => strtoupper(trim(str_replace(' ', '', $this->ifsc_code))),
+            ]);
+        }
     }
 
     public function rules(Request $request): array
@@ -158,7 +164,7 @@ class EmployeeRequest extends FormRequest
             'other_number' => ['nullable', 'numeric', 'digits:10'],
             'date_of_anniversary' => ['nullable', 'date', 'before_or_equal:today'],
             'bank_account_number' => ['nullable', 'string', 'digits_between:9,18'],
-            'ifsc_code' => ['nullable', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/', 'max:11'],
+            'ifsc_code' => ['nullable', 'string', 'size:11'],
             'status' => ['required', 'in:active,inactive'],
         ];
 
@@ -171,7 +177,7 @@ class EmployeeRequest extends FormRequest
     {
         return [
             'password.regex' => 'A :attribute must include at least 1 uppercase, 1 lowercase, 1 number, and 1 special character (@$!%*?&).',
-            'ifsc_code.regex' => 'A :attribute field format is invalid. (e.g., ABCD0123456 )',
+            'ifsc_code.size' => 'The IFSC Code must be exactly 11 characters.',
         ];
     }
 }

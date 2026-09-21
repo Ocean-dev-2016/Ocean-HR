@@ -73,7 +73,7 @@ class RequestFormController extends Controller
                 (object)['data' => "company.company_name", 'name' => 'company_id', 'td_label' => 'Company Name', 'className' =>  ''],
                 (object)['data' => "request_from_employee_id", 'name' => 'request_from_employee_name', 'td_label' => 'Request From', 'className' => 'w-15 text-start'],
                 (object)['data' => "request_to_employee_id", 'name' => 'request_to_employee_name', 'td_label' => 'Request To', 'className' => 'w-15 text-start'],
-                (object)['data' => "attechment", 'name' => 'attechment', 'td_label' => 'attechment', 'className' => 'w-10 text-start'],
+                (object)['data' => "attechment", 'name' => 'attechment', 'td_label' => 'Attachment', 'className' => 'w-10 text-start'],
                 (object)['data' => "request_description", 'name' => 'request_description', 'td_label' => 'Description', 'className' => 'w-20 text-start text-wrap'],
                 (object)['data' => "status", 'name' => 'status', 'td_label' => 'Status', 'className' =>  'w-5 text-start'],
                 (object)['data' => "action", 'name' => 'action', 'td_label' => 'Action', 'orderable' => false, 'searchable' => false, 'className' =>  'w-10 text-start'],
@@ -141,9 +141,8 @@ class RequestFormController extends Controller
                     })
 
                     ->editColumn('attechment', function ($row) {
-                        if ($row->attechment) {
-                            $url = asset($row->attechment);
-                            return '<img src="' . $url . '" alt="attechment" style="width:80px; height:auto;" />';
+                        if ($row->attechment && $row->attechment_url) {
+                            return '<a href="' . $row->attechment_url . '" target="_blank" class="btn btn-sm btn-info text-white"><i class="ti ti-file me-1"></i> File</a>';
                         }
                         return '-';
                     })

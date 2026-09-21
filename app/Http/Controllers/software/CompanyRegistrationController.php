@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\CompanyDetails;
 use App\Models\CompanyRegistration;
 use App\Models\CompanySubscriptionPlan;
+use App\Models\Employee;
 use App\Models\MasterCountry;
 use App\Models\PlanMaster;
 use Illuminate\Http\Request;
@@ -41,11 +42,29 @@ class CompanyRegistrationController extends Controller
     {
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
 
         try {
+            $modules['viewPermission'] = Gate::check('hasPermission', ['view', $modules['module_name']]);
+            $modules['addPermission'] = Gate::check('hasPermission', ['add', $modules['module_name']]);
+            $modules['editPermission'] = Gate::check('hasPermission', ['update', $modules['module_name']]);
+            $modules['deletePermission'] = Gate::check('hasPermission', ['delete', $modules['module_name']]);
+
+            if (!$modules['viewPermission']) {
+                if ($request->ajax()) {
+                    return $this->sendError('Unauthorized', [], [], 403);
+                }
+                return redirect()->route('software.dashboard')->withErrors('Unauthorized');
+            }
+
+            View::share('modules', $modules);
+
             $columns = [
                 (object)['data' => 'company_name', 'name' => 'company_name', 'td_label' => 'Company Name', 'className' => 'w-20', 'orderable' => true, 'searchable' => true],
-                (object)['data' => 'person_name', 'name' => 'person_name', 'td_label' => 'Person Details', 'className' => 'w-25 text-wrap', 'orderable' => true, 'searchable' => true],
+                (object)['data' => 'person_name', 'name' => 'person_name', 'td_label' => 'Person Details', 'className' => 'w-20 text-wrap', 'orderable' => true, 'searchable' => true],
+                (object)['data' => 'register_type', 'name' => 'register_type', 'td_label' => 'Register Type', 'className' => 'text-center', 'orderable' => true, 'searchable' => true],
                 (object)['data' => 'login_details', 'name' => 'whatsapp_number', 'td_label' => 'LOGIN DETAILS', 'className' => 'text-wrap text-left', 'orderable' => false, 'searchable' => false],
                 (object)['data' => 'plan_name', 'name' => 'plan.title', 'td_label' => 'Plan Name', 'className' => '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => 'created_at', 'name' => 'created_at', 'td_label' => 'Registered Date', 'className' => '', 'orderable' => true, 'searchable' => false],
@@ -53,11 +72,25 @@ class CompanyRegistrationController extends Controller
                 (object)['data' => 'action', 'name' => 'action', 'td_label' => 'ACTION', 'orderable' => false, 'searchable' => false, 'className' => 'text-center'],
             ];
 
-            View::share('modules', $modules);
             View::share('columns', $columns);
 
             if ($request->ajax()) {
-                $data = CompanyRegistration::with(['plan', 'country', 'state', 'city', 'company'])->latest();
+                if (!$modules['viewPermission']) {
+                    return $this->sendError('Unauthorized', [], [], 403);
+                }
+
+                $data = CompanyRegistration::with(['plan', 'country', 'state', 'city', 'company'])
+                    ->where(function ($query) {
+                        if (Auth::guard('employees')->check()) {
+                            $teamPersonCompanyId = Auth::guard('employees')->user()->company_id;
+                            $company = Company::find($teamPersonCompanyId);
+                            $query->where('company_id', $teamPersonCompanyId);
+                            if ($company && $company->email) {
+                                $query->orWhere('email', $company->email);
+                            }
+                        }
+                    })
+                    ->latest();
 
                 if ($request->has('search') && !empty($request->search)) {
                     $searchTerm = $request->search;
@@ -71,6 +104,10 @@ class CompanyRegistrationController extends Controller
 
                 if ($request->has('filter_plan') && !empty($request->filter_plan)) {
                     $data->where('plan_id', $request->filter_plan);
+                }
+
+                if ($request->has('register_type') && !empty($request->register_type) && $request->register_type !== 'all') {
+                    $data->where('register_type', $request->register_type);
                 }
 
                 if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
@@ -94,6 +131,19 @@ class CompanyRegistrationController extends Controller
                             $html .= e($row->gst_no);
                         }
                         return $html;
+                    })
+                    ->addColumn('register_type', function ($row) {
+                        $type = strtolower($row->register_type ?? '');
+                        if (empty($type)) {
+                            $type = ($row->company && $row->company->register_type) ? strtolower($row->company->register_type) : 'manual';
+                        }
+                        if ($type === 'google') {
+                            return '<span class="badge bg-label-danger"><i class="fab fa-google me-1"></i> Google</span>';
+                        } elseif ($type === 'admin') {
+                            return '<span class="badge bg-label-primary"><i class="fa fa-user-shield me-1"></i> Admin</span>';
+                        } else {
+                            return '<span class="badge bg-label-info"><i class="fa fa-user-pen me-1"></i> Manual</span>';
+                        }
                     })
                     ->addColumn('contact_info', function ($row) {
                         $html = '';
@@ -236,7 +286,7 @@ class CompanyRegistrationController extends Controller
                                 <ul class="dropdown-menu">
                                     <li>
                                         <a class="dropdown-item" href="' . $editUrl . '">
-                                            <i class="tf-icons ti ti-edit"></i> Edit Company
+                                             <i class="tf-icons ti ti-edit"></i> Edit Company
                                         </a>
                                     </li>
                                     <li>
@@ -255,14 +305,14 @@ class CompanyRegistrationController extends Controller
 
                         return $btn;
                     })
-                    ->rawColumns(['company_details', 'contact_info', 'login_details', 'plan_info', 'status', 'action'])
+                    ->rawColumns(['company_details', 'register_type', 'contact_info', 'login_details', 'plan_info', 'status', 'action'])
                     ->make(true);
             }
 
             return view($modules['folder_path'] . '.index', compact('columns', 'modules'));
         } catch (\Exception $e) {
             Log::error('CompanyRegistrationController index error: ' . $e->getMessage());
-            return back()->withErrors($e->getMessage());
+            return redirect()->route('software.dashboard')->withErrors($e->getMessage());
         }
     }
 
@@ -270,25 +320,52 @@ class CompanyRegistrationController extends Controller
     {
         try {
             $regRequest = CompanyRegistration::find($id);
-            if ($regRequest) {
-                $company = Company::where('email', $regRequest->email)->first();
-                if ($company) {
-                    return redirect()->route('company.edit', $company->id);
+            if (!$regRequest) {
+                return redirect()->route('software.dashboard')->withErrors('Matching company record not found to edit.');
+            }
+
+            if (Auth::guard('employees')->check()) {
+                $user = Auth::guard('employees')->user();
+                $isMasterAdmin = ($user->company_id == 1);
+                $company = Company::find($user->company_id);
+                $isOwn = ($regRequest->company_id && $regRequest->company_id == $user->company_id) || ($company && $company->email && $regRequest->email == $company->email);
+                if (!$isMasterAdmin && !$isOwn) {
+                    return redirect()->route('software.dashboard')->withErrors('Unauthorized');
                 }
             }
-            return back()->withErrors('Matching company record not found to edit.');
+
+            $company = Company::where('email', $regRequest->email)->first();
+            if ($company) {
+                return redirect()->route('company.edit', $company->id);
+            }
+
+            return redirect()->route('software.dashboard')->withErrors('Matching company record not found to edit.');
         } catch (\Exception $e) {
-            return back()->withErrors($e->getMessage());
+            return redirect()->route('software.dashboard')->withErrors($e->getMessage());
         }
     }
 
     public function status_update(Request $request)
     {
         try {
+            $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+            if (!$isMasterAdmin && !Gate::check('hasPermission', ['update', $this->modules['module_name']])) {
+                return response()->json(['status' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+
             $id = $request->id;
             $status = $request->update_status ?? $request->status;
             $data = CompanyRegistration::find($id);
             if ($data) {
+                if (Auth::guard('employees')->check() && !$isMasterAdmin) {
+                    $user = Auth::guard('employees')->user();
+                    $company = Company::find($user->company_id);
+                    $isOwn = ($data->company_id && $data->company_id == $user->company_id) || ($company && $company->email && $data->email == $company->email);
+                    if (!$isOwn) {
+                        return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+                    }
+                }
+
                 $data->status = $status;
                 $data->save();
 
@@ -328,6 +405,15 @@ class CompanyRegistrationController extends Controller
         try {
             $data = CompanyRegistration::with(['plan', 'country', 'state', 'city', 'company'])->find($id);
             if ($data) {
+                if (Auth::guard('employees')->check()) {
+                    $user = Auth::guard('employees')->user();
+                    $isMasterAdmin = ($user->company_id == 1);
+                    $company = Company::find($user->company_id);
+                    $isOwn = ($data->company_id && $data->company_id == $user->company_id) || ($company && $company->email && $data->email == $company->email);
+                    if (!$isMasterAdmin && !$isOwn) {
+                        return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+                    }
+                }
                 return response()->json(['status' => true, 'data' => $data]);
             }
             return response()->json(['status' => false, 'message' => 'Record not found.']);
@@ -339,7 +425,21 @@ class CompanyRegistrationController extends Controller
     public function destroy($id)
     {
         try {
+            $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+            if (!$isMasterAdmin && !Gate::check('hasPermission', ['delete', $this->modules['module_name']])) {
+                return response()->json(['status' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+
             $regRequest = CompanyRegistration::findOrFail($id);
+            if (Auth::guard('employees')->check() && !$isMasterAdmin) {
+                $user = Auth::guard('employees')->user();
+                $company = Company::find($user->company_id);
+                $isOwn = ($regRequest->company_id && $regRequest->company_id == $user->company_id) || ($company && $company->email && $regRequest->email == $company->email);
+                if (!$isOwn) {
+                    return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+                }
+            }
+
             $email = $regRequest->email;
 
             if ($email) {
