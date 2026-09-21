@@ -65,13 +65,22 @@
                         <input type="hidden" class="form-control search_by_company" name="company_id"
                             value="{{ $company_id }}" />
                     @endif
+                    @php
+                        $authEmp = Auth::guard('employees')->user();
+                        $isTeamMember = $authEmp && (
+                            (!empty($authEmp->created_by) && (string)$authEmp->created_by !== '0') ||
+                            (!empty($authEmp->parent_id) && (string)$authEmp->parent_id !== '0') ||
+                            ($authEmp->employee_code !== 'EMP-001')
+                        );
+                        $defaultEmpId = $isTeamMember ? $authEmp->id : '';
+                    @endphp
                     <div class="col-md-3 col-sm-12 mb-2">
                         <div class="form-group">
                             <label class="form-label">Select Employee <span class="text-danger">*</span></label>
                             <select id="employee_id"
                                 class="form-control select2 search_by_employee @error('employee_id') is-invalid @enderror"
                                 name="employee_id"
-                                data-selectedEmployeeId="{{ old('employee_id') ?? ($edit->employee_id ?? ($preselectedEmployeeId ?? (Auth::guard('employees')->check() && Auth::guard('employees')->user()?->parent_type_id != 0 ? Auth::guard('employees')->id() : ''))) }}">
+                                data-selectedEmployeeId="{{ old('employee_id', $edit->employee_id ?? ($preselectedEmployeeId ?? $defaultEmpId)) }}">
                                 <option value="">Select Employee</option>
                             </select>
 

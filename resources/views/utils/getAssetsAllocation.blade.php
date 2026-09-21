@@ -1,16 +1,16 @@
 <script>
-    if ($('meta[name="company_id"]').attr('value')) {
+    if ($('meta[name="company_id"]').attr('value') || $('input.search_by_company').val()) {
         fetch_assets();
     }
 
     $(document).on('change', '.search_by_company', function () {
-        if ($(".search_by_company option:selected").val()) {
+        if ($(".search_by_company option:selected").val() || $('input.search_by_company').val()) {
             fetch_assets();
         }
     });
 
     function fetch_assets() {
-        let company_id = $(".search_by_company option:selected").val();
+        let company_id = $(".search_by_company option:selected").val() || $('input.search_by_company').val();
         const instance = $('.search_by_assets');
         const selected_id = instance.data("selectedassetsid") || '';
         const is_required = instance.attr('required');

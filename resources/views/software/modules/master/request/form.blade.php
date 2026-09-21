@@ -63,6 +63,15 @@
                             value="{{ $company_id }}" />
                     @endif
 
+                    @php
+                        $authEmp = Auth::guard('employees')->user();
+                        $isTeamMember = $authEmp && (
+                            (!empty($authEmp->created_by) && (string)$authEmp->created_by !== '0') ||
+                            (!empty($authEmp->parent_id) && (string)$authEmp->parent_id !== '0') ||
+                            ($authEmp->employee_code !== 'EMP-001')
+                        );
+                        $defaultEmpId = $isTeamMember ? $authEmp->id : '';
+                    @endphp
                     {{-- Request From Employee Name --}}
                     <div class="col-md-4 col-sm-12 mb-2">
                         <div class="form-group @error('request_from_employee_name') is-invalid @enderror">
@@ -70,7 +79,7 @@
                             <select id="request_from_employee_name"
                                 class="form-control select2 @error('request_from_employee_name') is-invalid @enderror"
                                 name="request_from_employee_name"
-                                data-selectedemployeeid="{{ old('request_from_employee_name') ?? ($edit->request_from_employee_name ?? (Auth::guard('employees')->check() && Auth::guard('employees')->user()?->parent_type_id != 0 ? Auth::guard('employees')->id() : '')) }}">
+                                data-selectedemployeeid="{{ old('request_from_employee_name', $edit->request_from_employee_name ?? $defaultEmpId) }}">
                                 <option value="">Select Employee</option>
                             </select>
 
@@ -242,8 +251,17 @@
                             toOptions += `<option value="${item.id}" ${toSel} ${toDisabled}>${item.employee_code} - ${item.full_name}</option>`;
                         });
 
-                        $('#request_from_employee_name').html(fromOptions).select2();
-                        $('#request_to_employee_name').html(toOptions).select2();
+                        $('#request_from_employee_name').html(fromOptions);
+                        if (fromSelected) {
+                            $('#request_from_employee_name').val(fromSelected);
+                        }
+                        $('#request_from_employee_name').select2();
+
+                        $('#request_to_employee_name').html(toOptions);
+                        if (toSelected) {
+                            $('#request_to_employee_name').val(toSelected);
+                        }
+                        $('#request_to_employee_name').select2();
                         syncEmployeeDropdowns();
                     } else {
                         $('#request_from_employee_name, #request_to_employee_name').html('<option value="">No Employees Found</option>').select2();

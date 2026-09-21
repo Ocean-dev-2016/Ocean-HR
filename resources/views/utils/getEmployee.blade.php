@@ -87,7 +87,7 @@
                             if (is_multiple) {
                                 selected = selectedIds.includes(item.id.toString()) ? "selected" : "";
                             } else {
-                                selected = selected_id == item.id ? "selected" : "";
+                                selected = (selected_id != '' && selected_id.toString() == item.id.toString()) ? "selected" : "";
                             }
                             const shiftId = item.shift_id || '';
                             // Standardized format used: Surname Firstname Fathername (populated from server as item.full_name)
@@ -95,6 +95,9 @@
                         });
 
                         instance.html(options);
+                        if (selected_id && !is_multiple) {
+                            instance.val(selected_id);
+                        }
                         if (is_select2) {
                             instance.select2();
                         }
