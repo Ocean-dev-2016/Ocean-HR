@@ -2,6 +2,9 @@
     $(document).ready(function() {
 
         let instance = $('.search_by_country');
+        if (instance.find('option').length > 1) {
+            return;
+        }
         let country_id = instance.val();
         let is_required = instance.attr('required');
         let is_select2 = instance.hasClass('select2');

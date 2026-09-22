@@ -25,6 +25,9 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Models\MasterCountry;
+use App\Models\MasterState;
+use App\Models\MasterCity;
 
 class ContractorEmployeeController extends Controller
 {
@@ -755,13 +758,31 @@ class ContractorEmployeeController extends Controller
             View::share('edit', $edit);
 
             $team_roles = TeamRole::where('status', 'active');
-            if (!empty($modules['company_id'])) {
-                $team_roles->where('company_id', $modules['company_id']);
-            } else {
-                $team_roles->where('company_id', $edit->company_id);
+            $empCompanyId = !empty($modules['company_id']) ? $modules['company_id'] : $edit->company_id;
+            if (!empty($empCompanyId)) {
+                $team_roles->where('company_id', $empCompanyId);
             }
             $team_roles = $team_roles->get();
             View::share('team_roles', $team_roles);
+
+            $countries = MasterCountry::where('status', 'active')->get();
+            View::share('countries', $countries);
+
+            $selectedCountryId = ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists()) ? $edit->country_id : 101;
+            $states = MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->get();
+            View::share('states', $states);
+
+            $selectedStateId = $edit->state_id;
+            $cities = $selectedStateId ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->get() : collect();
+            View::share('cities', $cities);
+
+            if (!empty($empCompanyId)) {
+                $parentEmployees = Employee::where('status', 'active')
+                    ->where('company_id', $empCompanyId)
+                    ->where('id', '!=', $edit->id)
+                    ->get(['id', 'employee_code', 'full_name', 'first_name', 'middle_name', 'father_name']);
+                View::share('parentEmployees', $parentEmployees);
+            }
 
             return view($modules['folder_path'] . '.form');
         } catch (\Exception $e) {
@@ -818,8 +839,10 @@ class ContractorEmployeeController extends Controller
             // Only hash & set password if user typed it
             if (!empty($request->password)) {
                 $validated['password'] = Hash::make($request->password);
+                $validated['sp'] = Helper::generateSP($request->password);
             } else {
                 unset($validated['password']); // Don't touch the password field
+                unset($validated['sp']);
             }
 
             if ($updateData) {

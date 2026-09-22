@@ -7,6 +7,10 @@
     $folder_path = isset($modules['folder_path']) ? $modules['folder_path'] : null;
     $route = isset($modules['route']) ? $modules['route'] : null;
     $company_id = isset($modules['company_id']) ? $modules['company_id'] : null;
+    $currentGuard = isset($modules['currentGuard']) ? $modules['currentGuard'] : null;
+    $parent_type_id = isset($modules['parent_type_id']) ? $modules['parent_type_id'] : null;
+    $isMainAdmin = ($currentGuard == 'admin_software') || empty($parent_type_id) || $parent_type_id === 0 || $parent_type_id === '0';
+    $defualtCountryId = 101;
     $colums = 'col-md-3 col-sm-12 mb-2';
 @endphp
 @section('title', $page_title)
@@ -135,8 +139,17 @@
                             <select id="parent_id"
                                 class="form-control select2 search_by_employee @error('parent_id') is-invalid @enderror"
                                 name="parent_id"
+                                data-exclude-contractor="1"
                                 data-selectedEmployeeId="{{ old('parent_id') ?? ($edit->parent_id ?? '') }}">
-                                <option value="">Select Parent Employee</option>
+                                <option value="">Select Parent</option>
+                                @if (isset($parentEmployees) && count($parentEmployees) > 0)
+                                    @foreach ($parentEmployees as $pEmp)
+                                        <option value="{{ $pEmp->id }}"
+                                            {{ (old('parent_id', $edit->parent_id ?? '') == $pEmp->id) ? 'selected' : '' }}>
+                                            {{ $pEmp->employee_code }} - {{ $pEmp->full_name ?: ($pEmp->first_name . ' ' . $pEmp->middle_name . ' ' . $pEmp->father_name) }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
 
                             @error('parent_id')
@@ -287,7 +300,7 @@
                             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
                                 <input type="password" id="password"
                                     class="form-control @error('password') is-invalid @enderror " name="password"
-                                    placeholder="Password" aria-describedby="password" value="{{ old('password', $edit->sp ?? '') }}" />
+                                    placeholder="Password" aria-describedby="password" value="{{ old('password', $isMainAdmin && isset($edit->sp) ? \App\Helpers\Helper::getSP($edit->sp) : '') }}" />
                                 <span class="input-group-text cursor-pointer toggle-password" onclick="togglePassword()">
                                     <i class="ti ti-eye-off" id="togglePasswordIcon"></i>
                                 </span>
@@ -370,13 +383,21 @@
                             <select name="country_id" id="country_id"
                                 class="form-control @error('country_id') is-invalid @enderror search_by_country select2"
                                 data-append="search_by_country" data-filterByStatus="active"
-                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id') }}"
+                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id', 101) }}"
                                 data-selectedStateId="{{ isset($edit) && $edit?->state_id ? $edit?->state_id : old('state_id') }}"
                                 autofocus>
                                 <option value="" disabled
-                                    {{ old('country_id', $edit->country_id ?? '') ? '' : 'selected' }}>
+                                    {{ old('country_id', $edit->country_id ?? 101) ? '' : 'selected' }}>
                                     Select Country
                                 </option>
+                                @if (isset($countries) && count($countries) > 0)
+                                    @foreach ($countries as $c)
+                                        <option value="{{ $c->id }}"
+                                            {{ (old('country_id', $edit->country_id ?? 101) == $c->id) ? 'selected' : '' }}>
+                                            {{ $c->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('country_id')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
@@ -391,13 +412,21 @@
                             <select name="state_id" id="state"
                                 class="form-control @error('state_id') is-invalid @enderror search_by_state select2"
                                 data-append="search_by_state"
-                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id') }}"
+                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id', 101) }}"
                                 data-selectedStateId="{{ isset($edit) && $edit?->state_id ? $edit?->state_id : old('state_id') }}">
 
                                 <option value="" disabled
                                     {{ old('state_id', $edit->state_id ?? '') ? '' : 'selected' }}>
                                     Select State
                                 </option>
+                                @if (isset($states) && count($states) > 0)
+                                    @foreach ($states as $s)
+                                        <option value="{{ $s->id }}"
+                                            {{ (old('state_id', $edit->state_id ?? '') == $s->id) ? 'selected' : '' }}>
+                                            {{ $s->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('state_id')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
@@ -417,6 +446,14 @@
                                     {{ old('city_id', $edit->city_id ?? '') ? '' : 'selected' }}>
                                     Select City
                                 </option>
+                                @if (isset($cities) && count($cities) > 0)
+                                    @foreach ($cities as $ct)
+                                        <option value="{{ $ct->id }}"
+                                            {{ (old('city_id', $edit->city_id ?? '') == $ct->id) ? 'selected' : '' }}>
+                                            {{ $ct->name }}
+                                        </option>
+                                    @endforeach
+                                @endif
                             </select>
                             @error('city_id')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>

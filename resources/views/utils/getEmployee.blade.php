@@ -1,7 +1,9 @@
 <script>
     $(document).ready(function () {
         if ($('meta[name="company_id"]').attr('value') || $('input.search_by_company').val()) {
-            fetch_employee();
+            if ($('.search_by_employee option').length <= 1) {
+                fetch_employee();
+            }
         }
     });
 

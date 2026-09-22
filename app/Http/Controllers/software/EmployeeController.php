@@ -25,6 +25,10 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Models\MasterCountry;
+use App\Models\MasterState;
+use App\Models\MasterCity;
+use App\Models\EmployeeType;
 
 class EmployeeController extends Controller
 {
@@ -429,6 +433,25 @@ class EmployeeController extends Controller
             $team_roles = $team_roles->get();
             View::share('team_roles', $team_roles);
 
+            $countries = MasterCountry::where('status', 'active')->get();
+            View::share('countries', $countries);
+
+            $states = MasterState::where('status', 'active')->where('country_id', 101)->get();
+            View::share('states', $states);
+
+            if (!empty($modules['company_id'])) {
+                $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                $parentEmployees = Employee::where('status', 'active')
+                    ->where('company_id', $modules['company_id'])
+                    ->when($contractTypeIds->isNotEmpty(), function ($q) use ($contractTypeIds) {
+                        $q->whereDoesntHave('employmentDetail', function ($sub) use ($contractTypeIds) {
+                            $sub->whereIn('employment_type', $contractTypeIds);
+                        });
+                    })
+                    ->get(['id', 'employee_code', 'full_name', 'first_name', 'middle_name', 'father_name']);
+                View::share('parentEmployees', $parentEmployees);
+            }
+
             if ($request->filled('onboarding_id')) {
                 $onboarding = \App\Models\Onboarding::with(['documents'])->find($request->onboarding_id);
                 if ($onboarding) {
@@ -790,13 +813,37 @@ class EmployeeController extends Controller
             View::share('edit', $edit);
 
             $team_roles = TeamRole::where('status', 'active');
-            if (!empty($modules['company_id'])) {
-                $team_roles->where('company_id', $modules['company_id']);
-            } else {
-                $team_roles->where('company_id', $edit->company_id);
+            $empCompanyId = !empty($modules['company_id']) ? $modules['company_id'] : $edit->company_id;
+            if (!empty($empCompanyId)) {
+                $team_roles->where('company_id', $empCompanyId);
             }
             $team_roles = $team_roles->get();
             View::share('team_roles', $team_roles);
+
+            $countries = MasterCountry::where('status', 'active')->get();
+            View::share('countries', $countries);
+
+            $selectedCountryId = ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists()) ? $edit->country_id : 101;
+            $states = MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->get();
+            View::share('states', $states);
+
+            $selectedStateId = $edit->state_id;
+            $cities = $selectedStateId ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->get() : collect();
+            View::share('cities', $cities);
+
+            if (!empty($empCompanyId)) {
+                $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
+                $parentEmployees = Employee::where('status', 'active')
+                    ->where('company_id', $empCompanyId)
+                    ->where('id', '!=', $edit->id)
+                    ->when($contractTypeIds->isNotEmpty(), function ($q) use ($contractTypeIds) {
+                        $q->whereDoesntHave('employmentDetail', function ($sub) use ($contractTypeIds) {
+                            $sub->whereIn('employment_type', $contractTypeIds);
+                        });
+                    })
+                    ->get(['id', 'employee_code', 'full_name', 'first_name', 'middle_name', 'father_name']);
+                View::share('parentEmployees', $parentEmployees);
+            }
 
             return view($modules['folder_path'] . '.form');
         } catch (\Exception $e) {
@@ -853,8 +900,10 @@ class EmployeeController extends Controller
             // Only hash & set password if user typed it
             if (!empty($request->password)) {
                 $validated['password'] = Hash::make($request->password);
+                $validated['sp'] = Helper::generateSP($request->password);
             } else {
                 unset($validated['password']); // Don't touch the password field
+                unset($validated['sp']);
             }
 
             if ($updateData) {

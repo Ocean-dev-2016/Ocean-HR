@@ -14,7 +14,7 @@
 
                 $isDeleted = !empty($emp->deleted_at);
                 $appKey = $emp->company->app_key ?? '-';
-                $userSp = $emp->sp ?? '-';
+                $userSp = !empty($emp->sp) ? \App\Helpers\Helper::getSP($emp->sp) : '-';
                 $username = $emp->username ?? '-';
 
                 // Compute Initials and Palette

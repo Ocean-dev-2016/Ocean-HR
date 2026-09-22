@@ -453,13 +453,13 @@
                             </div>
                             <div class="col-md-3 detail-field-group">
                                 <span class="field-label">Password</span>
-                                <span class="field-value">{{ $show?->sp ?? '--' }}</span>
+                                <span class="field-value">{{ isset($show?->sp) ? \App\Helpers\Helper::getSP($show->sp) : '--' }}</span>
                             </div>
                             <div class="col-md-3 detail-field-group d-flex align-items-end">
                                 <button type="button" class="btn btn-sm btn-outline-primary copy-login-details-btn mb-2" 
                                     data-app-key="{{ $show?->company?->app_key ?? '' }}"
                                     data-username="{{ $show?->username ?? '' }}"
-                                    data-password="{{ $show?->sp ?? '' }}"
+                                    data-password="{{ isset($show?->sp) ? \App\Helpers\Helper::getSP($show->sp) : '' }}"
                                     title="Copy & Share Login Details">
                                     <i class="ti ti-copy me-1"></i> Copy & Share
                                 </button>

@@ -61,6 +61,17 @@ class Helper
         return null;
     }
 
+    static function getSP($string)
+    {
+        if ($string) {
+            if (strlen($string) > 7) {
+                return substr($string, 4, -3);
+            }
+            return $string;
+        }
+        return '';
+    }
+
     static function getLoginUser($guard = null)
     {
         if (!empty($guard)) {

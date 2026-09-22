@@ -1,7 +1,8 @@
 <script>
     if ($('meta[name="company_id"]').attr('value')) {
-        //fetch_teamPerson();
-        fetch_teamRole();
+        if ($('.search_by_team_role option').length <= 1) {
+            fetch_teamRole();
+        }
     }
 
     $(document).on('change', '.search_by_company', function() {
