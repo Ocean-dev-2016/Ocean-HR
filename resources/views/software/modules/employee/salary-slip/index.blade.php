@@ -229,11 +229,12 @@
                 <div class="card-body">
                     <div class="row">
                         @if (!$company_id)
-                            <div class="col-md-2 mb-2 col-sm-12">
+                            <div class="col-md-3 col-sm-12 mb-2">
                                 <div class="form-group">
                                     <label class="form-label">Filter by Company</label>
                                     <select id="company_id" name="company_id"
                                         class="form-control search_by_company select2 select_filter"
+                                        style="width: 100%;"
                                         data-append="search_by_company" showBranch="branchDiv">
                                         <option value="">Filter by Company</option>
                                     </select>
@@ -243,29 +244,32 @@
                             <input type="hidden" id="company_id" value="{{ $company_id }}">
                         @endif
 
-                        <div class="col-md-2">
+                        <div class="{{ !$company_id ? 'col-md-3' : 'col-md-4' }} col-sm-12 mb-2">
                             <div class="form-group">
                                 <label class="form-label">Filter by Employee</label>
                                 <select id="employee_id" name="employee_id"
                                     class="form-control search_by_employee select2 select_filter"
+                                    style="width: 100%;"
                                     data-append="search_by_employee">
                                     <option value="">Filter by Employee</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="col-md-2 mb-2">
-                            <label class="form-label">Filter by Month & Year</label>
-                            <input type="text" id="salary_slip_month_year"
-                                class="form-control salary-slip-month-year-picker" readonly
-                                placeholder="Select Month & Year">
+                        <div class="{{ !$company_id ? 'col-md-2' : 'col-md-3' }} col-sm-12 mb-2">
+                            <div class="form-group">
+                                <label class="form-label">Filter by Month & Year</label>
+                                <input type="text" id="salary_slip_month_year"
+                                    class="form-control salary-slip-month-year-picker" readonly
+                                    placeholder="Select Month & Year">
 
-                            <input type="hidden" name="followup_date" id="salary_slip_followup_date">
+                                <input type="hidden" name="followup_date" id="salary_slip_followup_date">
+                            </div>
                         </div>
 
                         <input type="hidden" id="customer_id_hidden" value="">
 
-                        <div class="col-md-6 mb-2 d-flex align-items-end gap-2 flex-wrap">
+                        <div class="{{ !$company_id ? 'col-md-4' : 'col-md-5' }} col-sm-12 mb-2 d-flex align-items-end gap-2 flex-wrap">
                             <button type="button" class="btn btn-primary" id="view_slip_btn">
                                 <i class="fa fa-eye me-1"></i> Show Slip
                             </button>

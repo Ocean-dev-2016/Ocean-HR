@@ -101,12 +101,12 @@
                                 instance.val(selected_id).trigger('change');
                             }
                             if (is_select2) {
-                                instance.select2();
+                                instance.select2({ width: '100%' });
                             }
                         } else {
                             instance.html("<option value=''>No Employees Found</option>");
                             if (is_select2) {
-                                instance.select2();
+                                instance.select2({ width: '100%' });
                             }
                         }
                     },
@@ -114,7 +114,7 @@
                         console.error("Employee fetch failed", err);
                         instance.html("<option value=''>Error loading employees</option>");
                         if (is_select2) {
-                            instance.select2();
+                            instance.select2({ width: '100%' });
                         }
                     }
                 });

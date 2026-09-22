@@ -53,18 +53,26 @@ class EmployeeImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        Log::info('Employee Import Started. Total Rows: ' . $rows->count());
+        Log::info('--- EMPLOYEE IMPORT STARTED ---');
+        Log::info('Total Rows in File: ' . $rows->count());
+        if ($rows->isNotEmpty()) {
+            Log::info('Detected Columns in Sheet: ' . implode(', ', array_keys($rows->first()->toArray())));
+        }
 
-        DB::beginTransaction();
         foreach ($rows as $index => $row) {
             $rowNumber = $index + 2;
-            if ($row->filter()->isEmpty()) continue;
+            if ($row->filter()->isEmpty()) {
+                Log::info("Row {$rowNumber} is empty, skipping.");
+                continue;
+            }
 
             $this->totalEmployees++;
             $validationErrors = [];
 
             // Basic fields - Required fields only
             $employeeCode = trim($row['employee_code'] ?? '');
+            Log::debug("Processing Row {$rowNumber}: employee_code='{$employeeCode}', full_name='{$row['employee_full_name']}'");
+            Log::debug("Row {$rowNumber} raw data: " . json_encode($row->toArray()));
             $fullName     = trim($row['employee_full_name'] ?? '');
             $firstName    = trim($row['first_name'] ?? '');
             $middleName   = trim($row['middle_name'] ?? '');
@@ -114,7 +122,10 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             $country     = $this->getModel(MasterCountry::class, $row['country'] ?? '', 'Country', $validationErrors);
             $state       = $this->getModel(MasterState::class, $row['state'] ?? '', 'State', $validationErrors);
             $city        = $this->getModel(MasterCity::class, $row['city'] ?? '', 'City', $validationErrors);
-            $branch      = $this->getModel(Branch::class, $row['branch_name'] ?? '', 'Branch', $validationErrors);
+            $branch      = $this->getModel(Branch::class, $row['branch_name'] ?? $row['branch'] ?? '', 'Branch', $validationErrors, true);
+            if (!$branch) {
+                $branch = Branch::where('company_id', $this->companyId)->first();
+            }
             $designation = $this->getModel(Designation::class, $row['designation'] ?? '', 'Designation', $validationErrors);
             $department  = $this->getModel(Department::class, $row['department'] ?? '', 'Department', $validationErrors);
             $subDepartment = $this->getModel(
@@ -136,7 +147,7 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             }
             
             // Handle typo in field name (employment_tzype -> employment_type)
-            $employmentTypeValue = trim($row['employment_type'] ?? $row['employment_type'] ?? '');
+            $employmentTypeValue = trim($row['employment_type'] ?? '');
             $employmentType = $this->getModel(EmployeeType::class, $employmentTypeValue, 'Employment Type', $validationErrors, false);
             $shift = $this->getModel(Shift::class, $row['shift'] ?? '', 'Shift', $validationErrors, false);
             
@@ -177,6 +188,24 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             
             // Salary classification required field
             $salaryClassification = trim($row['salary_classification'] ?? '');
+            $classificationMap = [
+                'monthly' => 'Per Month Salary',
+                'per month' => 'Per Month Salary',
+                'per month salary' => 'Per Month Salary',
+                'per day' => 'Per Day Salary',
+                'per day salary' => 'Per Day Salary',
+                'daily' => 'Per Day Salary',
+                'per hour' => 'Per Hours Salary',
+                'per hours' => 'Per Hours Salary',
+                'per hour salary' => 'Per Hours Salary',
+                'per hours salary' => 'Per Hours Salary',
+                'hourly' => 'Per Hours Salary',
+                'per work' => 'Per Work Salary',
+                'per work salary' => 'Per Work Salary',
+            ];
+            if (isset($classificationMap[strtolower($salaryClassification)])) {
+                $salaryClassification = $classificationMap[strtolower($salaryClassification)];
+            }
             if (!$salaryClassification) {
                 $validationErrors[] = 'Salary Classification is missing';
             } elseif (!in_array(strtolower($salaryClassification), array_map('strtolower', array_values(config('constants.salary_classification'))))) {
@@ -199,22 +228,26 @@ class EmployeeImport implements ToCollection, WithHeadingRow
                 if ($parentEmployee) {
                     $parentId = $parentEmployee->id;
                 } else {
-                    $validationErrors[] = "Parent Employee Code '{$row['parent_employee_code']}' not found";
+                    Log::warning("Parent Employee Code '{$row['parent_employee_code']}' not found for row {$rowNumber}, leaving as null.");
                 }
             }
 
             if (!empty($validationErrors)) {
                 $this->failedCount++;
-                $this->errors[$rowNumber] = implode(', ', $validationErrors);
+                $errorMsg = implode(', ', $validationErrors);
+                $this->errors[$rowNumber] = $errorMsg;
+                Log::warning("Employee Import Row {$rowNumber} [Code: {$employeeCode}] Validation Error: {$errorMsg}");
                 continue;
             }
 
+            DB::beginTransaction();
             try {
                 $employee = Employee::create([
                     'company_id'            => $this->companyId,
                     'branch_id'             => $branch?->id,
                     'parent_id'             => $parentId,
                     'employee_code'         => $employeeCode,
+                    'biometric_user_id'     => $row['employee_biometric_id'] ?? $row['biometric_user_id'] ?? null,
                     'first_name'            => $firstName,
                     'middle_name'           => $middleName,
                     'father_name'           => $fatherName,
@@ -292,38 +325,38 @@ class EmployeeImport implements ToCollection, WithHeadingRow
                 EmployeeWiseSalaryDetail::create([
                     'company_id'                        => $this->companyId,
                     'employee_id'                       => $employee->id,
-                    'salary_classification'             => strtoupper($salaryClassification),
-                    'week_off'                          => $row['week_off'] ?? 'sunday',
-                    'overtime'                          => $row['overtime'] ?? 'no',
-                    'is_welfare_fund_applied'           => $row['is_welfare_fund_applied'] ?? 'no',
-                    'leave_elegiblity'                  => $row['leave_elegiblity'] ?? null,
-                    'sandwich_rule_flag'                => $row['sandwich_rule_flag'] ?? 'no',
-                    'sandwich_rule_applied_on'          => $row['sandwich_rule_applied_on'] ?? null,
-                    'sandwich_rule_type'                => $row['sandwich_rule_type'] ?? null,
-                    'is_bonus_applied'                  => $row['is_bonus_applied'] ?? 'no',
-                    'salary_calculation_month_count'    => $row['salary_calculation_month_count'] ?? 12,
-                    'pf_type'                           => $row['pf_type'] ?? null,
-                    'pf'                                => $row['salary_pf'] ?? 'no',
-                    'pf_percentage'                     => $row['pf_percentage'] ?? 0,
-                    'pradhanmantri_pf'                  => $row['pradhanmantri_pf'] ?? 'no',
-                    'pradhanmantri_pf_percentage'       => $row['pradhanmantri_pf_percentage'] ?? 0,
-                    'tds'                               => $row['tds'] ?? 'no',
-                    'tds_percentage'                    => $row['tds_percentage'] ?? 0,
-                    'insurance'                         => $row['insurance'] ?? 'no',
-                    'insurance_amount'                  => $row['insurance_amount'] ?? 0,
-                    'pt'                                => $row['pt'] ?? 'no',
-                    'pt_amount'                         => $row['pt_amount'] ?? 0,
-                    'is_esi_company_side'               => $row['is_esi_company_side'] ?? 'no',
-                    'esi_company_side_percentage'       => $row['esi_company_side_percentage'] ?? 0,
-                    'esi_employee_side'                 => $row['esi_employee_side'] ?? 'no',
-                    'esi_employee_side_percentage'      => $row['esi_employee_side_percentage'] ?? 0,
-                    'gratuity_calculation'              => $row['gratuity_calculation'] ?? 'no',
-                    'basic_da'                          => $row['salary_basic_da'] ?? 0,
-                    'hra'                               => $row['salary_hra'] ?? 0,
-                    'conveyance_allowance'              => $row['salary_conveyance_allowance'] ?? 0,
-                    'medical_allowance'                 => $row['salary_medical_allowance'] ?? 0,
-                    'special_allowance'                 => $row['salary_special_allowance'] ?? 0,
-                    'ctc'                               => $row['ctc'] ?? 0,
+                    'salary_classification'             => $this->parseSalaryClassificationKey($salaryClassification),
+                    'week_off'                          => $this->parseWeekOff($row['week_off'] ?? 'Sunday'),
+                    'overtime'                          => $this->parseBoolean($row['overtime'] ?? 0, 0),
+                    'is_welfare_fund_applied'           => $this->parseBoolean($row['is_welfare_fund_applied'] ?? 0, 0),
+                    'leave_elegiblity'                  => $this->parseBoolean($row['leave_elegiblity'] ?? 0, 0),
+                    'sandwich_rule_flag'                => $this->parseBoolean($row['sandwich_rule_flag'] ?? 0, 0),
+                    'sandwich_rule_applied_on'          => $this->parseSandwichRuleAppliedOn($row['sandwich_rule_applied_on'] ?? 'Both'),
+                    'sandwich_rule_type'                => $this->parseSandwichRuleType($row['sandwich_rule_type'] ?? 'Full Sandwich'),
+                    'is_bonus_applied'                  => $this->parseBoolean($row['is_bonus_applied'] ?? 0, 0),
+                    'salary_calculation_month_count'    => $this->parseMonthCount($row['salary_calculation_month_count'] ?? ''),
+                    'pf_type'                           => $this->parsePfType($row['pf_type'] ?? 'EMPLOYEE'),
+                    'pf'                                => $this->parseBoolean($row['salary_pf'] ?? $row['pf'] ?? 0, 0),
+                    'pf_percentage'                     => (float)($row['pf_percentage'] ?? 0),
+                    'pradhanmantri_pf'                  => $this->parseBoolean($row['pradhanmantri_pf'] ?? 0, 0),
+                    'pradhanmantri_pf_percentage'       => (float)($row['pradhanmantri_pf_percentage'] ?? 0),
+                    'tds'                               => $this->parseBoolean($row['tds'] ?? 0, 0),
+                    'tds_percentage'                    => (float)($row['tds_percentage'] ?? 0),
+                    'insurance'                         => $this->parseBoolean($row['insurance'] ?? 0, 0),
+                    'insurance_amount'                  => (float)($row['insurance_amount'] ?? 0),
+                    'pt'                                => $this->parseBoolean($row['pt'] ?? 0, 0),
+                    'pt_amount'                         => (float)($row['pt_amount'] ?? 0),
+                    'is_esi_company_side'               => $this->parseBoolean($row['is_esi_company_side'] ?? 0, 0),
+                    'esi_company_side_percentage'       => (float)($row['esi_company_side_percentage'] ?? 0),
+                    'esi_employee_side'                 => $this->parseBoolean($row['esi_employee_side'] ?? 0, 0),
+                    'esi_employee_side_percentage'      => (float)($row['esi_employee_side_percentage'] ?? 0),
+                    'gratuity_calculation'              => $this->parseBoolean($row['gratuity_calculation'] ?? 0, 0),
+                    'basic_da'                          => (float)($row['salary_basic_da'] ?? $row['basic_da'] ?? 0),
+                    'hra'                               => (float)($row['salary_hra'] ?? $row['hra'] ?? 0),
+                    'conveyance_allowance'              => (float)($row['salary_conveyance_allowance'] ?? $row['conveyance_allowance'] ?? 0),
+                    'medical_allowance'                 => (float)($row['salary_medical_allowance'] ?? $row['medical_allowance'] ?? 0),
+                    'special_allowance'                 => (float)($row['salary_special_allowance'] ?? $row['special_allowance'] ?? 0),
+                    'ctc'                               => (float)($row['ctc'] ?? 0),
                     'status'                            => 'active',
                     'created_by'                        => $this->userId,
                 ]);
@@ -422,11 +455,12 @@ class EmployeeImport implements ToCollection, WithHeadingRow
                 */
                 DB::commit();
                 $this->successCount++;
+                Log::info("Employee Import Row {$rowNumber} [Code: {$employeeCode}] Imported Successfully (ID: {$employee->id})");
             } catch (\Exception $e) {
                 DB::rollBack();
                 $this->failedCount++;
                 $this->errors[$rowNumber] = $e->getMessage();
-                Log::error("Employee Import Error at Row {$rowNumber}: " . $e->getMessage());
+                Log::error("Employee Import Row {$rowNumber} [Code: {$employeeCode}] Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
             }
         }
 
@@ -511,5 +545,95 @@ class EmployeeImport implements ToCollection, WithHeadingRow
         }
 
         return $record;
+    }
+
+    private function parseBoolean($value, $default = '0')
+    {
+        if ($value === null || $value === '') return (string)$default;
+        $val = strtolower(trim((string)$value));
+        if (in_array($val, ['1', 'yes', 'true', 'y', 'applied', 'eligible'])) return '1';
+        if (in_array($val, ['0', 'no', 'false', 'n', 'not applied', 'not eligible'])) return '0';
+        return (string)$default;
+    }
+
+    private function parseSalaryClassificationKey($value)
+    {
+        $val = strtolower(trim((string)$value));
+        $lookup = [
+            'pms' => 'PMS',
+            'per month salary' => 'PMS',
+            'monthly' => 'PMS',
+            'pds' => 'PDS',
+            'per day salary' => 'PDS',
+            'daily' => 'PDS',
+            'phs' => 'PHS',
+            'per hours salary' => 'PHS',
+            'per hour salary' => 'PHS',
+            'hourly' => 'PHS',
+            'pws' => 'PWS',
+            'per work salary' => 'PWS',
+        ];
+        return $lookup[$val] ?? 'PMS';
+    }
+
+    private function parseWeekOff($value)
+    {
+        if (empty($value)) {
+            return json_encode(['Sunday']);
+        }
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+        $parts = explode(',', (string)$value);
+        $days = [];
+        $validDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        foreach ($parts as $p) {
+            $p = ucfirst(strtolower(trim($p)));
+            if (in_array($p, $validDays)) {
+                $days[] = $p;
+            }
+        }
+        return json_encode(!empty($days) ? $days : ['Sunday']);
+    }
+
+    private function parseMonthCount($value)
+    {
+        $val = strtolower(trim((string)$value));
+        if (str_contains($val, 'week off') || str_contains($val, 'week-off')) {
+            return 'Per Month Total Days - Week Off';
+        }
+        if (str_contains($val, '30') || str_contains($val, 'fix')) {
+            return 'Fix 30 Days';
+        }
+        if (str_contains($val, 'total days') || str_contains($val, 'total day')) {
+            return 'Per Month Total Days';
+        }
+        return 'Per Month Total Days - Week Off';
+    }
+
+    private function parsePfType($value)
+    {
+        $val = strtoupper(trim((string)$value));
+        if ($val === 'NO' || $val === '0' || $val === 'NO-PF' || $val === 'NONE') return 'NO-PF';
+        if (str_contains($val, 'ABRY')) return 'PF-ABRY';
+        if (str_contains($val, 'BOTH')) return 'COMPANY GIVE BOTH SIDE PF';
+        if ($val === 'EMPLOYEE' || $val === 'YES' || $val === '1' || $val === 'STANDARD') return 'EMPLOYEE';
+        return 'EMPLOYEE';
+    }
+
+    private function parseSandwichRuleAppliedOn($value)
+    {
+        $val = strtolower(trim((string)$value));
+        if ($val === 'week off' || $val === 'weekoff') return 'Week Off';
+        if ($val === 'holiday') return 'Holiday';
+        return 'Both';
+    }
+
+    private function parseSandwichRuleType($value)
+    {
+        $val = strtolower(trim((string)$value));
+        if (str_contains($val, 'with pay')) return 'Half Sandwich With Pay';
+        if (str_contains($val, 'with deduct')) return 'Half Sandwich With Deduct';
+        return 'Full Sandwich';
     }
 }
