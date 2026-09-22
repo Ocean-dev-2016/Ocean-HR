@@ -14,7 +14,7 @@
 
                 $isDeleted = !empty($emp->deleted_at);
                 $appKey = $emp->company->app_key ?? '-';
-                $userSp = !empty($emp->sp) ? \App\Helpers\Helper::getSP($emp->sp) : '-';
+                $userSp = !empty($emp->sp) ? $emp->sp : '-';
                 $username = $emp->username ?? '-';
 
                 // Compute Initials and Palette
@@ -43,7 +43,7 @@
                 $scheme = $palette[abs($hash) % count($palette)];
             @endphp
             <div class="col-xxl-3 col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12">
-                <div class="card h-100 employee-card border shadow-xs transition-all hover-shadow {{ $isDeleted ? 'bg-light opacity-75' : '' }}">
+                <div class="card h-100 employee-card border shadow-xs transition-all hover-shadow bg-white">
                     <div class="card-body p-3 d-flex flex-column justify-content-between position-relative">
                         
                         {{-- Top Header Section: Status & Dropdown --}}
