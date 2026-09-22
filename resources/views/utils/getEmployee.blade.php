@@ -98,7 +98,7 @@
 
                             instance.html(options);
                             if (selected_id && !is_multiple) {
-                                instance.val(selected_id);
+                                instance.val(selected_id).trigger('change');
                             }
                             if (is_select2) {
                                 instance.select2();

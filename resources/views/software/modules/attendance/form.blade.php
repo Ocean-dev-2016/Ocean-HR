@@ -7,6 +7,11 @@
     $folder_path = isset($modules['folder_path']) ? $modules['folder_path'] : null;
     $route = isset($modules['route']) ? $modules['route'] : null;
     $company_id = isset($modules['company_id']) ? $modules['company_id'] : null;
+    $authLoginUserDetail = isset($modules['authLoginUserDetail']) ? $modules['authLoginUserDetail'] : null;
+    $loginUserId = isset($authLoginUserDetail?->id) ? $authLoginUserDetail?->id : null;
+    $hasPersonalOnly = !empty($modules['personal_data_permission']) && empty($modules['all_data_permission']);
+    $selectedEmployeeId = old('employee_id', isset($edit) ? $edit->employee_id : ($hasPersonalOnly ? $loginUserId : ''));
+    $defaultShiftId = isset($edit) ? $edit->shift_id : (old('shift_id') ?? ($hasPersonalOnly && $authLoginUserDetail ? ($authLoginUserDetail->employmentDetail?->shift ?? '') : ''));
 @endphp
 @section('title', $page_title)
 @section('page_leavel_style')
@@ -73,10 +78,13 @@
                             <label class="form-label">Select Employee <span class="text-danger">*</span></label>
                             <select id="employee_id"
                                 class="form-control select2 search_by_employee @error('employee_id') is-invalid @enderror"
-                                name="employee_id"
-                                data-selectedEmployeeId="{{ old('employee_id') ?? ($edit->employee_id ?? '') }}">
+                                {{ $hasPersonalOnly ? 'disabled' : 'name=employee_id' }}
+                                data-selectedEmployeeId="{{ $selectedEmployeeId }}">
                                 <option value="">Select Employee</option>
                             </select>
+                            @if ($hasPersonalOnly)
+                                <input type="hidden" name="employee_id" value="{{ $selectedEmployeeId }}" />
+                            @endif
 
                             @error('employee_id')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
@@ -89,7 +97,7 @@
                             <label class="form-label">Select Shift <span class="text-danger">*</span></label>
                             <select id="shift_id"
                                 class="form-control select2 search_by_shift @error('shift_id') is-invalid @enderror"
-                                name="shift_id" data-selectedShiftId="{{ old('shift_id') ?? ($edit->shift_id ?? '') }}">
+                                name="shift_id" data-selectedShiftId="{{ $defaultShiftId }}">
                                 <option value="">Select Shift</option>
                             </select>
 

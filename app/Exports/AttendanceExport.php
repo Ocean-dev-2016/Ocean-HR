@@ -39,13 +39,15 @@ class AttendanceExport implements FromCollection, WithHeadings, WithMapping, Sho
         $authUser = $this->user ?? null;
         $loginUserId = $authUser?->id ?? null;
 
-        // Employee guard-based access
-        if ($authUser && $authUser->role === 'employee') {
-            $teamPersonCompanyId = $authUser->company_id;
+        // Employee guard-based access or personal data restriction
+        if ($authUser && (isset($authUser->company_id) || !empty($this->modules['company_id']))) {
+            $teamPersonCompanyId = $authUser->company_id ?? $this->modules['company_id'];
             $query->where('company_id', $teamPersonCompanyId);
 
-            if (!empty($this->modules['personalDataPermission']) && empty($this->modules['allDataPermission'])) {
-                $query->where('created_by', $loginUserId);
+            $hasPersonalOnly = (!empty($this->modules['personal_data_permission']) && empty($this->modules['all_data_permission'])) ||
+                               (!empty($this->modules['personalDataPermission']) && empty($this->modules['allDataPermission']));
+            if ($hasPersonalOnly) {
+                $query->where('employee_id', $loginUserId);
             }
         }
 

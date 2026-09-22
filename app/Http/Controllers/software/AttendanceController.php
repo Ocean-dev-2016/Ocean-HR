@@ -129,10 +129,13 @@ class AttendanceController extends Controller
                     $toDate = Carbon::today()->endOfDay();
                 }
 
-                $companyConstraint = function ($q1) use ($modules) {
+                $companyConstraint = function ($q1) use ($modules, $loginUserId) {
                     if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
                         $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
                         $q1->where('company_id', $companyId);
+                    }
+                    if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                        $q1->where('employee_id', $loginUserId);
                     }
                 };
 
@@ -172,10 +175,13 @@ class AttendanceController extends Controller
                     $data = Employee::with(['company', 'employmentDetail.shiftDetail'])
                         ->where('status', 'active')
                         ->whereNotIn('id', array_merge($presentEmployeeIds, $leaveEmployeeIds))
-                        ->where(function ($q1) use ($modules) {
+                        ->where(function ($q1) use ($modules, $loginUserId) {
                             if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
                                 $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
                                 $q1->where('company_id', $companyId);
+                            }
+                            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                                $q1->where('id', $loginUserId);
                             }
                         });
 
@@ -212,7 +218,7 @@ class AttendanceController extends Controller
                                     ->whereRaw("TIME(attendances.punch_in_time) < SUBTIME(shifts.punch_out, SEC_TO_TIME(IFNULL(shifts.in_out_grace_period, 0) * 60))");
                             });
                     } else if ($request->filled('attendance_status') && $request->attendance_status == 'present') {
-                        $data->whereIn('attendances.id', function ($q) use ($fromDate, $toDate, $modules, $request) {
+                        $data->whereIn('attendances.id', function ($q) use ($fromDate, $toDate, $modules, $request, $loginUserId) {
                             $q->select(DB::raw('MIN(id)'))
                                 ->from('attendances')
                                 ->whereBetween('attendance_date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')]);
@@ -220,6 +226,9 @@ class AttendanceController extends Controller
                             if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
                                 $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
                                 $q->where('company_id', $companyId);
+                            }
+                            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                                $q->where('employee_id', $loginUserId);
                             }
                             if ($request->filled('filter_company')) {
                                 $q->where('company_id', $request->filter_company);
@@ -235,18 +244,22 @@ class AttendanceController extends Controller
 
                 $dataTable = Datatables::of($data)
                     ->addIndexColumn()
-                    ->filter(function ($query) use ($request) {
+                    ->filter(function ($query) use ($request, $modules, $loginUserId) {
                         if ($request->filled('attendance_status') && $request->attendance_status == 'absent') {
                             // Employee query is already fully built and filtered above, no standard attendance filters needed
                             return;
                         }
 
-                        if ($request->has('filter_company') && $request->filter_company) {
-                            $query->where('company_id', $request->filter_company);
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $query->where('employee_id', $loginUserId);
+                        } else {
+                            if ($request->has('filter_employee') && $request->filter_employee) {
+                                $query->where('employee_id', $request->filter_employee);
+                            }
                         }
 
-                        if ($request->has('filter_employee') && $request->filter_employee) {
-                            $query->where('employee_id', $request->filter_employee);
+                        if ($request->has('filter_company') && $request->filter_company) {
+                            $query->where('company_id', $request->filter_company);
                         }
                         if ($request->has('filter_shift') && $request->filter_shift) {
                             $query->where('shift_id', $request->filter_shift);
@@ -486,6 +499,9 @@ class AttendanceController extends Controller
             // return $this->authenticateLoginUserDetails;
 
             $validated['created_by'] = $loginUserId;
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $validated['employee_id'] = $loginUserId;
+            }
             // Set records_source to 'manually' for manual entries
             if (!isset($validated['records_source'])) {
                 $validated['records_source'] = 'manually';
@@ -550,6 +566,9 @@ class AttendanceController extends Controller
             if (!empty($modules['company_id'])) {
                 $attQuery->where('company_id', $modules['company_id']);
             }
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $attQuery->where('employee_id', $loginUserId);
+            }
             $edit = $attQuery->findOrFail($id);
             View::share('edit', $edit);
 
@@ -586,6 +605,9 @@ class AttendanceController extends Controller
         try {
 
             $validated['updated_by'] = $loginUserId;
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $validated['employee_id'] = $loginUserId;
+            }
 
             // If records_source is not provided and this is a manual update, set it to 'manually'
             if (!isset($validated['records_source'])) {
@@ -600,6 +622,9 @@ class AttendanceController extends Controller
             $attQuery = Attendance::query();
             if (!empty($modules['company_id'])) {
                 $attQuery->where('company_id', $modules['company_id']);
+            }
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $attQuery->where('employee_id', $loginUserId);
             }
             $updateData = $attQuery->findOrFail($id);
             if ($updateData) {
@@ -639,6 +664,9 @@ class AttendanceController extends Controller
         $attQuery = Attendance::query();
         if (!empty($modules['company_id'])) {
             $attQuery->where('company_id', $modules['company_id']);
+        }
+        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+            $attQuery->where('employee_id', $loginUserId);
         }
         $dataDelete = $attQuery->findOrFail($id);
         $isAjax = ($request->ajax()) ? true : false;
@@ -691,6 +719,9 @@ class AttendanceController extends Controller
             if (!empty($modules['company_id'])) {
                 $attQuery->where('company_id', $modules['company_id']);
             }
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $attQuery->where('employee_id', $loginUserId);
+            }
             $restore_data = $attQuery->findOrFail($id);
             $restore_data->restore();
 
@@ -734,6 +765,9 @@ class AttendanceController extends Controller
             $attQuery = Attendance::withTrashed();
             if (!empty($modules['company_id'])) {
                 $attQuery->where('company_id', $modules['company_id']);
+            }
+            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                $attQuery->where('employee_id', $loginUserId);
             }
             $country = $attQuery->findOrFail($request?->id);
             if ($country) {
@@ -799,7 +833,7 @@ class AttendanceController extends Controller
 
                     // Personal data permission rule
                     if (!empty($modules['personal_data_permission']) && ($modules['all_data_permission'] == false)) {
-                        $q1->where($modules['table_name'] . '.created_by', $loginUserId);
+                        $q1->where($modules['table_name'] . '.employee_id', $loginUserId);
                     }
                 }
             });

@@ -6,9 +6,9 @@
     $folder_path = isset($modules['folder_path']) ? $modules['folder_path'] : null;
     $route = isset($modules['route']) ? $modules['route'] : null;
     $company_id = isset($modules['company_id']) ? $modules['company_id'] : null;
-
-    // dd($modules);
-
+    $authLoginUserDetail = isset($modules['authLoginUserDetail']) ? $modules['authLoginUserDetail'] : null;
+    $loginUserId = isset($authLoginUserDetail?->id) ? $authLoginUserDetail?->id : null;
+    $hasPersonalOnly = !empty($modules['personal_data_permission']) && empty($modules['all_data_permission']);
 @endphp
 @section('title', $page_title)
 
@@ -143,7 +143,8 @@
                                 <select id="employee_id" name="employee_id"
                                     class="form-control search_by_employee select2 select_filter"
                                     data-append="search_by_employee"
-                                    data-selectedemployeeid="{{ request('filter_employee') }}">
+                                    {{ $hasPersonalOnly ? 'disabled' : '' }}
+                                    data-selectedemployeeid="{{ $hasPersonalOnly ? $loginUserId : request('filter_employee') }}">
                                     <option value="">Filter by Employee</option>
                                 </select>
                             </div>
@@ -433,7 +434,7 @@
                             var innerParams = new URLSearchParams(window.location.search);
                             d.search = $('input[name="search"]').val();
                             d.filter_company = $('#company_id').val() || innerParams.get('filter_company');
-                            d.filter_employee = $('#employee_id').val() || innerParams.get('filter_employee');
+                            d.filter_employee = {!! $hasPersonalOnly ? "'$loginUserId'" : "($('#employee_id').val() || innerParams.get('filter_employee'))" !!};
                             d.filter_shift = $('#shift_id').val() || innerParams.get('filter_shift');
                             d.attendace_type = $('#attendace_type').val();
                             d.records_source = $('#records_source').val();
