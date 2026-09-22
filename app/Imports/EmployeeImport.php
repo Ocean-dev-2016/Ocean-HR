@@ -53,26 +53,17 @@ class EmployeeImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        Log::info('--- EMPLOYEE IMPORT STARTED ---');
-        Log::info('Total Rows in File: ' . $rows->count());
-        if ($rows->isNotEmpty()) {
-            Log::info('Detected Columns in Sheet: ' . implode(', ', array_keys($rows->first()->toArray())));
-        }
+        Log::info('Employee Import Started. Total Rows: ' . $rows->count());
 
         foreach ($rows as $index => $row) {
             $rowNumber = $index + 2;
-            if ($row->filter()->isEmpty()) {
-                Log::info("Row {$rowNumber} is empty, skipping.");
-                continue;
-            }
+            if ($row->filter()->isEmpty()) continue;
 
             $this->totalEmployees++;
             $validationErrors = [];
 
             // Basic fields - Required fields only
             $employeeCode = trim($row['employee_code'] ?? '');
-            Log::debug("Processing Row {$rowNumber}: employee_code='{$employeeCode}', full_name='{$row['employee_full_name']}'");
-            Log::debug("Row {$rowNumber} raw data: " . json_encode($row->toArray()));
             $fullName     = trim($row['employee_full_name'] ?? '');
             $firstName    = trim($row['first_name'] ?? '');
             $middleName   = trim($row['middle_name'] ?? '');

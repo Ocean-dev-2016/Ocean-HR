@@ -1320,7 +1320,7 @@ class EmployeeController extends Controller
 
             return redirect()->back()->with('success', 'Employees imported successfully!');
         } catch (\Exception $e) {
-            Log::error("Employee Import Controller Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            Log::error("Employee Import Error: " . $e->getMessage());
             return redirect()->back()->with('error', 'Import failed: ' . $e->getMessage());
         }
     }
