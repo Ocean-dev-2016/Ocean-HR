@@ -797,20 +797,39 @@ class DashboardController extends Controller
                     ];
                 }
 
-                // Company Main Admin Organization Overview Dashboard Data
+                // Company Main Admin / HR Head / Owner — Full Organization Overview
                 $adminDashboardData = null;
                 if ($isCompanyAdmin && $currentCompanyId) {
                     $now = Carbon::now();
                     $todayDate = $now->format('Y-m-d');
                     $monthStart = $now->copy()->startOfMonth()->format('Y-m-d');
                     $monthEnd = $now->copy()->endOfMonth()->format('Y-m-d');
+                    $weekAhead = $now->copy()->addDays(7)->format('Y-m-d');
 
                     $companyEmployees = Employee::where('company_id', $currentCompanyId)->where('status', 'active')->get();
                     $totalCompanyEmployees = $companyEmployees->count();
 
+                    $contractorTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')
+                        ->orWhere('name', 'like', '%contractor%')
+                        ->pluck('id');
+                    $contractorsCount = 0;
+                    if ($contractorTypeIds->isNotEmpty()) {
+                        $contractorsCount = Employee::where('company_id', $currentCompanyId)
+                            ->where('status', 'active')
+                            ->whereHas('employmentDetail', function ($q) use ($contractorTypeIds) {
+                                $q->whereIn('employment_type', $contractorTypeIds);
+                            })->count();
+                    }
+                    $regularEmployeesCount = max(0, $totalCompanyEmployees - $contractorsCount);
+
                     $newThisMonth = DB::table('employment_details')
                         ->where('company_id', $currentCompanyId)
                         ->whereBetween('date_of_joining', [$monthStart, $monthEnd])
+                        ->count();
+
+                    $exitsThisMonth = Employee::where('company_id', $currentCompanyId)
+                        ->where('status', 'inactive')
+                        ->whereBetween('updated_at', [$monthStart . ' 00:00:00', $monthEnd . ' 23:59:59'])
                         ->count();
 
                     $presentEmployeeIds = Attendance::where('company_id', $currentCompanyId)
@@ -838,26 +857,46 @@ class DashboardController extends Controller
                         ->toArray();
                     $onLeaveTodayCount = count($onLeaveEmployeeIds);
 
-                    if ($presentTodayCount == 0 && $onLeaveTodayCount == 0) {
-                        // When no attendance has been recorded yet today, use representative realistic numbers matching executive dashboard mockup
-                        $totalDisplayCount = $totalCompanyEmployees > 50 ? $totalCompanyEmployees : 245;
-                        $presentTodayCount = 198;
-                        $absentTodayCount = 32;
-                        $onLeaveTodayCount = 15;
-                        $newThisMonth = $newThisMonth > 0 ? $newThisMonth : 12;
-                        $presentPercentage = 80.8;
-                        $absentPercentage = 13.1;
-                        $onLeavePercentage = 6.1;
-                    } else {
-                        $totalDisplayCount = $totalCompanyEmployees;
-                        $absentTodayCount = max(0, $totalCompanyEmployees - $presentTodayCount - $onLeaveTodayCount);
-                        $presentPercentage = $totalCompanyEmployees > 0 ? round(($presentTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
-                        $absentPercentage = $totalCompanyEmployees > 0 ? round(($absentTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
-                        $onLeavePercentage = $totalCompanyEmployees > 0 ? round(($onLeaveTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
-                    }
+                    $absentTodayCount = max(0, $totalCompanyEmployees - $presentTodayCount - $onLeaveTodayCount);
+                    $presentPercentage = $totalCompanyEmployees > 0 ? round(($presentTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
+                    $absentPercentage = $totalCompanyEmployees > 0 ? round(($absentTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
+                    $onLeavePercentage = $totalCompanyEmployees > 0 ? round(($onLeaveTodayCount / $totalCompanyEmployees) * 100, 1) : 0;
 
-                    // Department stats with custom colors
-                    $deptColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#eab308', '#f43f5e', '#8b5cf6'];
+                    $lateTodayCount = (int) ($attendanceStats['late_punch'] ?? 0);
+                    $earlyGoCount = (int) ($attendanceStats['early_go'] ?? 0);
+
+                    $pendingLeavesCount = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')->count();
+                    $pendingExpensesCount = \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')->count();
+                    $pendingLoansCount = \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')->count();
+                    $pendingApprovalsTotal = $pendingLeavesCount + $pendingExpensesCount + $pendingLoansCount;
+
+                    $pendingExpenseAmount = (float) \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')->sum('req_amount');
+                    $monthExpensePassed = (float) \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->where('status', 'pass')
+                        ->whereBetween('date', [$monthStart, $monthEnd])
+                        ->sum('pass_amount');
+
+                    $activeLoansCount = \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->where('status', 'approved')->count();
+                    $activeLoanBalance = (float) \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->where('status', 'approved')->sum('balance_amount');
+
+                    $monthPayroll = (float) \App\Models\Salary::where('company_id', $currentCompanyId)
+                        ->where('month', (int) $now->format('n'))
+                        ->where('year', (int) $now->format('Y'))
+                        ->sum('net_bank_pay');
+                    if ($monthPayroll <= 0) {
+                        $monthPayroll = (float) ($totalCompanyPayroll ?? 0);
+                    }
+                    $monthContractorPay = (float) ($totalContractorSalary ?? 0);
+                    $monthTotalPayroll = $monthPayroll + $monthContractorPay;
+
+                    // Department-wise headcount (real data)
+                    $deptColors = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#f43f5e', '#14b8a6', '#eab308', '#6366f1'];
                     $departments = Department::where('company_id', $currentCompanyId)->where('status', 'active')->get();
                     $deptStats = [];
                     $cIdx = 0;
@@ -868,70 +907,45 @@ class DashboardController extends Controller
                             ->where('employees.status', 'active')
                             ->where('employment_details.department_id', $d->id)
                             ->count();
-                        $deptStats[] = [
-                            'name' => $d->name,
-                            'count' => $count,
-                            'color' => $deptColors[$cIdx % count($deptColors)]
-                        ];
-                        $cIdx++;
+                        if ($count > 0) {
+                            $deptStats[] = [
+                                'name' => $d->name,
+                                'count' => $count,
+                                'color' => $deptColors[$cIdx % count($deptColors)],
+                            ];
+                            $cIdx++;
+                        }
                     }
+                    usort($deptStats, fn($a, $b) => $b['count'] <=> $a['count']);
+                    $deptStats = array_slice($deptStats, 0, 8);
+                    $deptMax = !empty($deptStats) ? max(array_column($deptStats, 'count')) : 1;
 
-                    // 8 Standard & Eye-catching Departments matching modern HR layout
-                    $standardDepts = [
-                        'Sales' => ['color' => '#3b82f6', 'default' => 42],
-                        'Production' => ['color' => '#f43f5e', 'default' => 38],
-                        'Accounts' => ['color' => '#10b981', 'default' => 22],
-                        'HR' => ['color' => '#f59e0b', 'default' => 18],
-                        'IT' => ['color' => '#06b6d4', 'default' => 15],
-                        'Purchase' => ['color' => '#eab308', 'default' => 20],
-                        'Marketing' => ['color' => '#ec4899', 'default' => 15],
-                        'Others' => ['color' => '#a855f7', 'default' => 65],
-                    ];
-
-                    $deptStats = [];
-                    foreach ($standardDepts as $dName => $dMeta) {
-                        // Check if department exists in DB for this company
-                        $matchedDept = $departments->first(function($d) use ($dName) {
-                            return stripos($d->name, $dName) !== false;
-                        });
-
-                        $count = 0;
-                        if ($matchedDept) {
-                            $count = DB::table('employment_details')
-                                ->join('employees', 'employees.id', '=', 'employment_details.employee_id')
-                                ->where('employees.company_id', $currentCompanyId)
-                                ->where('employees.status', 'active')
-                                ->where('employment_details.department_id', $matchedDept->id)
-                                ->count();
-                        }
-
-                        // If company has few real records, use realistic count for stunning dashboard aesthetics
-                        if ($count == 0) {
-                            $count = $dMeta['default'];
-                        }
-
-                        $deptStats[] = [
-                            'name' => $dName,
-                            'count' => $count,
-                            'color' => $dMeta['color']
+                    // 7-day attendance trend
+                    $attendanceTrend = [];
+                    for ($i = 6; $i >= 0; $i--) {
+                        $d = $now->copy()->subDays($i);
+                        $dStr = $d->format('Y-m-d');
+                        $pCount = Attendance::where('company_id', $currentCompanyId)
+                            ->where('attendance_date', $dStr)
+                            ->where('attendace_type', 'in')
+                            ->distinct('employee_id')
+                            ->count('employee_id');
+                        $attendanceTrend[] = [
+                            'label' => $d->format('D'),
+                            'date' => $d->format('d M'),
+                            'present' => $pCount,
                         ];
                     }
+                    $trendMax = max(1, max(array_column($attendanceTrend, 'present')));
 
-                    // Today Live Attendance list (ensure 4 items matching mockup exactly)
-                    $sampleEmps = [
-                        ['name' => 'Rahul Patel', 'department' => 'Sales', 'time' => '09:05 AM', 'status' => 'Present', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=RahulPatel&backgroundColor=d1d4f9'],
-                        ['name' => 'Neha Shah', 'department' => 'HR', 'time' => '09:12 AM', 'status' => 'Present', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=NehaShah&backgroundColor=ffd5dc'],
-                        ['name' => 'Amit Joshi', 'department' => 'IT', 'time' => '09:25 AM', 'status' => 'Present', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=AmitJoshi&backgroundColor=b6e3f4'],
-                        ['name' => 'Pooja Mehta', 'department' => 'Accounts', 'time' => '--:-- AM', 'status' => 'Absent', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=PoojaMehta&backgroundColor=ffdfbf'],
-                    ];
-
+                    // Live attendance (real only)
                     $liveAttendanceList = [];
                     $todayAttendanceQuery = Attendance::where('company_id', $currentCompanyId)
                         ->where('attendance_date', $todayDate)
                         ->where('attendace_type', 'in')
                         ->with('employee.employmentDetail.department')
                         ->orderBy('punch_in_time', 'asc')
-                        ->take(4)
+                        ->take(6)
                         ->get();
 
                     foreach ($todayAttendanceQuery as $tp) {
@@ -940,43 +954,34 @@ class DashboardController extends Controller
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
                         $liveAttendanceList[] = [
                             'name' => $eName,
-                            'department' => $emp->employmentDetail?->department?->name ?? 'Sales',
-                            'time' => $tp->punch_in_time ? Carbon::parse($tp->punch_in_time)->format('h:i A') : '09:05 AM',
+                            'department' => $emp->employmentDetail?->department?->name ?? '—',
+                            'time' => $tp->punch_in_time ? Carbon::parse($tp->punch_in_time)->format('h:i A') : '—',
                             'status' => 'Present',
                             'badge' => 'present',
                             'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=b6e3f4',
                         ];
                     }
 
-                    if (count($liveAttendanceList) < 4) {
-                        $sIdx = count($liveAttendanceList);
-                        while (count($liveAttendanceList) < 4 && $sIdx < count($sampleEmps)) {
-                            $liveAttendanceList[] = [
-                                'name' => $sampleEmps[$sIdx]['name'],
-                                'department' => $sampleEmps[$sIdx]['department'],
-                                'time' => $sampleEmps[$sIdx]['time'],
-                                'status' => $sampleEmps[$sIdx]['status'],
-                                'badge' => strtolower($sampleEmps[$sIdx]['status']),
-                                'avatar' => $sampleEmps[$sIdx]['avatar'],
-                            ];
-                            $sIdx++;
-                        }
-                    }
-
-                    // Upcoming Leaves list (ensure 4 items matching mockup exactly)
-                    $sampleLeaves = [
-                        ['name' => 'Krunal Dave', 'department' => 'Production', 'leave_type' => 'Casual', 'date' => '25 Sep ' . $now->year, 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=KrunalDave&backgroundColor=c0aede'],
-                        ['name' => 'Disha Patel', 'department' => 'HR', 'leave_type' => 'Sick Leave', 'date' => '25 Sep ' . $now->year, 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=DishaPatel&backgroundColor=ffd5dc'],
-                        ['name' => 'Jignesh Parmar', 'department' => 'Sales', 'leave_type' => 'Earned Leave', 'date' => '26 Sep ' . $now->year, 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=JigneshParmar&backgroundColor=b6e3f4'],
-                        ['name' => 'Mitali Shah', 'department' => 'IT', 'leave_type' => 'Casual', 'date' => '26 Sep ' . $now->year, 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=MitaliShah&backgroundColor=ffdfbf'],
-                    ];
-
+                    // Upcoming / recent leaves
                     $upcomingLeavesList = [];
                     $recentLeavesQuery = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->whereIn('status', ['approved', 'pending'])
+                        ->where(function ($q) use ($todayDate, $weekAhead) {
+                            $q->whereDate('fromdate_time', '>=', $todayDate)
+                                ->whereDate('fromdate_time', '<=', $weekAhead);
+                        })
                         ->with(['employee.employmentDetail.department', 'leave_type'])
-                        ->orderBy('id', 'desc')
-                        ->take(4)
+                        ->orderBy('fromdate_time', 'asc')
+                        ->take(6)
                         ->get();
+
+                    if ($recentLeavesQuery->isEmpty()) {
+                        $recentLeavesQuery = LeaveApplication::where('company_id', $currentCompanyId)
+                            ->with(['employee.employmentDetail.department', 'leave_type'])
+                            ->orderBy('id', 'desc')
+                            ->take(6)
+                            ->get();
+                    }
 
                     foreach ($recentLeavesQuery as $lv) {
                         $emp = $lv->employee;
@@ -984,78 +989,299 @@ class DashboardController extends Controller
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
                         $upcomingLeavesList[] = [
                             'name' => $eName,
-                            'department' => $emp->employmentDetail?->department?->name ?? 'Production',
-                            'leave_type' => $lv->leave_type?->full_name ?? ($lv->leave_type?->sort_name ?? 'Casual'),
-                            'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M Y') : '25 Sep ' . $now->year,
+                            'department' => $emp->employmentDetail?->department?->name ?? '—',
+                            'leave_type' => $lv->leave_type?->full_name ?? ($lv->leave_type?->sort_name ?? 'Leave'),
+                            'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M Y') : '—',
+                            'status' => $lv->status ?? 'pending',
                             'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=ffd5dc',
                         ];
                     }
 
-                    if (count($upcomingLeavesList) < 4) {
-                        $lIdx = count($upcomingLeavesList);
-                        while (count($upcomingLeavesList) < 4 && $lIdx < count($sampleLeaves)) {
-                            $upcomingLeavesList[] = $sampleLeaves[$lIdx];
-                            $lIdx++;
-                        }
+                    // Pending leave items for action center
+                    $pendingLeaveItems = [];
+                    $pendingLeaveRows = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')
+                        ->with(['employee', 'leave_type'])
+                        ->orderBy('id', 'desc')
+                        ->take(5)
+                        ->get();
+                    foreach ($pendingLeaveRows as $lv) {
+                        $emp = $lv->employee;
+                        if (!$emp) continue;
+                        $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                        $pendingLeaveItems[] = [
+                            'name' => $eName,
+                            'type' => $lv->leave_type?->sort_name ?? ($lv->leave_type?->full_name ?? 'Leave'),
+                            'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M') : '—',
+                        ];
                     }
 
-                    // Birthdays & Work Anniversaries (ensure 4 items matching mockup exactly)
-                    $sampleEvents = [
-                        ['name' => 'Mehul Soni', 'subtitle' => '24 Sep', 'color' => '#ef4444', 'bg' => '#fef2f2', 'icon' => 'ti-gift', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=MehulSoni&backgroundColor=d1d4f9'],
-                        ['name' => 'Ritika Patel', 'subtitle' => 'Work Anniversary', 'color' => '#ef4444', 'bg' => '#fef2f2', 'icon' => 'ti-gift', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=RitikaPatel&backgroundColor=ffd5dc'],
-                        ['name' => 'Alpesh Parmar', 'subtitle' => '26th Birthday', 'color' => '#3b82f6', 'bg' => '#eff6ff', 'icon' => 'ti-gift', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=AlpeshParmar&backgroundColor=b6e3f4'],
-                        ['name' => 'Kajal Dave', 'subtitle' => 'Work Anniversary', 'color' => '#10b981', 'bg' => '#ecfdf5', 'icon' => 'ti-award', 'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=KajalDave&backgroundColor=ffdfbf'],
-                    ];
-
+                    // Birthdays & work anniversaries (next 7 days)
                     $anniversariesList = [];
+                    $todayMd = $now->format('m-d');
+                    $endMd = $now->copy()->addDays(7)->format('m-d');
                     foreach ($companyEmployees as $emp) {
                         if (!empty($emp->date_of_birth)) {
                             try {
                                 $dob = Carbon::parse($emp->date_of_birth);
-                                $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                                $md = $dob->format('m-d');
+                                $inWindow = ($todayMd <= $endMd)
+                                    ? ($md >= $todayMd && $md <= $endMd)
+                                    : ($md >= $todayMd || $md <= $endMd);
+                                if ($inWindow) {
+                                    $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                                    $anniversariesList[] = [
+                                        'name' => $eName,
+                                        'event' => 'Birthday',
+                                        'subtitle' => $dob->format('d M') . ' · Birthday',
+                                        'sort' => $md,
+                                        'icon' => 'ti-cake',
+                                        'color' => '#ef4444',
+                                        'bg' => '#fef2f2',
+                                        'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=b6e3f4',
+                                    ];
+                                }
+                            } catch (\Exception $e) {
+                            }
+                        }
+                    }
+                    $joinRows = DB::table('employment_details')
+                        ->join('employees', 'employees.id', '=', 'employment_details.employee_id')
+                        ->where('employees.company_id', $currentCompanyId)
+                        ->where('employees.status', 'active')
+                        ->whereNotNull('employment_details.date_of_joining')
+                        ->select('employees.id', 'employees.full_name', 'employees.first_name', 'employment_details.date_of_joining')
+                        ->get();
+                    foreach ($joinRows as $jr) {
+                        try {
+                            $doj = Carbon::parse($jr->date_of_joining);
+                            $md = $doj->format('m-d');
+                            $inWindow = ($todayMd <= $endMd)
+                                ? ($md >= $todayMd && $md <= $endMd)
+                                : ($md >= $todayMd || $md <= $endMd);
+                            if ($inWindow && $doj->year < $now->year) {
+                                $years = $now->year - $doj->year;
+                                $eName = $jr->full_name ?: $jr->first_name;
                                 $anniversariesList[] = [
                                     'name' => $eName,
-                                    'event' => 'Birthday',
-                                    'subtitle' => $dob->format('d M'),
-                                    'icon' => 'ti-gift',
-                                    'color' => '#ef4444',
-                                    'bg' => '#fef2f2',
-                                    'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=b6e3f4',
+                                    'event' => 'Work Anniversary',
+                                    'subtitle' => $doj->format('d M') . ' · ' . $years . ' yr',
+                                    'sort' => $md,
+                                    'icon' => 'ti-award',
+                                    'color' => '#10b981',
+                                    'bg' => '#ecfdf5',
+                                    'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=ffdfbf',
                                 ];
-                            } catch (\Exception $e) {}
-                        }
-                        if (count($anniversariesList) >= 4) break;
-                    }
-
-                    if (count($anniversariesList) < 4) {
-                        $eIdx = count($anniversariesList);
-                        while (count($anniversariesList) < 4 && $eIdx < count($sampleEvents)) {
-                            $anniversariesList[] = $sampleEvents[$eIdx];
-                            $eIdx++;
+                            }
+                        } catch (\Exception $e) {
                         }
                     }
-                    $anniversariesList = array_slice($anniversariesList, 0, 4);
+                    usort($anniversariesList, fn($a, $b) => strcmp($a['sort'], $b['sort']));
+                    $anniversariesList = array_slice($anniversariesList, 0, 6);
 
-                    $adminName = $currentEmployee ? ($currentEmployee->proper_name ?: $currentEmployee->full_name) : 'Admin';
+                    $adminUser = Auth::guard('admin_software')->user();
+                    $adminName = $currentEmployee
+                        ? ($currentEmployee->proper_name ?: ($currentEmployee->full_name ?: $currentEmployee->first_name))
+                        : ($adminUser->name ?? 'Admin');
                     $company = Company::find($currentCompanyId);
+
+                    $hour = (int) $now->format('H');
+                    $greeting = $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening');
+
+                    // Company master counts
+                    $branchesCount = \App\Models\Branch::where('company_id', $currentCompanyId)->where('status', 'active')->count();
+                    $departmentsCount = Department::where('company_id', $currentCompanyId)->where('status', 'active')->count();
+                    $shiftsCount = Shift::where('company_id', $currentCompanyId)->where('status', 'active')->count();
+                    $designationsCount = \App\Models\Designation::where('company_id', $currentCompanyId)->where('status', 'active')->count();
+
+                    // Gender split
+                    $maleCount = Employee::where('company_id', $currentCompanyId)->where('status', 'active')
+                        ->where(function ($q) {
+                            $q->whereRaw('LOWER(gender) IN (?, ?, ?)', ['male', 'm', 'man']);
+                        })->count();
+                    $femaleCount = Employee::where('company_id', $currentCompanyId)->where('status', 'active')
+                        ->where(function ($q) {
+                            $q->whereRaw('LOWER(gender) IN (?, ?, ?)', ['female', 'f', 'woman']);
+                        })->count();
+                    $otherGenderCount = max(0, $totalCompanyEmployees - $maleCount - $femaleCount);
+
+                    // New joiners this month (list)
+                    $newJoinersList = [];
+                    $newJoinerRows = DB::table('employment_details')
+                        ->join('employees', 'employees.id', '=', 'employment_details.employee_id')
+                        ->leftJoin('departments', 'departments.id', '=', 'employment_details.department_id')
+                        ->where('employees.company_id', $currentCompanyId)
+                        ->whereBetween('employment_details.date_of_joining', [$monthStart, $monthEnd])
+                        ->select('employees.full_name', 'employees.first_name', 'employees.employee_code', 'employment_details.date_of_joining', 'departments.name as dept_name')
+                        ->orderBy('employment_details.date_of_joining', 'desc')
+                        ->take(5)
+                        ->get();
+                    foreach ($newJoinerRows as $nj) {
+                        $newJoinersList[] = [
+                            'name' => $nj->full_name ?: $nj->first_name,
+                            'code' => $nj->employee_code ?: '—',
+                            'department' => $nj->dept_name ?: '—',
+                            'date' => $nj->date_of_joining ? Carbon::parse($nj->date_of_joining)->format('d M Y') : '—',
+                        ];
+                    }
+
+                    // Absent employees today (sample list)
+                    $absentList = [];
+                    $absentEmpIds = Employee::where('company_id', $currentCompanyId)
+                        ->where('status', 'active')
+                        ->whereNotIn('id', array_merge($presentEmployeeIds, $onLeaveEmployeeIds))
+                        ->with('employmentDetail.department')
+                        ->take(5)
+                        ->get();
+                    foreach ($absentEmpIds as $ae) {
+                        $absentList[] = [
+                            'name' => $ae->proper_name ?: ($ae->full_name ?: $ae->first_name),
+                            'department' => $ae->employmentDetail?->department?->name ?? '—',
+                            'code' => $ae->employee_code ?: '—',
+                        ];
+                    }
+
+                    // Pending expense items
+                    $pendingExpenseItems = [];
+                    $pendingExpenseRows = \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->where('status', 'pending')
+                        ->with('employees')
+                        ->orderBy('id', 'desc')
+                        ->take(4)
+                        ->get();
+                    foreach ($pendingExpenseRows as $ex) {
+                        $emp = $ex->employees;
+                        $pendingExpenseItems[] = [
+                            'name' => $emp ? ($emp->proper_name ?: ($emp->full_name ?: $emp->first_name)) : '—',
+                            'amount' => (float) ($ex->req_amount ?? 0),
+                            'date' => $ex->date ? Carbon::parse($ex->date)->format('d M') : '—',
+                        ];
+                    }
+
+                    // Seat / capacity utilization
+                    $maxEmployees = (int) ($company->max_employee_user_count ?? 0);
+                    $seatUsedPct = $maxEmployees > 0 ? min(100, round(($totalCompanyEmployees / $maxEmployees) * 100, 1)) : 0;
+
+                    // Plan expiry
+                    $planTo = null;
+                    $planDaysLeft = null;
+                    if (!empty($company->plan_to)) {
+                        try {
+                            $planTo = Carbon::parse($company->plan_to);
+                            $planDaysLeft = (int) Carbon::today()->diffInDays($planTo, false);
+                        } catch (\Exception $e) {
+                        }
+                    }
+
+                    // Month leave applications approved
+                    $monthLeavesApproved = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->where('status', 'approved')
+                        ->whereBetween('fromdate_time', [$monthStart . ' 00:00:00', $monthEnd . ' 23:59:59'])
+                        ->count();
+
+                    // Late punch employee names (for filling attendance card)
+                    $lateList = [];
+                    foreach (($attendanceStats['late_punch_employees'] ?? []) as $lp) {
+                        $lateList[] = [
+                            'name' => $lp['employee_name'] ?? '—',
+                            'time' => !empty($lp['punch_in_time']) ? Carbon::parse($lp['punch_in_time'])->format('h:i A') : '—',
+                            'code' => $lp['employee_code'] ?? '—',
+                        ];
+                        if (count($lateList) >= 4) break;
+                    }
+
+                    // Designation headcount
+                    $desigStats = [];
+                    $desigColors = ['#2563eb', '#f28c28', '#0d9f6e', '#e11d48', '#7c3aed', '#0891b2'];
+                    $designations = \App\Models\Designation::where('company_id', $currentCompanyId)->where('status', 'active')->get();
+                    $dIdx = 0;
+                    foreach ($designations as $des) {
+                        $cnt = DB::table('employment_details')
+                            ->join('employees', 'employees.id', '=', 'employment_details.employee_id')
+                            ->where('employees.company_id', $currentCompanyId)
+                            ->where('employees.status', 'active')
+                            ->where('employment_details.designation_id', $des->id)
+                            ->count();
+                        if ($cnt > 0) {
+                            $desigStats[] = [
+                                'name' => $des->name,
+                                'count' => $cnt,
+                                'color' => $desigColors[$dIdx % count($desigColors)],
+                            ];
+                            $dIdx++;
+                        }
+                    }
+                    usort($desigStats, fn($a, $b) => $b['count'] <=> $a['count']);
+                    $desigStats = array_slice($desigStats, 0, 5);
+                    $desigMax = !empty($desigStats) ? max(array_column($desigStats, 'count')) : 1;
+
+                    // Not punched yet = active - present - leave
+                    $notPunchedCount = max(0, $totalCompanyEmployees - $presentTodayCount - $onLeaveTodayCount);
+
+                    // Strength vs capacity
+                    $inactiveEmployees = Employee::where('company_id', $currentCompanyId)->where('status', 'inactive')->count();
 
                     $adminDashboardData = [
                         'admin_name' => $adminName,
+                        'greeting' => $greeting,
                         'company_name' => $company ? $company->company_name : 'Ocean HR',
+                        'company_email' => $company->email ?? null,
+                        'company_phone' => $company->whatsapp_number ?? null,
+                        'company_logo' => $company ? ($company->company_logo_url ?? null) : null,
                         'current_date' => $now->format('D, d M Y'),
                         'current_time' => $now->format('h:i:s A'),
-                        'total_employees' => $totalDisplayCount,
+                        'total_employees' => $totalCompanyEmployees,
+                        'regular_employees' => $regularEmployeesCount,
+                        'contractors' => $contractorsCount,
                         'new_this_month' => $newThisMonth,
+                        'exits_this_month' => $exitsThisMonth,
                         'present_today' => $presentTodayCount,
                         'present_pct' => $presentPercentage,
                         'absent_today' => $absentTodayCount,
                         'absent_pct' => $absentPercentage,
                         'on_leave_today' => $onLeaveTodayCount,
                         'on_leave_pct' => $onLeavePercentage,
+                        'late_today' => $lateTodayCount,
+                        'early_go' => $earlyGoCount,
+                        'pending_leaves' => $pendingLeavesCount,
+                        'pending_expenses' => $pendingExpensesCount,
+                        'pending_loans' => $pendingLoansCount,
+                        'pending_approvals' => $pendingApprovalsTotal,
+                        'pending_expense_amount' => $pendingExpenseAmount,
+                        'month_expense_passed' => $monthExpensePassed,
+                        'active_loans' => $activeLoansCount,
+                        'active_loan_balance' => $activeLoanBalance,
+                        'month_payroll' => $monthPayroll,
+                        'month_contractor_pay' => $monthContractorPay,
+                        'month_total_payroll' => $monthTotalPayroll,
                         'department_stats' => $deptStats,
+                        'dept_max' => $deptMax,
+                        'attendance_trend' => $attendanceTrend,
+                        'trend_max' => $trendMax,
                         'today_live_attendance' => $liveAttendanceList,
                         'upcoming_leaves' => $upcomingLeavesList,
+                        'pending_leave_items' => $pendingLeaveItems,
+                        'pending_expense_items' => $pendingExpenseItems,
                         'birthdays_anniversaries' => $anniversariesList,
+                        'branches_count' => $branchesCount,
+                        'departments_count' => $departmentsCount,
+                        'shifts_count' => $shiftsCount,
+                        'designations_count' => $designationsCount,
+                        'male_count' => $maleCount,
+                        'female_count' => $femaleCount,
+                        'other_gender_count' => $otherGenderCount,
+                        'new_joiners' => $newJoinersList,
+                        'absent_list' => $absentList,
+                        'max_employees' => $maxEmployees,
+                        'seat_used_pct' => $seatUsedPct,
+                        'plan_to' => $planTo ? $planTo->format('d M Y') : null,
+                        'plan_days_left' => $planDaysLeft,
+                        'month_leaves_approved' => $monthLeavesApproved,
+                        'late_list' => $lateList,
+                        'designation_stats' => $desigStats,
+                        'desig_max' => $desigMax,
+                        'not_punched' => $notPunchedCount,
+                        'inactive_employees' => $inactiveEmployees,
                     ];
                 }
 

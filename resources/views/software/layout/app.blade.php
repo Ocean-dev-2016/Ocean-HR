@@ -122,7 +122,7 @@
         }
 
         .content-wrapper {
-            padding-bottom: 60px;
+            padding-bottom: 90px;
         }
 
         #filter_section {
