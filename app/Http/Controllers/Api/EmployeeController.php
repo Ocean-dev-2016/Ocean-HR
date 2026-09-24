@@ -57,6 +57,8 @@ class EmployeeController extends Controller
                 'attendance_date' => 'sometimes|date_format:Y-m-d',
                 'punch_in_time' => 'sometimes|date_format:h:i A',
                 'punch_out_time' => 'sometimes|date_format:h:i A',
+                'image' => 'sometimes',
+                'punch_image' => 'sometimes',
             ]);
 
             if ($validator->fails()) {
@@ -64,7 +66,7 @@ class EmployeeController extends Controller
             }
 
             // 2. Strict parameter check (no extra keys allowed)
-            $allowedKeys = ['attendace_type', 'attendance_date', 'punch_in_time', 'punch_out_time', 'remark', 'latitude', 'longitude'];
+            $allowedKeys = ['attendace_type', 'attendance_date', 'punch_in_time', 'punch_out_time', 'remark', 'latitude', 'longitude', 'image', 'punch_image'];
             $requestKeys = array_keys($request->all());
             $extraKeys = array_diff($requestKeys, $allowedKeys);
             if (!empty($extraKeys)) {
@@ -110,6 +112,55 @@ class EmployeeController extends Controller
                 $shift_id = $defaultShift ? $defaultShift->id : 0;
             }
 
+            // Check shift grace period hard block for Punch-In
+            if ($nextAction == 'in') {
+                $shift = $shift_id ? Shift::find($shift_id) : null;
+                if ($shift && !empty($shift->punch_in_minimum)) {
+                    $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
+                    $shiftStart = Carbon::parse($shift->punch_in_minimum);
+                    $cutoffTime = (clone $shiftStart)->addMinutes($graceMin);
+                    $currentTime = Carbon::parse($punchInTime24);
+
+                    if ($currentTime->gt($cutoffTime)) {
+                        $startFormatted = $shiftStart->format('h:i A');
+                        $cutoffFormatted = $cutoffTime->format('h:i A');
+                        return $this->sendError("Punch In allowed only during shift hours (Between {$startFormatted} and {$cutoffFormatted} with grace period).", [], [], 422);
+                    }
+                }
+            }
+
+            // Handle punch image upload or base64
+            $punchImagePath = null;
+            if ($request->hasFile('image') || $request->hasFile('punch_image')) {
+                $file = $request->file('image') ?? $request->file('punch_image');
+                $filename = 'punch_' . $employee->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $destinationPath = public_path('uploads/attendance_images');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $punchImagePath = 'uploads/attendance_images/' . $filename;
+            } elseif ($request->filled('image') || $request->filled('punch_image')) {
+                $imgData = $request->input('image') ?? $request->input('punch_image');
+                if (is_string($imgData) && (strpos($imgData, 'data:image') === 0 || base64_encode(base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $imgData), true)) === preg_replace('#^data:image/\w+;base64,#i', '', $imgData))) {
+                    $destinationPath = public_path('uploads/attendance_images');
+                    if (!file_exists($destinationPath)) {
+                        mkdir($destinationPath, 0777, true);
+                    }
+                    if (strpos($imgData, 'data:image') === 0) {
+                        $parts = explode(';', $imgData);
+                        $type = explode('/', $parts[0])[1] ?? 'jpg';
+                        $data = explode(',', $parts[1])[1] ?? '';
+                    } else {
+                        $type = 'jpg';
+                        $data = $imgData;
+                    }
+                    $filename = 'punch_' . $employee->id . '_' . time() . '_' . uniqid() . '.' . $type;
+                    file_put_contents($destinationPath . '/' . $filename, base64_decode($data));
+                    $punchImagePath = 'uploads/attendance_images/' . $filename;
+                }
+            }
+
             // Prepare current punch data
             $data = [
                 'company_id' => $employee->company_id,
@@ -118,6 +169,7 @@ class EmployeeController extends Controller
                 'attendance_date' => $attendanceDate,
                 'create_date' => $now->toDateTimeString(),
                 'punch_in_time' => $punchInTime24, // Store in DB in 24-hour format
+                'punch_image' => $punchImagePath,
                 'attendace_type' => $nextAction,
                 'remark' => $request->remark ?? 'Punched via API',
                 'status' => 'active',
@@ -139,6 +191,7 @@ class EmployeeController extends Controller
                 'attendace_type' => $attendance->attendace_type,
                 'punch_in_time' => null,
                 'punch_out_time' => null,
+                'punch_image' => $attendance->punch_image_url,
                 'remark' => $attendance->remark,
             ];
 
@@ -188,6 +241,7 @@ class EmployeeController extends Controller
             $history->getCollection()->transform(function ($item) {
                 $punchTime = Carbon::parse($item->punch_in_time)->format('h:i A');
                 $item->formatted_attendance_date = Carbon::parse($item->attendance_date)->format('d-m-Y');
+                $item->punch_image = $item->punch_image_url;
 
                 if ($item->attendace_type == 'in') {
                     $item->punch_in_time = $punchTime;
@@ -236,6 +290,7 @@ class EmployeeController extends Controller
             if ($lastPunch) {
                 $punchTime = Carbon::parse($lastPunch->punch_in_time)->format('h:i A');
                 $lastPunch->formatted_attendance_date = Carbon::parse($lastPunch->attendance_date)->format('d-m-Y');
+                $lastPunch->punch_image = $lastPunch->punch_image_url;
 
                 if ($lastPunch->attendace_type == 'in') {
                     $lastPunch->punch_in_time = $punchTime;

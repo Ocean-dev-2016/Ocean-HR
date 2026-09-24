@@ -42,15 +42,13 @@
                                 options += `<option value="${item.id}" ${selected}>${item.full_name}</option>`;
                             });
                         }
-                        leaveTypeSelect.html(options).trigger("change");
+                        leaveTypeSelect.html(options);
                         if (leaveTypeSelect.hasClass('select2')) {
-                            leaveTypeSelect.select2();
+                            leaveTypeSelect.select2({ width: '100%' });
                         }
                     }
                 }
             });
         }
-
-        $('.search_by_company').trigger("change");
     });
 </script>

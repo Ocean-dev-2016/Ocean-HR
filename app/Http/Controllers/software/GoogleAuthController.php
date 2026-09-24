@@ -408,12 +408,15 @@ class GoogleAuthController extends Controller
             ]);
 
             // 6. Designation
-            Designation::create([
-                'company_id' => $company_id,
-                'name' => 'Admin',
-                'status' => 'active',
-                'created_by' => 0,
-            ]);
+            $defaultDesignations = ['Main HR', 'Department Head', 'Supervisor', 'Employee'];
+            foreach ($defaultDesignations as $designationName) {
+                Designation::create([
+                    'company_id' => $company_id,
+                    'name' => $designationName,
+                    'status' => 'active',
+                    'created_by' => 0,
+                ]);
+            }
 
             // 7. Document Type
             DocumentType::create([

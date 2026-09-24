@@ -18,7 +18,7 @@ class Attendance extends Model
         'attendance_date',
         'create_date',
         'punch_in_time',
-
+        'punch_image',
         'attendace_type',
         'remark',
         'status',
@@ -57,6 +57,14 @@ class Attendance extends Model
         // 'day' => "Day",
     ];
 
-
-
+    public function getPunchImageUrlAttribute()
+    {
+        if (!$this->punch_image) {
+            return null;
+        }
+        if (filter_var($this->punch_image, FILTER_VALIDATE_URL)) {
+            return $this->punch_image;
+        }
+        return asset($this->punch_image);
+    }
 }

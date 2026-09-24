@@ -129,6 +129,16 @@ class Employee extends Authenticatable
         return $this->belongsTo(TeamRole::class, 'role_id', 'id'); // Belongs to team role
     }
 
+    public function team_role()
+    {
+        return $this->belongsTo(TeamRole::class, 'role_id', 'id');
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(TeamRole::class, 'role_id', 'id');
+    }
+
     public function employee_asign_assets()
     {
         // ->where('company_id', $this->id)

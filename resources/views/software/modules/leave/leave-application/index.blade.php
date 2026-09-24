@@ -159,80 +159,185 @@
     </div>
 
     {{-- <div class="modal fade show" id="leaveApplicationAcutionModel" tabindex="-1" aria-hidden="true" style="display: block"> --}}
-    <div class="modal fade" id="leaveApplicationAcutionModel" tabindex="-1" aria-labelledby="leaveModalLabel"
-        aria-hidden="true">
+    <!-- Leave Application Action Modal -->
+    <div class="modal fade" id="leaveApplicationAcutionModel" tabindex="-1" aria-labelledby="leaveModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content shadow-sm border-0">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: visible;">
 
                 <!-- Modal Header -->
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title text-white text-center" id="leaveModalLabel">Person Details</h5>
-                    <button type="button" class="btn-close btn-close-white text-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                <div class="modal-header bg-white py-3 px-4 position-relative border-bottom" style="border-top-left-radius: 16px; border-top-right-radius: 16px; border-color: #e2e8f0 !important;">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar avatar-md bg-label-primary rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-xs">
+                            <i class="ti ti-file-certificate fs-3 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title text-dark mb-0 fw-bold" id="leaveModalLabel">Leave Application Decision</h5>
+                            <small class="text-muted fw-semibold" id="modal_stage_label">Review details and approve or reject request</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-icon btn-light text-secondary" data-bs-dismiss="modal" aria-label="Close"
+                        style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #f8fafc;">
+                        <i class="ti ti-x fs-5"></i>
+                    </button>
                 </div>
 
                 <!-- Modal Body -->
-                <div class="modal-body p-4">
+                <div class="modal-body p-4" style="background-color: #f8f9fa;">
 
-                    <!-- Leave Details Card -->
-                    <div class="card border-light mb-4">
-                        <div class="card-body p-3">
-                            <div class="row">
-                                <input type="hidden" id="leave_application_id" value="" />
-                                <input type="hidden" id="company_id" value="" />
-                                <!-- Leave details here... -->
-                                <div class="col-md-6 mb-2"><strong>Company Name:</strong> <span id="compay_name"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>Team Person Name:</strong> <span id="team_person_name"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>Leave Type:</strong> <span id="leave_type"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>Leave For Day:</strong> <span id="leave_for_day"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>Leave By Days:</strong> <span id="leave_by_days"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>From Date:</strong> <span id="fromdate_time"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>To Date:</strong> <span id="todate_time"
-                                        class="text-muted"></span></div>
-                                <div class="col-md-6 mb-2"><strong>Reason:</strong> <span id="leave_reason"
-                                        class="text-muted"></span></div>
+                    <!-- Leave Details Grid Card -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: #ffffff;">
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <!-- Employee Info -->
+                                <div class="{{ !$company_id ? 'col-md-6' : 'col-md-12' }}">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-label-primary rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                            <i class="ti ti-user fs-4 text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">Employee</small>
+                                            <span id="team_person_name" class="fw-bold text-dark fs-6">-</span>
+                                            <span id="employee_code_badge" class="badge bg-label-secondary ms-1"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (!$company_id)
+                                    <!-- Company Info (Only for Master Admin) -->
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm bg-label-info rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                                <i class="ti ti-building fs-4 text-info"></i>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">Company</small>
+                                                <span id="compay_name" class="fw-bold text-dark fs-6">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="col-12"><hr class="my-1" style="border-color: #f0f2f5;"></div>
+
+                                <!-- Leave Type -->
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-label-success rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                            <i class="ti ti-tag fs-4 text-success"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">Leave Type</small>
+                                            <span id="leave_type" class="badge bg-label-primary fs-6 fw-bold">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Day Type -->
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-label-warning rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                            <i class="ti ti-clock fs-4 text-warning"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">Day Type</small>
+                                            <span id="leave_day_type" class="fw-bold text-dark">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- From & To Dates -->
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-label-danger rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                            <i class="ti ti-calendar-event fs-4 text-danger"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">From Date</small>
+                                            <span id="fromdate_time" class="fw-bold text-dark fs-6">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm bg-label-secondary rounded p-2 me-3 d-flex align-items-center justify-content-center">
+                                            <i class="ti ti-calendar-check fs-4 text-secondary"></i>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted text-uppercase fw-semibold d-block" style="font-size: 11px;">To Date</small>
+                                            <span id="todate_time" class="fw-bold text-dark fs-6">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reason -->
+                                <div class="col-12 mt-2">
+                                    <div class="p-3 rounded border" style="background-color: #f8fafc; border-color: #e2e8f0 !important;">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="ti ti-message-2 text-primary me-2 fs-5"></i>
+                                            <strong class="text-dark">Reason for Leave:</strong>
+                                        </div>
+                                        <p id="leave_reason" class="mb-0 text-muted ps-4 fst-italic fs-6">-</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    {{-- status --}}
-                    <div class="mb-3">
-                        <label for="statusSelect" class="form-label fw-semibold">Select Status</label>
-                        <select id="statusSelect" name="status" class="form-select" required>
-                            <option disabled selected value="">Select Status</option>
-                            @foreach (['approved', 'rejected'] as $status)
-                                <option value="{{ $status }}"
-                                    @if (isset($edit) && $edit->status == $status) selected
-                                @elseif (old('status') == $status) selected @endif>
-                                    {{ ucfirst($status) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <input type="hidden" id="leave_request_id" name="leave_request_id" value="">
 
+                    <!-- Hidden Inputs -->
+                    <input type="hidden" id="leave_application_id" value="" />
+                    <input type="hidden" id="company_id" value="" />
+                    <input type="hidden" id="selected_decision_status" value="" />
 
-                    <!-- Rejection Reason -->
-                    <div id="rejectBoxContainer" class="mb-3" style="display: none;">
-                        <label for="rejectTextarea" class="form-label fw-semibold">Rejection Reason</label>
-                        <textarea id="rejectTextarea" name="reject" class="form-control" rows="4"
-                            placeholder="Provide a reason for rejection" required>{{ old('reject', isset($edit) ? $edit->reject : '') }}</textarea>
+                    <!-- Action Decision Card -->
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px; background: #ffffff;">
+                        <div class="card-body p-4">
+                            <label class="form-label fw-bold text-dark mb-3 fs-6 d-block">
+                                <i class="ti ti-gavel text-primary me-1"></i> Select Decision <span class="text-danger">*</span>
+                            </label>
+
+                            <!-- Decision Action Cards -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <div class="decision-card p-3 rounded-3 border text-center cursor-pointer transition-all"
+                                        id="card-approve" onclick="selectDecision('approved')"
+                                        style="cursor: pointer; border: 2px solid #e2e8f0; background: #f8fafc; transition: all 0.2s;">
+                                        <div class="fs-2 mb-1">✅</div>
+                                        <div class="fw-bold text-success fs-6">Approve</div>
+                                        <small class="text-muted d-block">Proceed to next stage / final</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="decision-card p-3 rounded-3 border text-center cursor-pointer transition-all"
+                                        id="card-reject" onclick="selectDecision('rejected')"
+                                        style="cursor: pointer; border: 2px solid #e2e8f0; background: #f8fafc; transition: all 0.2s;">
+                                        <div class="fs-2 mb-1">❌</div>
+                                        <div class="fw-bold text-danger fs-6">Reject</div>
+                                        <small class="text-muted d-block">Decline this leave application</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rejection Reason Container -->
+                            <div id="rejectBoxContainer" class="mt-3" style="display: none;">
+                                <label for="rejectTextarea" class="form-label fw-bold text-dark">
+                                    Reason for Rejection <span class="text-danger">*</span>
+                                </label>
+                                <textarea id="rejectTextarea" name="reject" class="form-control" rows="3"
+                                    placeholder="Please provide the reason for rejection..."></textarea>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
 
                 <!-- Modal Footer -->
-                <div class="modal-footer justify-content-center w-100 text-center">
-                    <button type="button" id="submitBtn" class="btn btn-primary">
-                        Submit
+                <div class="modal-footer bg-white border-top px-4 py-3 d-flex justify-content-end" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">
+                        <i class="ti ti-x me-1"></i> Cancel
                     </button>
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                        Cancel
+                    <button type="button" id="submitBtn" class="btn btn-primary px-4 shadow-sm">
+                        <i class="ti ti-send me-1"></i> Submit Decision
                     </button>
                 </div>
 
@@ -344,7 +449,7 @@
                 dtable.draw();
             });
 
-            $('input[name="fromdate_time"]').on('change apply.daterangepicker', function() {
+            $('input[name="fromdate_time"]').on('apply.daterangepicker', function() {
                 dtable.draw();
             });
 
@@ -456,51 +561,109 @@
                 window.open(url, '_blank');
             });
 
+            // Interactive Decision Selection Function
+            window.selectDecision = function(decision) {
+                $('#selected_decision_status').val(decision);
+                if (decision === 'approved') {
+                    $('#card-approve').css({
+                        'border': '2px solid #28c76f',
+                        'background-color': '#e8fadf',
+                        'box-shadow': '0 4px 12px rgba(40, 199, 111, 0.25)'
+                    });
+                    $('#card-reject').css({
+                        'border': '2px solid #e2e8f0',
+                        'background-color': '#f8fafc',
+                        'box-shadow': 'none'
+                    });
+                    $('#rejectBoxContainer').slideUp(200);
+                    $('#rejectTextarea').prop('required', false).val('');
+                } else if (decision === 'rejected') {
+                    $('#card-reject').css({
+                        'border': '2px solid #ea5455',
+                        'background-color': '#fceaea',
+                        'box-shadow': '0 4px 12px rgba(234, 84, 85, 0.25)'
+                    });
+                    $('#card-approve').css({
+                        'border': '2px solid #e2e8f0',
+                        'background-color': '#f8fafc',
+                        'box-shadow': 'none'
+                    });
+                    $('#rejectBoxContainer').slideDown(200);
+                    $('#rejectTextarea').prop('required', true).focus();
+                }
+            };
+
             // Leave Application Modal Handling
             $(document).on("click", ".leaveApplicationAcutionModel", function() {
+                const $target = $(this);
                 const modal = $("#leaveApplicationAcutionModel");
-                modal.find('#leave_application_id').val($(this).data("id"));
-                modal.find('#company_id').val($(this).data("company_id"));
-                modal.find('#compay_name').text($(this).data("company_name"));
-                modal.find('#team_person_name').text($(this).data("team_person_name"));
-                modal.find('#leave_type').text($(this).data("leave_type"));
-                modal.find('#fromdate_time').text($(this).data("fromdate_time"));
-                modal.find('#todate_time').text($(this).data("todate_time") || '-');
-                modal.find('#leave_for_day').text($(this).data("leave_for_day"));
-                modal.find('#leave_by_days').text($(this).data("leave_by_days"));
-                modal.find('#leave_for_half').text($(this).data("leave_for_half"));
-                modal.find('#leave_reason').text($(this).data("leave_reason"));
+                
+                const id = $target.attr("data-id") || '';
+                const company_id = $target.attr("data-company_id") || '';
+                const company_name = $target.attr("data-company_name") || '-';
+                const team_person_name = $target.attr("data-team_person_name") || '-';
+                const employee_code = $target.attr("data-employee_code") || '';
+                const leave_type = $target.attr("data-leave_type") || '-';
+                const from_date = $target.attr("data-from_date") || '-';
+                const to_date = $target.attr("data-to_date") || '-';
+                const day_type = $target.attr("data-day_type") || '-';
+                const day_detail = $target.attr("data-day_detail") || '';
+                const leave_reason = $target.attr("data-leave_reason") || '-';
+                const stage_label = $target.attr("data-stage_label") || '';
 
-                modal.find('#statusSelect').val('');
-                toggleRejectBox();
+                modal.find('#leave_application_id').val(id);
+                modal.find('#company_id').val(company_id);
+                modal.find('#compay_name').text(company_name);
+                modal.find('#team_person_name').text(team_person_name);
+                if (employee_code) {
+                    modal.find('#employee_code_badge').text(employee_code).show();
+                } else {
+                    modal.find('#employee_code_badge').hide();
+                }
+                modal.find('#leave_type').text(leave_type);
+                modal.find('#leave_day_type').text(day_type + (day_detail && day_detail !== '-' ? ' (' + day_detail + ')' : ''));
+                modal.find('#fromdate_time').text(from_date);
+                modal.find('#todate_time').text(to_date);
+                modal.find('#leave_reason').text(leave_reason);
+                if (stage_label) {
+                    modal.find('#modal_stage_label').text('Current: ' + stage_label);
+                } else {
+                    modal.find('#modal_stage_label').text('Review details and approve or reject request');
+                }
+
+                // Reset decision cards
+                $('#selected_decision_status').val('');
+                $('#card-approve').css({'border': '2px solid #e2e8f0', 'background-color': '#f8fafc', 'box-shadow': 'none'});
+                $('#card-reject').css({'border': '2px solid #e2e8f0', 'background-color': '#f8fafc', 'box-shadow': 'none'});
+                $('#rejectBoxContainer').hide();
+                $('#rejectTextarea').val('');
 
                 modal.modal('show');
             });
 
-            function toggleRejectBox() {
-                const status = $('#statusSelect').val();
-                $('#rejectBoxContainer').toggle(status === 'reject');
-                $('#rejectTextarea').prop('required', status === 'reject');
-            }
-
-            $('#statusSelect').change(toggleRejectBox);
-
             $('#submitBtn').on('click', function() {
+                const $btn = $(this);
                 const modal = $("#leaveApplicationAcutionModel");
                 const leave_application_id = modal.find("#leave_application_id").val();
-                const status = modal.find('#statusSelect').val();
+                const status = $('#selected_decision_status').val();
                 const rejectReason = modal.find('#rejectTextarea').val();
+                const isReject = (status === 'rejected');
 
-                if (!leave_application_id) return toastr.error("Leave Application ID is required.");
-                if (!status) return toastr.error("Please select a status.");
-                if (status === 'reject' && !rejectReason) return toastr.error(
-                    "Rejection reason is required.");
+                if (!leave_application_id) return toastr.error("Leave Application ID is missing.");
+                if (!status) return toastr.warning("Please click Approve or Reject to select your decision.");
+                if (isReject && (!rejectReason || !rejectReason.trim())) {
+                    toastr.error("Rejection reason is required.");
+                    $('#rejectTextarea').focus();
+                    return;
+                }
 
                 const formData = new FormData();
                 formData.append('_token', '{{ csrf_token() }}');
                 formData.append('id', leave_application_id);
                 formData.append('status', status);
                 formData.append('reject', rejectReason);
+
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Processing...');
 
                 $.ajax({
                     url: "{{ route('submit-leavel-application') }}",
@@ -509,15 +672,17 @@
                     processData: false,
                     contentType: false,
                     success: function(data) {
+                        $btn.prop('disabled', false).html('<i class="ti ti-send me-1"></i> Submit Decision');
                         if (data.success) {
                             modal.modal('hide');
-                            toastr.success("Leave request submitted successfully!");
+                            toastr.success(data.message || "Decision submitted successfully!");
                             dtable.ajax.reload(null, false);
                         } else {
-                            toastr.error('Error submitting leave request.');
+                            toastr.error(data.message || 'Error submitting decision.');
                         }
                     },
                     error: function(xhr, status, error) {
+                        $btn.prop('disabled', false).html('<i class="ti ti-send me-1"></i> Submit Decision');
                         console.error('Error:', error);
                         toastr.error('An error occurred. Please try again later.');
                     }

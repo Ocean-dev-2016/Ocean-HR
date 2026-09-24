@@ -184,14 +184,17 @@ class CompanySeeder extends Seeder
         if (Designation::count()) {
             Designation::truncate();
         }
-        //Designation
-        Designation::create([
-            'company_id' => $company_id,
-            'name' => 'Admin',
-            'status' => 'active',
-            'created_by' => $company->created_by,
-        ]);
-        $this->command->info("Designation Done.");
+        // Designation
+        $defaultDesignations = ['Main HR', 'Department Head', 'Supervisor', 'Employee'];
+        foreach ($defaultDesignations as $designationName) {
+            Designation::create([
+                'company_id' => $company_id,
+                'name' => $designationName,
+                'status' => 'active',
+                'created_by' => $company->created_by,
+            ]);
+        }
+        $this->command->info("Designations Done.");
 
         if (DocumentType::count()) {
             DocumentType::truncate();

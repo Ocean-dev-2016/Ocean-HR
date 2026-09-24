@@ -55,14 +55,22 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
 
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['view_permission']) {
@@ -95,7 +103,12 @@ class AttendanceController extends Controller
                     return $col->name !== 'company_id';
                 });
 
-
+                $columns = array_values($columns);
+            }
+            if (empty($modules['update_permission']) && empty($modules['delete_permission'])) {
+                $columns = array_filter($columns, function ($col) {
+                    return $col->name !== 'action';
+                });
                 $columns = array_values($columns);
             }
             // dd(!$modules['company_id'], $columns);
@@ -347,10 +360,15 @@ class AttendanceController extends Controller
                         if ($row instanceof Employee) {
                             return '-';
                         }
-                        if ($row->records_source === 'manually') {
-                            return $row->creator?->proper_name ?? $row->creator?->full_name ?? '-';
+                        $name = $row->creator?->proper_name ?? $row->creator?->full_name;
+                        if (!$name && $row->created_by) {
+                            $user = \App\Models\User::find($row->created_by);
+                            $name = $user?->name;
                         }
-                        return '-';
+                        if (!$name && $row->employee) {
+                            $name = $row->employee?->proper_name ?? $row->employee?->full_name;
+                        }
+                        return $name ?: '-';
                     })
                     ->addColumn('show_punch', function ($row) {
                         if ($row instanceof Employee) {
@@ -369,6 +387,10 @@ class AttendanceController extends Controller
                             } else {
                                 $show_punch .= ' <span class="badge bg-secondary">' . ucfirst($row->attendace_type) . '</span>';
                             }
+                        }
+                        if (!empty($row->punch_image)) {
+                            $imgUrl = $row->punch_image_url;
+                            $show_punch .= ' <a href="' . $imgUrl . '" target="_blank" class="ms-1" title="View Punch Selfie"><i class="fa-solid fa-camera text-primary"></i></a>';
                         }
                         return $show_punch;
                     })
@@ -442,14 +464,22 @@ class AttendanceController extends Controller
      */
     public function create()
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['add_permission']) {
@@ -474,14 +504,22 @@ class AttendanceController extends Controller
      */
     public function store(AttendanceRequest $request)
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['add_permission']) {
@@ -496,20 +534,49 @@ class AttendanceController extends Controller
         $validated = $request->all();
 
         try {
-            // return $this->authenticateLoginUserDetails;
-
+            $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+            $loginUserId = $authUser ? $authUser->id : ($modules['authLoginUserDetail']?->id ?? null);
             $validated['created_by'] = $loginUserId;
             if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
                 $validated['employee_id'] = $loginUserId;
             }
-            // Set records_source to 'manually' for manual entries
             if (!isset($validated['records_source'])) {
                 $validated['records_source'] = 'manually';
             }
-            // Store request data if not already set
             if (!isset($validated['requested_data'])) {
                 $validated['requested_data'] = json_encode($request->all());
             }
+
+            // Check shift grace period hard block for Punch-In
+            $attType = $validated['attendace_type'] ?? 'in';
+            if ($attType == 'in') {
+                $empId = $validated['employee_id'] ?? $loginUserId;
+                $emp = \App\Models\Employee::with('employmentDetail')->find($empId);
+                $shiftId = $emp?->employmentDetail?->shift ?? $validated['shift_id'] ?? null;
+                $companyId = $validated['company_id'] ?? $modules['company_id'] ?? $emp?->company_id;
+                $shift = $shiftId ? \App\Models\Shift::find($shiftId) : \App\Models\Shift::where('company_id', $companyId)->first();
+
+                if ($shift && !empty($shift->punch_in_minimum)) {
+                    $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
+                    $shiftStart = Carbon::parse($shift->punch_in_minimum);
+                    $cutoffTime = (clone $shiftStart)->addMinutes($graceMin);
+
+                    $punchTimeStr = $validated['punch_in_time'] ?? Carbon::now()->format('H:i:s');
+                    $punchTime = Carbon::parse($punchTimeStr);
+
+                    if ($punchTime->gt($cutoffTime)) {
+                        $startFormatted = $shiftStart->format('h:i A');
+                        $cutoffFormatted = $cutoffTime->format('h:i A');
+                        $errorMsg = "Punch In allowed only during shift hours (Between {$startFormatted} and {$cutoffFormatted} with grace period).";
+                        
+                        if ($request->ajax()) {
+                            return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                        }
+                        return Redirect::back()->withInput()->withErrors(['punch_in_time' => $errorMsg]);
+                    }
+                }
+            }
+
             // return $validated;
             Attendance::create($validated);
 
@@ -540,14 +607,22 @@ class AttendanceController extends Controller
      */
     public function edit(string $id)
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['update_permission']) {
@@ -583,14 +658,22 @@ class AttendanceController extends Controller
      */
     public function update(AttendanceRequest $request, string $id)
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['update_permission']) {
@@ -644,14 +727,22 @@ class AttendanceController extends Controller
      */
     public function destroy(string $id, Request $request)
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['delete_permission']) {

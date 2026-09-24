@@ -495,13 +495,16 @@ class CompanyController extends Controller
             // dd($defulatEmployeeCreate);
             $teamPerson = Employee::create($defulatEmployeeCreate);
 
-            //Designation
-            Designation::create([
-                'company_id' => $company_id,
-                'name' => 'Admin',
-                'status' => 'active',
-                'created_by' => $validated['created_by'],
-            ]);
+            // Designations
+            $defaultDesignations = ['Main HR', 'Department Head', 'Supervisor', 'Employee'];
+            foreach ($defaultDesignations as $designationName) {
+                Designation::create([
+                    'company_id' => $company_id,
+                    'name' => $designationName,
+                    'status' => 'active',
+                    'created_by' => $validated['created_by'],
+                ]);
+            }
 
             // Document Type
             DocumentType::create([

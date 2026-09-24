@@ -114,7 +114,7 @@
 
                             <input type="date" id="attendance_date" name="attendance_date"
                                 class="form-control plan-form @error('attendance_date') is-invalid @enderror"
-                                value="{{ old('attendance_date', isset($edit) && $edit?->attendance_date ? $edit->attendance_date : '') }}"
+                                value="{{ old('attendance_date', isset($edit) && $edit?->attendance_date ? $edit->attendance_date : date('Y-m-d')) }}"
                                 max="{{ date('Y-m-d') }}" placeholder="Attendance Date" />
 
                             @error('attendance_date')
@@ -129,8 +129,7 @@
                             <label class="form-label">Punch In / Out Time <span class="text-danger">*</span></label>
                             <input id="punch_in_time" type="time" step="1"
                                 class="form-control @error('punch_in_time') is-invalid @enderror" name="punch_in_time"
-                                value="{{ old('punch_in_time') ?: (isset($edit) && $edit?->punch_in_time ? $edit->punch_in_time : '') }}">
-
+                                value="{{ old('punch_in_time', isset($edit) && $edit?->punch_in_time ? $edit->punch_in_time : date('H:i:s')) }}">
 
                             @error('punch_in_time')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>

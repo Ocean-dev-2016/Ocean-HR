@@ -101,11 +101,15 @@
                             <label class="form-label">Select Employee <span class="text-danger">*</span></label>
                             <select id="employee_id"
                                 class="form-control select2 search_by_employee @error('employee_id') is-invalid @enderror"
-                                name="employee_id"
+                                @if (!$isTeamMember) name="employee_id" @endif
                                 data-selectedemployeeid="{{ old('employee_id', $edit->employee_id ?? $defaultEmpId) }}"
-                                data-exclude-contractor="1">
+                                data-exclude-contractor="1"
+                                @if ($isTeamMember) disabled @endif>
                                 <option value="">Select Employee</option>
                             </select>
+                            @if ($isTeamMember)
+                                <input type="hidden" name="employee_id" value="{{ old('employee_id', $edit->employee_id ?? $defaultEmpId) }}">
+                            @endif
 
                             @error('employee_id')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>

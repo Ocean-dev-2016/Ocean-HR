@@ -50,14 +50,23 @@ class LeaveApplicationController extends Controller
 
     public function index(Request $request)
     {
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id;
+        $userRoleId = $authUser?->role_id ?? 0;
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['view_permission']) {
@@ -123,30 +132,29 @@ class LeaveApplicationController extends Controller
                 }
 
                 $data = LeaveApplication::select('*')
-                    ->where(function ($query) use ($modules, $loginUserId) {
+                    ->where(function ($query) use ($modules, $loginUserId, $userRoleId) {
                         if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                            // If company_id exists in $modules, use that; otherwise use employee's company_id
                             $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
                             $query->where('company_id', $companyId);
 
                             if (!empty($modules['personal_data_permission']) && ($modules['all_data_permission'] == false)) {
-                                $query->where('created_by', $loginUserId);
+                                $query->where('employee_id', $loginUserId);
                             }
                         }
 
-                        // Exclude contractor employees - only show company employees
                         $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->pluck('id');
                         if ($contractTypeIds->isNotEmpty()) {
-                            $query->whereDoesntHave('employee.employmentDetail', function ($q) use ($contractTypeIds) {
-                                $q->whereIn('employment_type', $contractTypeIds);
-                            });
+                            $contractorEmpIds = \App\Models\EmploymentDetail::whereIn('employment_type', $contractTypeIds)->pluck('employee_id');
+                            if ($contractorEmpIds->isNotEmpty()) {
+                                $query->whereNotIn('employee_id', $contractorEmpIds);
+                            }
                         }
                     });
-                // $data = $data->orderBy('id', 'desc');
+
                 if (isset($modules['restore_permission']) && $modules['restore_permission']) {
                     $data = $data->withTrashed();
                 }
-                $data = $data->with(['company', 'leave_type', 'employee', 'branch'])
+                $data = $data->with(['company', 'leave_type', 'employee', 'branch', 'supervisorApprover', 'hodApprover', 'hrApprover', 'rejector'])
                     ->orderBy('id', 'desc');
 
                 if ($request->has('company_id') && $request->company_id) {
@@ -155,8 +163,6 @@ class LeaveApplicationController extends Controller
                 if ($request->has('employee_id') && $request->employee_id) {
                     $data->where('employee_id', $request->employee_id);
                 }
-
-
 
                 if ($request->has('filter_leave_type') && $request->filter_leave_type) {
                     $data->where('leave_type_id', $request->filter_leave_type);
@@ -215,13 +221,23 @@ class LeaveApplicationController extends Controller
                 return DataTables::of($data)
                     ->addIndexColumn()
                     ->addColumn('employee_name', function ($row) {
-                        // Combine employee_code + full_name + middle_name (or whatever fields you want)
                         if ($row->employee) {
                             return $row->employee->employee_code . ' - ' . $row->employee->proper_name;
                         }
                         return '-';
                     })
-                    ->addColumn('rejection_reason', fn($row) => $row->status === 'reject' ? $row->rejection_reason : '-')
+                    ->addColumn('rejection_reason', function ($row) {
+                        if ($row->status === 'rejected' || $row->status === 'reject') {
+                            $rejectorName = trim($row->rejector?->middle_name ?? '') 
+                                ?: (trim($row->rejector?->first_name ?? '') 
+                                ?: ($row->rejector?->proper_name 
+                                ?: $row->rejected_by_role));
+
+                            $by = $rejectorName ? '<strong class="text-danger">' . e($rejectorName) . ' : </strong>' : '';
+                            return $by . e($row->rejection_reason ?? '-');
+                        }
+                        return '-';
+                    })
                     ->addColumn('day_detail', function ($row) {
                         $type = ucfirst($row->halfday_fullday ?? '-');
                         $detail = '-';
@@ -234,18 +250,54 @@ class LeaveApplicationController extends Controller
 
                         return "{$type} ({$detail})";
                     })
-                    // ->editColumn('leave_reason', fn($row) => $row->leave_reason ?? '-')
                     ->editColumn('firsthalf_secondhalf', fn($row) => $row->firsthalf_secondhalf ?? '-')
                     ->editColumn('singleday_multipleday', fn($row) => $row->singleday_multipleday ?? '-')
                     ->editColumn('fromdate_time', fn($row) => $row->fromdate_time ? Carbon::parse($row->fromdate_time)->format('d-m-Y H:i') : '-')
                     ->editColumn('todate_time', fn($row) => $row->todate_time ? Carbon::parse($row->todate_time)->format('d-m-Y H:i') : '-')
                     ->editColumn('status', function ($row) {
-                        return match ($row->status) {
-                            'pending' => '<button type="button" class="btn btn-warning btn-sm waves-effect waves-light" style="min-width: 90px;">Pending</button>',
-                            'approved' => '<button type="button" class="btn btn-success btn-sm waves-effect waves-light" style="min-width: 90px;">Approve</button>',
-                            'rejected' => '<button type="button" class="btn btn-danger btn-sm waves-effect waves-light" style="min-width: 90px;">Reject</button>',
-                            default => '-',
-                        };
+                        if ($row->status === 'approved') {
+                            $html = '<span class="badge bg-success" style="min-width: 90px;">Approved</span>';
+                            if ($row->hrApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hrApprover->proper_name) . '</strong> <span class="text-muted">(HR)</span></small>';
+                            } elseif ($row->hodApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hodApprover->proper_name) . '</strong> <span class="text-muted">(Dept Head)</span></small>';
+                            } elseif ($row->supervisorApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->supervisorApprover->proper_name) . '</strong> <span class="text-muted">(Supervisor)</span></small>';
+                            }
+                            return $html;
+                        }
+                        if ($row->status === 'rejected' || $row->status === 'reject') {
+                            $html = '<span class="badge bg-danger" style="min-width: 90px;">Rejected</span>';
+                            $rejectorName = $row->rejector?->proper_name;
+                            $byRole = $row->rejected_by_role ?? '';
+                            if ($rejectorName && $byRole) {
+                                $html .= '<small class="d-block text-danger mt-1" style="font-size: 11px;"><i class="ti ti-x"></i> <strong>' . e($rejectorName) . '</strong> (' . e($byRole) . ')</small>';
+                            } elseif ($byRole) {
+                                $html .= '<small class="d-block text-danger mt-1" style="font-size: 11px;">(' . e($byRole) . ')</small>';
+                            }
+                            return $html;
+                        }
+
+                        // Multi-tier pending badges
+                        $level = (int) ($row->approval_level ?? 1);
+                        if ($level === 1) {
+                            return '<span class="badge bg-warning text-dark" style="min-width: 90px;">Pending (Supervisor)</span>';
+                        } elseif ($level === 2) {
+                            $html = '<span class="badge bg-info text-white" style="min-width: 90px;">Pending (Dept Head)</span>';
+                            if ($row->supervisorApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><span class="text-success fw-semibold">✔ ' . e($row->supervisorApprover->proper_name) . '</span> (Supervisor)</small>';
+                            }
+                            return $html;
+                        } elseif ($level === 3) {
+                            $html = '<span class="badge bg-primary" style="min-width: 90px;">Pending (Main HR)</span>';
+                            if ($row->hodApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><span class="text-success fw-semibold">✔ ' . e($row->hodApprover->proper_name) . '</span> (Dept Head)</small>';
+                            } elseif ($row->supervisorApprover) {
+                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><span class="text-success fw-semibold">✔ ' . e($row->supervisorApprover->proper_name) . '</span> (Supervisor)</small>';
+                            }
+                            return $html;
+                        }
+                        return '<span class="badge bg-warning text-dark" style="min-width: 90px;">Pending</span>';
                     })
                     ->editColumn('leave_reason', function ($row) {
                         $returnHtml = $row->leave_reason ?? '-';
@@ -254,37 +306,68 @@ class LeaveApplicationController extends Controller
                             $returnHtml .= '
                             <button type="button" class="btn btn-sm btn-info file-preview m-2" data-url="' . $row->attachment_url . '" data-filename="' . $row->attachment . '"> File </button>';
                         }
-                        // dd($row->attachment_url);
                         return $returnHtml;
                     })
-
-
-                    ->addColumn('action', function ($row) use ($modules) {
+                    ->addColumn('action', function ($row) use ($modules, $userRoleId, $loginUserId) {
                         $btn = '';
 
-                        if ($row->status === 'pending' && $modules['approval_permission'] == true) {
+                        $canTakeAction = false;
+                        if ($row->status === 'pending') {
+                            $level = (int) ($row->approval_level ?? 1);
+                            $isSelf = ($row->employee_id == $loginUserId);
+
+                            if (!$isSelf) {
+                                if (Auth::guard('admin_software')->check() || $userRoleId == 26) {
+                                    // Master Admin can act at any stage (1, 2, 3)
+                                    $canTakeAction = true;
+                                } elseif ($userRoleId == 29) {
+                                    // Main HR can act directly at any stage (1, 2, 3)
+                                    $canTakeAction = true;
+                                } elseif ($userRoleId == 30) {
+                                    // Dept Head can act directly on Level 1 (Supervisor) and Level 2 (Dept Head)
+                                    $canTakeAction = ($level === 1 || $level === 2);
+                                } elseif ($userRoleId == 31) {
+                                    // Supervisor acts at Level 1
+                                    $canTakeAction = ($level === 1);
+                                }
+                            }
+                        }
+
+                        if ($canTakeAction && !empty($modules['approval_permission'])) {
+                            $fromDateFormatted = $row->fromdate_time ? Carbon::parse($row->fromdate_time)->format('d/m/Y') : '-';
+                            $toDateFormatted = $row->todate_time ? Carbon::parse($row->todate_time)->format('d/m/Y') : '-';
+                            $dayType = ucfirst($row->halfday_fullday ?? '-');
+                            $dayDetail = '-';
+                            if ($row->halfday_fullday == 'fullday') {
+                                $dayDetail = !empty($row->singleday_multipleday) ? ucfirst($row->singleday_multipleday) : 'Single Day';
+                            } elseif ($row->halfday_fullday == 'halfday') {
+                                $dayDetail = !empty($row->firsthalf_secondhalf) ? ucfirst($row->firsthalf_secondhalf) : 'First Half';
+                            }
+
                             $btn .= '<a href="javascript:void(0)"
                                 class="btn btn-sm btn-primary d-inline-flex align-items-center action-button mx-1 leaveApplicationAcutionModel"
                                 data-id="' . $row->id . '"
                                 data-company_id="' . ($row->company_id ?? '') . '"
                                 data-company_name="' . ($row->company->company_name ?? '') . '"
-                                data-team_person_name="' . ($row->team_person->name ?? '') . '"
-                                data-leave_type="' . ($row->leave_type->name ?? '') . '"
-                                data-from_date="' . $row->fromdate_time . '"
-                                data-to_date="' . $row->todate_time . '"
-                                data-leave_for_day="' . (LeaveApplication::$leaveForDay[$row->halfday_fullday] ?? '') . '"
-                                data-leave_by_days="' . (LeaveApplication::$leaveByDays[$row->singleday_multipleday] ?? '') . '"
-                                data-leave_for_half="' . (LeaveApplication::$leaveForHalfdays[$row->firsthalf_secondhalf] ?? '') . '"
-                                data-leave_reason="' . e($row->leave_reason) . '"
+                                data-team_person_name="' . ($row->employee?->proper_name ?? '') . '"
+                                data-employee_code="' . ($row->employee?->employee_code ?? '') . '"
+                                data-leave_type="' . ($row->leave_type->full_name ?? $row->leave_type->name ?? '-') . '"
+                                data-from_date="' . $fromDateFormatted . '"
+                                data-to_date="' . $toDateFormatted . '"
+                                data-day_type="' . $dayType . '"
+                                data-day_detail="' . $dayDetail . '"
+                                data-leave_reason="' . e($row->leave_reason ?? '-') . '"
                                 data-status="' . $row->status . '"
-                                data-url="' . route($modules['route'] . '.show', [$row->id]) . '">Action</a>';
+                                data-approval_level="' . ($row->approval_level ?? 1) . '"
+                                data-stage_label="' . $row->getStageLabel() . '"
+                                data-url="' . route($modules['route'] . '.show', [$row->id]) . '"><i class="ti ti-edit me-1"></i> Action</a>';
                         }
 
                         if (!$row?->deleted_at && ($row->status === 'pending' || Auth::guard('admin_software')->check() || ($modules['all_data_permission'] ?? false) == true)) {
-                            if ($modules['update_permission'] == true) {
+                            if (!empty($modules['update_permission']) && $row->status === 'pending') {
                                 $btn .= '<a href="' . route($modules["route"] . ".edit", [$row["id"]]) . '" class="btn btn-light btn-icon mx-1"><i class="fa-solid fa-pen-to-square"></i></a>';
                             }
-                            if ($modules['delete_permission'] == true) {
+                            if (!empty($modules['delete_permission'])) {
                                 $btn .= '<a href="javascript:void(0)" data-id="' . $row->id . '" data-did="' . route($modules["route"] . ".destroy", [$row["id"]]) . '" class="btn btn-danger btn-icon deletebutton mx-1"><i class="fa-solid fa-trash"></i></a>';
                             }
                         }
@@ -295,7 +378,7 @@ class LeaveApplicationController extends Controller
 
                         return $btn ?: '-';
                     })
-                    ->rawColumns(['status', 'action', 'leave_reason'])
+                    ->rawColumns(['status', 'action', 'leave_reason', 'rejection_reason'])
                     ->make(true);
             }
 
@@ -392,6 +475,10 @@ class LeaveApplicationController extends Controller
         $validated = $request->all();
 
         try {
+            if (empty($validated['employee_id']) && Auth::guard('employees')->check()) {
+                $validated['employee_id'] = Auth::guard('employees')->user()->id;
+            }
+
             // Validate that selected employee is not a contractor
             if (!empty($validated['employee_id'])) {
                 $contractTypeIds = \App\Models\EmployeeType::where('name', 'like', '%contract%')->pluck('id');
@@ -494,6 +581,32 @@ class LeaveApplicationController extends Controller
 
             $validated['singleday_multipleday'] = $request?->singleday_multipleday;
             $validated['firsthalf_secondhalf'] = $request?->firsthalf_secondhalf;
+
+            // Set starting approval_level based on applicant role
+            $applicantEmpId = $validated['employee_id'] ?? $loginUserId;
+            $applicant = \App\Models\Employee::find($applicantEmpId);
+            $applicantRoleId = $applicant?->role_id ?? 32;
+
+            $validated['status'] = 'pending';
+            if ($applicantRoleId == 32) {
+                // Employee -> Level 1 (Supervisor)
+                $validated['approval_level'] = 1;
+                $validated['supervisor_status'] = 'pending';
+            } elseif ($applicantRoleId == 31) {
+                // Supervisor -> Level 2 (Dept Head)
+                $validated['approval_level'] = 2;
+                $validated['supervisor_status'] = 'approved';
+                $validated['hod_status'] = 'pending';
+            } elseif ($applicantRoleId == 30) {
+                // Dept Head -> Level 3 (Main HR)
+                $validated['approval_level'] = 3;
+                $validated['supervisor_status'] = 'approved';
+                $validated['hod_status'] = 'approved';
+                $validated['hr_status'] = 'pending';
+            } else {
+                $validated['approval_level'] = 3;
+                $validated['hr_status'] = 'pending';
+            }
 
             LeaveApplication::create($validated);
 
@@ -1024,13 +1137,22 @@ class LeaveApplicationController extends Controller
     public function submitLeaveRequest(Request $request)
     {
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        if ($authUser) {
+            $this->authenticateLoginUserDetails = $authUser;
+        }
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id;
+        $loginUserId = $authUser?->id;
+        $userRoleId = $authUser?->role_id ?? 0;
+
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                if (Auth::guard('admin_software')->check() && empty($modules['company_id'])) {
+                    $modules[$value . '_permission'] = true;
+                } else {
+                    $modules[$value . '_permission'] = $authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false;
+                }
             }
         }
         if (!$modules['approval_permission']) {
@@ -1050,32 +1172,114 @@ class LeaveApplicationController extends Controller
                 return response()->json(['success' => false, 'message' => 'Leave not found.']);
             }
 
-            $leave->status = $request->status;
+            $currentLevel = (int) ($leave->approval_level ?? 1);
+            $actionStatus = strtolower($request->status ?? '');
+            $approverName = $authUser?->proper_name ?? $authUser?->name ?? 'Approver';
+            $startDate = Carbon::parse($leave->fromdate_time)->format('d-m-Y');
+            $endDate = ($leave->todate_time) ? Carbon::parse($leave->todate_time)->format('d-m-Y') : $startDate;
 
-            // Validate rejection reason if status is 'reject'
-            if ($request->status === 'reject') {
+            // Determine approver role title
+            $roleTitle = 'Admin';
+            if ($userRoleId == 31) {
+                $roleTitle = 'Supervisor';
+            } elseif ($userRoleId == 30) {
+                $roleTitle = 'Department Head';
+            } elseif ($userRoleId == 29) {
+                $roleTitle = 'Main HR';
+            }
+
+            if ($actionStatus === 'reject' || $actionStatus === 'rejected') {
                 if (empty($request->reject)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Rejection reason is required.'
                     ]);
                 }
+
+                $leave->status = 'rejected';
                 $leave->rejection_reason = $request->reject;
-            } else {
+                $leave->rejected_by = $loginUserId;
+                $leave->rejected_by_role = $roleTitle;
+
+                if ($userRoleId == 31) {
+                    $leave->supervisor_status = 'rejected';
+                    $leave->supervisor_remark = $request->reject;
+                    $leave->supervisor_approved_by = $loginUserId;
+                    $leave->supervisor_approved_at = now();
+                } elseif ($userRoleId == 30) {
+                    $leave->hod_status = 'rejected';
+                    $leave->hod_remark = $request->reject;
+                    $leave->hod_approved_by = $loginUserId;
+                    $leave->hod_approved_at = now();
+                } else {
+                    $leave->hr_status = 'rejected';
+                    $leave->hr_remark = $request->reject;
+                    $leave->hr_approved_by = $loginUserId;
+                    $leave->hr_approved_at = now();
+                }
+
+                $leave->updated_by = $loginUserId;
+                $leave->save();
+
+                $body = "Your leave ({$startDate} to {$endDate}) was rejected by {$roleTitle} ({$approverName}). Reason: {$request->reject}";
+                $responseMsg = "Leave application rejected by {$roleTitle}.";
+
+            } elseif ($actionStatus === 'approved' || $actionStatus === 'approve') {
                 $leave->rejection_reason = null;
-            }
 
-            $leave->save();
+                if ($userRoleId == 31) {
+                    // Supervisor Approval -> Move to Level 2 (Dept Head)
+                    $leave->supervisor_status = 'approved';
+                    $leave->supervisor_approved_by = $loginUserId;
+                    $leave->supervisor_approved_at = now();
+                    $leave->supervisor_remark = $request->remark ?? null;
+                    $leave->approval_level = 2;
+                    $leave->hod_status = 'pending';
+                    $leave->status = 'pending';
 
-            $approvedBy = $this->authenticateLoginUserDetails?->proper_name ?? $this->authenticateLoginUserDetails?->name ?? 'Admin';
-            $startDate = Carbon::parse($leave->fromdate_time)->format('d-m-Y');
-            $endDate = ($leave->todate_time) ? Carbon::parse($leave->todate_time)->format('d-m-Y') : $startDate;
+                    $body = "Your leave ({$startDate} to {$endDate}) was approved by Supervisor ({$approverName}) and forwarded to Department Head.";
+                    $responseMsg = "Leave approved by Supervisor and forwarded to Department Head.";
+                } elseif ($userRoleId == 30) {
+                    // Department Head Approval -> Move to Level 3 (Main HR)
+                    $leave->hod_status = 'approved';
+                    $leave->hod_approved_by = $loginUserId;
+                    $leave->hod_approved_at = now();
+                    $leave->hod_remark = $request->remark ?? null;
+                    if (empty($leave->supervisor_status)) {
+                        $leave->supervisor_status = 'approved';
+                    }
+                    $leave->approval_level = 3;
+                    $leave->hr_status = 'pending';
+                    $leave->status = 'pending';
 
-            if ($leave->status === 'approved') {
-                $body = "Your leave ({$startDate} to {$endDate}) has been approved by {$approvedBy}.";
+                    $body = "Your leave ({$startDate} to {$endDate}) was approved by Department Head ({$approverName}) and forwarded to Main HR.";
+                    $responseMsg = "Leave approved by Department Head and forwarded to Main HR.";
+                } else {
+                    // Main HR (Role 29) or Admin (Role 26) -> Final Approval
+                    $leave->hr_status = 'approved';
+                    $leave->hr_approved_by = $loginUserId;
+                    $leave->hr_approved_at = now();
+                    $leave->hr_remark = $request->remark ?? null;
+                    if (empty($leave->supervisor_status)) {
+                        $leave->supervisor_status = 'approved';
+                    }
+                    if (empty($leave->hod_status)) {
+                        $leave->hod_status = 'approved';
+                    }
+                    $leave->approval_level = 3;
+                    $leave->status = 'approved';
+
+                    $body = "Your leave ({$startDate} to {$endDate}) has been finally approved by {$roleTitle} ({$approverName}).";
+                    $responseMsg = "Leave application approved successfully.";
+                }
+
+                $leave->updated_by = $loginUserId;
+                $leave->save();
             } else {
-                $reason = $leave->rejection_reason ?? 'N/A';
-                $body = "Your leave ({$startDate} to {$endDate}) was rejected by {$approvedBy}. Reason: {$reason}";
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid status selected.'
+                ]);
             }
 
             // Send Push Notification and Add to DB
@@ -1098,8 +1302,10 @@ class LeaveApplicationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $request->status === 'reject' ? 'Leave request rejected' : 'Leave request approved',
-                'leave_request_id' => $leave->id
+                'message' => $responseMsg,
+                'leave_request_id' => $leave->id,
+                'approval_level' => $leave->approval_level,
+                'status' => $leave->status,
             ]);
         } catch (\Exception $e) {
             return response()->json([
