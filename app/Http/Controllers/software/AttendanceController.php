@@ -547,32 +547,34 @@ class AttendanceController extends Controller
                 $validated['requested_data'] = json_encode($request->all());
             }
 
-            // Check shift grace period hard block for Punch-In
-            $attType = $validated['attendace_type'] ?? 'in';
-            if ($attType == 'in') {
-                $empId = $validated['employee_id'] ?? $loginUserId;
-                $emp = \App\Models\Employee::with('employmentDetail')->find($empId);
-                $shiftId = $emp?->employmentDetail?->shift ?? $validated['shift_id'] ?? null;
-                $companyId = $validated['company_id'] ?? $modules['company_id'] ?? $emp?->company_id;
-                $shift = $shiftId ? \App\Models\Shift::find($shiftId) : \App\Models\Shift::where('company_id', $companyId)->first();
+            $empId = $validated['employee_id'] ?? $loginUserId;
+            $emp = \App\Models\Employee::with('employmentDetail')->find($empId);
+            $shiftId = $validated['shift_id'] ?? ($emp?->employmentDetail?->shift ?? null);
+            $companyId = $validated['company_id'] ?? ($modules['company_id'] ?? ($emp?->company_id ?? null));
+            $shift = $shiftId ? \App\Models\Shift::find($shiftId) : \App\Models\Shift::where('company_id', $companyId)->first();
 
-                if ($shift && !empty($shift->punch_in_minimum)) {
-                    $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
+            $validated['company_id'] = $companyId;
+            $validated['shift_id'] = $shift?->id ?? $shiftId;
+
+            // Shift grace period validation for Punch-In
+            $attType = strtolower($validated['attendace_type'] ?? 'in');
+            $punchTimeStr = $validated['punch_in_time'] ?? Carbon::now()->format('H:i:s');
+            $punchTime = Carbon::parse($punchTimeStr);
+
+            if ($shift) {
+                $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
+
+                if ($attType == 'in' && !empty($shift->punch_in_minimum)) {
                     $shiftStart = Carbon::parse($shift->punch_in_minimum);
                     $cutoffTime = (clone $shiftStart)->addMinutes($graceMin);
 
-                    $punchTimeStr = $validated['punch_in_time'] ?? Carbon::now()->format('H:i:s');
-                    $punchTime = Carbon::parse($punchTimeStr);
-
                     if ($punchTime->gt($cutoffTime)) {
-                        $startFormatted = $shiftStart->format('h:i A');
-                        $cutoffFormatted = $cutoffTime->format('h:i A');
-                        $errorMsg = "Punch In allowed only during shift hours (Between {$startFormatted} and {$cutoffFormatted} with grace period).";
-                        
+                        $currentTimeFormatted = $punchTime->format('h:i A');
+                        $errorMsg = "Late Punch is not allowed! Shift start time is " . $shiftStart->format('h:i A') . " (Allowed cutoff with {$graceMin} min grace period was " . $cutoffTime->format('h:i A') . "). Current time: {$currentTimeFormatted}.";
                         if ($request->ajax()) {
                             return response()->json(['success' => false, 'message' => $errorMsg], 422);
                         }
-                        return Redirect::back()->withInput()->withErrors(['punch_in_time' => $errorMsg]);
+                        return Redirect::back()->withInput()->withErrors($errorMsg);
                     }
                 }
             }
@@ -701,7 +703,38 @@ class AttendanceController extends Controller
                 $validated['requested_data'] = json_encode($request->all());
             }
 
-            // return $validated;
+            $empId = $validated['employee_id'] ?? $loginUserId;
+            $emp = \App\Models\Employee::with('employmentDetail')->find($empId);
+            $shiftId = $validated['shift_id'] ?? ($emp?->employmentDetail?->shift ?? null);
+            $companyId = $validated['company_id'] ?? ($modules['company_id'] ?? ($emp?->company_id ?? null));
+            $shift = $shiftId ? \App\Models\Shift::find($shiftId) : \App\Models\Shift::where('company_id', $companyId)->first();
+
+            $validated['company_id'] = $companyId;
+            $validated['shift_id'] = $shift?->id ?? $shiftId;
+
+            // Shift grace period validation for Punch-In
+            $attType = strtolower($validated['attendace_type'] ?? 'in');
+            $punchTimeStr = $validated['punch_in_time'] ?? Carbon::now()->format('H:i:s');
+            $punchTime = Carbon::parse($punchTimeStr);
+
+            if ($shift) {
+                $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
+
+                if ($attType == 'in' && !empty($shift->punch_in_minimum)) {
+                    $shiftStart = Carbon::parse($shift->punch_in_minimum);
+                    $cutoffTime = (clone $shiftStart)->addMinutes($graceMin);
+
+                    if ($punchTime->gt($cutoffTime)) {
+                        $currentTimeFormatted = $punchTime->format('h:i A');
+                        $errorMsg = "Late Punch is not allowed! Shift start time is " . $shiftStart->format('h:i A') . " (Allowed cutoff with {$graceMin} min grace period was " . $cutoffTime->format('h:i A') . "). Current time: {$currentTimeFormatted}.";
+                        if ($request->ajax()) {
+                            return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                        }
+                        return Redirect::back()->withInput()->withErrors($errorMsg);
+                    }
+                }
+            }
+
             $attQuery = Attendance::query();
             if (!empty($modules['company_id'])) {
                 $attQuery->where('company_id', $modules['company_id']);

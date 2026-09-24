@@ -167,6 +167,8 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData'])->name('dashboard.chart-data');
 
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('software.dashboard');
+    Route::post('/dashboard/punch-action', [DashboardController::class, 'punchAction'])->name('software.dashboard.punch-action');
+    Route::get('/dashboard/punch-status', [DashboardController::class, 'getPunchStatus'])->name('software.dashboard.punch-status');
 
     // Route::POST('/live-tracking-data', [TrackingDashboardController::class, 'live_tracking_data'])->name('live-tracking-data');
 

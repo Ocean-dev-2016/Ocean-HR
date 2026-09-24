@@ -247,18 +247,8 @@
                 return;
             }
             
-            // Prefer letting getShift utility handle selection via data-selectedShiftId
             $('#shift_id').attr('data-selectedshiftid', shiftId);
             $('#shift_id').val(shiftId).trigger('change');
-            /*
-            if (typeof fetch_shift === 'function') {
-                console.log("LN-240 fetch_shift", shiftId);
-                fetch_shift();
-            } else {
-                console.log("LN-248", shiftId);
-                $('#shift_id').val(shiftId).trigger('change');
-            }
-                */
         });
     </script>
 

@@ -130,6 +130,26 @@
             @php
                 $liveInitTime = \Carbon\Carbon::now()->format('h:i:s A');
                 $liveInitDate = \Carbon\Carbon::now()->format('D, d M Y');
+
+                // Check if current employee / user is punched in today
+                $todayDate = \Carbon\Carbon::today()->format('Y-m-d');
+                $isPunchedIn = false;
+                $empUser = null;
+                if (Auth::guard('employees')->check()) {
+                    $empUser = Auth::guard('employees')->user();
+                } elseif (Auth::guard('admin_software')->check()) {
+                    $adminUser = Auth::guard('admin_software')->user();
+                    $empUser = \App\Models\Employee::where('email', $adminUser->email)->orWhere('username', $adminUser->username)->first();
+                }
+                if ($empUser) {
+                    $lastPunchToday = \App\Models\Attendance::where('employee_id', $empUser->id)
+                        ->where('attendance_date', $todayDate)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                    if ($lastPunchToday && $lastPunchToday->attendace_type === 'in') {
+                        $isPunchedIn = true;
+                    }
+                }
             @endphp
             <style>
                 @keyframes pulse-live-green {
@@ -137,13 +157,18 @@
                     70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
                     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
                 }
+                @keyframes pulse-live-red {
+                    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                    70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+                    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
                 .user-identity-badge {
                     background: #f8fafc;
                     border: 1px solid #e2e8f0;
                     border-radius: 50px;
                     padding: 6px 20px;
                     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-                    transition: all 0.25s ease;
+                    transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
                     white-space: nowrap;
                 }
                 .user-identity-badge:hover {
@@ -153,12 +178,14 @@
                 }
                 .user-identity-name {
                     font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    color: #0f172a;
+                    color: #266bee !important;
+                    font-weight: 700;
                     letter-spacing: 0.3px;
                 }
                 .user-identity-desig {
                     font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    color: #64748b;
+                    color: #0f172a !important;
+                    font-weight: 600;
                     letter-spacing: 0.2px;
                 }
                 .live-clock-badge {
@@ -167,7 +194,7 @@
                     border-radius: 50px;
                     padding: 8px 24px;
                     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-                    transition: all 0.25s ease;
+                    transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
                     white-space: nowrap;
                 }
                 .live-clock-badge:hover {
@@ -178,12 +205,19 @@
                 .live-clock-dot {
                     width: 10px;
                     height: 10px;
-                    background-color: #10b981;
                     border-radius: 50%;
                     display: inline-block;
-                    animation: pulse-live-green 1.8s infinite ease-in-out;
                     margin-right: 10px;
                     flex-shrink: 0;
+                    transition: background-color 0.3s ease;
+                }
+                .live-clock-dot.status-in {
+                    background-color: #10b981;
+                    animation: pulse-live-green 1.8s infinite ease-in-out;
+                }
+                .live-clock-dot.status-out {
+                    background-color: #ef4444;
+                    animation: pulse-live-red 1.8s infinite ease-in-out;
                 }
                 .live-clock-divider {
                     width: 2px;
@@ -198,23 +232,31 @@
                     font-weight: 700;
                     color: #0f172a;
                     letter-spacing: 0.5px;
+                    font-variant-numeric: tabular-nums;
+                    font-feature-settings: "tnum";
+                    display: inline-block;
+                    min-width: 110px;
+                    text-align: center;
                 }
                 .live-clock-date {
                     font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     font-size: 1.05rem;
                     font-weight: 600;
                     color: #334155;
+                    font-variant-numeric: tabular-nums;
+                    font-feature-settings: "tnum";
+                    display: inline-block;
                 }
             </style>
 
             {{-- Logged-in User Name & Designation Badge (Single Row) --}}
             <li class="nav-item me-3 d-none d-lg-flex align-items-center">
                 <div class="user-identity-badge d-flex align-items-center">
-                    <span class="user-identity-name fw-bold text-dark me-2" title="{{ $userName }}" style="font-size: 0.94rem;">
+                    <span class="user-identity-name fw-bold me-2" title="{{ $userName }}" style="font-size: 0.94rem;">
                         {{ $userName }}
                     </span>
                     @if (!empty($loginDesignation))
-                        <span class="user-identity-desig fw-bold text-primary" title="Designation - {{ $loginDesignation }}" style="font-size: 0.88rem; color: #7367f0 !important;">
+                        <span class="user-identity-desig fw-bold" title="Designation - {{ $loginDesignation }}" style="font-size: 0.88rem;">
                             Designation - {{ $loginDesignation }}
                         </span>
                     @endif
@@ -223,7 +265,7 @@
 
             <li class="nav-item me-3 d-none d-md-flex align-items-center">
                 <div class="live-clock-badge d-flex align-items-center">
-                    <span class="live-clock-dot"></span>
+                    <span class="live-clock-dot {{ $isPunchedIn ? 'status-in' : 'status-out' }}" id="navbar-live-clock-dot" title="{{ $isPunchedIn ? 'Status: Punched In' : 'Status: Punched Out / Not In' }}"></span>
                     <span id="live-navbar-time" class="live-clock-time">{{ $liveInitTime }}</span>
                     <span class="live-clock-divider"></span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2" style="vertical-align: -2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>

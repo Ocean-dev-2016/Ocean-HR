@@ -1121,7 +1121,14 @@ class CommonController extends Controller
                     'id' => (string) $item->id,
                     'company_id' => (string) $item->company_id,
                     'name' => (string) $item->name,
-                    'status' => (string) $item->status ?? '-',
+                    'punch_in_minimum' => (string) ($item->punch_in_minimum ?? ''),
+                    'punch_out' => (string) ($item->punch_out ?? ''),
+                    'in_out_grace_period' => (int) ($item->in_out_grace_period ?? $item->grace_period ?? 0),
+                    'grace_period' => (int) ($item->grace_period ?? 0),
+                    'working_hour' => (string) ($item->working_hour ?? ''),
+                    'half_day_hour' => (string) ($item->half_day_hour ?? ''),
+                    'present_day_hour' => (string) ($item->present_day_hour ?? ''),
+                    'status' => (string) ($item->status ?? '-'),
                 ];
             });
 

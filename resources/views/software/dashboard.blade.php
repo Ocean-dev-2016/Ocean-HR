@@ -31,18 +31,221 @@
         }
 
         .marker-cluster-small {
-
             background-color: orange !important;
             color: white !important;
             border: 2px solid #FF9900;
-            /* Border slightly darker orange */
-
         }
 
         .marker-cluster-small div {
-
             background-color: orange !important;
+        }
 
+        /* Circular Rounder Punch Button & Rotating Border Line Animation */
+        .punch-circle-container {
+            position: relative;
+            width: 104px;
+            height: 104px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            margin-left: 8px;
+        }
+
+        /* 360 Degree Rotating Line SVG around Circle */
+        .punch-rotating-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            transform: rotate(-90deg);
+        }
+
+        .punch-track {
+            fill: none;
+            stroke: rgba(0, 0, 0, 0.08);
+            stroke-width: 4;
+        }
+
+        .punch-rotating-line {
+            fill: none;
+            stroke-width: 4.5;
+            stroke-linecap: round;
+            stroke-dasharray: 276.46;
+            stroke-dashoffset: 276.46;
+            transition: stroke-dashoffset 0.3s ease-out, filter 0.3s ease;
+            filter: drop-shadow(0 0 4px currentColor);
+        }
+
+        /* Hold 2 Seconds (360 Degree Fill & Pulse while holding down) */
+        .punch-circle-container.is-holding .punch-rotating-line {
+            transition: stroke-dashoffset 2000ms linear, filter 0.3s ease !important;
+            stroke-dashoffset: 0 !important;
+            filter: drop-shadow(0 0 10px currentColor) !important;
+        }
+
+        .punch-circle-container.is-holding .punch-circle-btn {
+            transform: scale(0.92) !important;
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.45) !important;
+        }
+
+        .punch-circle-container.is-animating .punch-rotating-svg {
+            animation: punchSvgSuccessSpin 0.6s ease-out forwards;
+        }
+
+        @keyframes punchSvgSuccessSpin {
+            0% { transform: rotate(-90deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.08); }
+            100% { transform: rotate(270deg) scale(1); }
+        }
+
+        /* Rounder Button Style */
+        .punch-circle-btn {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: none;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            outline: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+
+        .punch-circle-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .punch-circle-btn:active, .punch-circle-btn.is-pressing {
+            transform: scale(0.93);
+        }
+
+        /* Subtle radar wave pulse behind button */
+        .punch-pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: punchPulse 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes punchPulse {
+            0% { transform: scale(0.85); opacity: 0.8; }
+            70% { transform: scale(1.3); opacity: 0; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        .punch-circle-btn.punch-btn-in .punch-pulse-ring {
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        .punch-circle-btn.punch-btn-out .punch-pulse-ring {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        /* Halo Rings */
+        .punch-halo-outer {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            z-index: 2;
+            transition: all 0.35s ease;
+        }
+
+        .punch-circle-btn.punch-btn-in .punch-halo-outer {
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0.06) 70%, transparent 100%);
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+        }
+
+        .punch-circle-btn.punch-btn-out .punch-halo-outer {
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.28) 0%, rgba(239, 68, 68, 0.06) 70%, transparent 100%);
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.3);
+        }
+
+        .punch-halo-inner {
+            position: absolute;
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            z-index: 3;
+            transition: all 0.35s ease;
+        }
+
+        .punch-circle-btn.punch-btn-in .punch-halo-inner {
+            background: rgba(16, 185, 129, 0.25);
+        }
+
+        .punch-circle-btn.punch-btn-out .punch-halo-inner {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        /* Core Center */
+        .punch-core {
+            position: relative;
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            z-index: 4;
+            transition: all 0.35s ease;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+        }
+
+        .punch-circle-btn.punch-btn-in .punch-core {
+            background: linear-gradient(135deg, #10b981 0%, #059669 60%, #047857 100%);
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.35);
+        }
+
+        .punch-circle-btn.punch-btn-out .punch-core {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%, #b91c1c 100%);
+            box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.35);
+        }
+
+        .punch-icon-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .punch-tap-icon {
+            width: 21px;
+            height: 21px;
+            margin-bottom: 2px;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+        }
+
+        .punch-text {
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.7px;
+            line-height: 1;
+            color: #ffffff;
+            text-transform: uppercase;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+        }
+
+        .punch-subtext {
+            font-size: 0.50rem;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 1px;
         }
     </style>
 @endpush
@@ -50,42 +253,48 @@
 
 @section('content')
     <div class="row">
-        <div class="mb-0">
-            <div class="card-header py-2 px-4 d-flex flex-wrap justify-content-between align-items-center">
-                <h5 class="card-title mb-2 mb-md-0">Statistics</h5>
-                <div class="d-flex flex-wrap gap-3">
-                    <div class="d-flex flex-wrap gap-3 align-items-end flex-grow-1">
-                        @if (!$company_id)
-                            <div class="form-group flex-grow-1" style="min-width: 200px;">
-                                <label class="form-label">Filter by Company</label>
+        {{-- Top Filter Toolbar: Only shown if Super Admin needs to pick a company --}}
+        @if (!$company_id)
+            <div class="col-12 mb-3">
+                <div class="card border-0 shadow-sm" style="border-radius: 14px; background: #ffffff; border: 1px solid #edf2f7 !important;">
+                    <div class="card-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-label-primary p-1.5 rounded-3">
+                                <i class="ti ti-building fs-5"></i>
+                            </span>
+                            <div>
+                                <h6 class="card-title mb-0 fw-bold text-dark" style="font-size: 0.95rem;">Select Company</h6>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <div class="form-group mb-0" style="min-width: 240px;">
                                 <select id="company_id"
                                     class="form-control select2 search_by_company @error('company_id') is-invalid @enderror"
                                     name="company_id"
                                     data-selectedCompanyId="{{ old('company_id') ?? ($edit->company_id ?? '') }}">
                                 </select>
                             </div>
-                        @endif
-                        <div class="form-group mb-0 flex-grow-1" style="min-width: 250px;">
-                            <label class="form-label">Filter by Date Range</label>
-                            <input type="text" name="filter_by_date_range" id="filter_by_date_range"
-                                class="form-control my_daterangepicker table_filter" value="{{ date('d/m/Y') }}"
-                                placeholder="Filter by date range">
-                        </div>
-                        <div class="form-group mb-0 d-flex align-items-end">
-                            <button type="button" id="refresh-dashboard-btn" class="btn btn-primary">
-                                <i class="ti ti-refresh me-1"></i> Refresh Dashboard
+                            <input type="hidden" name="filter_by_date_range" id="filter_by_date_range" value="{{ date('d/m/Y') }}">
+                            <button type="button" id="refresh-dashboard-btn" class="btn btn-sm btn-primary rounded-3">
+                                <i class="ti ti-refresh me-1"></i> Refresh
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        @else
+            <input type="hidden" name="filter_by_date_range" id="filter_by_date_range" value="{{ date('d/m/Y') }}">
+            <button type="button" id="refresh-dashboard-btn" style="display:none;"></button>
+        @endif
+
         <div class="col-12 mb-3">
-            <div class=" h-100">
-                <div class="mt-3" id="inquiryStatistics">
-                    <div class="p-4 text-center">
-                        <p class="mb-0 fs-5">No data available. Please apply filters to see statistics.</p>
+            <div id="inquiryStatistics">
+                <div class="p-5 text-center bg-white rounded-4 shadow-sm border">
+                    <div class="spinner-border text-primary mb-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
+                    <p class="mb-0 text-muted fw-semibold" style="font-size: 0.95rem;">Loading dashboard statistics...</p>
                 </div>
             </div>
         </div>
@@ -219,6 +428,49 @@
             });
         }
 
+        function updatePunchUI(state) {
+            const $btn = $('#dashboard-punch-btn');
+            if (!$btn.length) return;
+
+            $btn.attr('data-punch-state', state);
+            const isPunchedIn = (state === 'in');
+
+            // Update SVG circular line color: Red when currently In (next is Out), Green when currently Out (next is In)
+            $('#punch-rotating-line').attr('stroke', isPunchedIn ? '#ef4444' : '#10b981');
+
+            if (isPunchedIn) {
+                // Currently Punched IN -> Button shows Punch Out in RED
+                $btn.removeClass('punch-btn-in').addClass('punch-btn-out');
+                $('#punch-btn-sublabel').text('Punch Out');
+                $('#punch-icon-wrap').html(`
+                    <svg class="punch-tap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                `);
+                $('#punch-status-badge').text('IN').css({ background: '#dcfce7', color: '#15803d' });
+                $('#punch-status-desc').text('Hold 2 sec to punch out and end your day');
+                // Update live clock dot in navbar to Green
+                $('#navbar-live-clock-dot').removeClass('status-out').addClass('status-in').attr('title', 'Status: Punched In');
+            } else {
+                // Currently NOT Punched IN -> Button shows Punch In in GREEN
+                $btn.removeClass('punch-btn-out').addClass('punch-btn-in');
+                $('#punch-btn-sublabel').text('Punch In');
+                $('#punch-icon-wrap').html(`
+                    <svg class="punch-tap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px;">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                `);
+                $('#punch-status-badge').text('OUT').css({ background: '#fee2e2', color: '#b91c1c' });
+                $('#punch-status-desc').text('Hold 2 sec to punch in and start your day');
+                // Update live clock dot in navbar to Red (Not Green)
+                $('#navbar-live-clock-dot').removeClass('status-in').addClass('status-out').attr('title', 'Status: Punched Out / Not In');
+            }
+        }
+
         function loadStatistics() {
             var companyId = $('#company_id').val() || '';
             var dateRange = $('#filter_by_date_range').val() || '';
@@ -237,6 +489,11 @@
 
                             // Inject active filter parameters into the href of statistics tiles
                             updateCardUrls(companyId, dateRange);
+                        }
+
+                        // Sync punch button and live clock status from employee statistics
+                        if (response.data.employeeStats && response.data.employeeStats.punch_state) {
+                            updatePunchUI(response.data.employeeStats.punch_state);
                         }
                     }
                 },
@@ -372,6 +629,128 @@
         $(document).on('click', '#totalInquiryCard', function () {
             var selected_inquiry_date = $('input[name="filter_by_date_range"]').val();
             localStorage.setItem('filterInquiryByDateRange', selected_inquiry_date);
+        });
+
+        // Press & Hold 2 Seconds to Punch In / Out Handler
+        let holdTimer = null;
+        let isHolding = false;
+        let isPunchProcessing = false;
+
+        function startHold(e) {
+            if (isPunchProcessing) return;
+            if (e.type === 'mousedown' && e.button !== 0) return;
+
+            e.preventDefault();
+            const $btn = $('#dashboard-punch-btn');
+            const $container = $('#punch-container');
+            if (!$btn.length) return;
+
+            isHolding = true;
+            $btn.addClass('is-pressing');
+            $container.addClass('is-holding').removeClass('is-animating');
+
+            if (navigator.vibrate) navigator.vibrate(35);
+
+            clearTimeout(holdTimer);
+            holdTimer = setTimeout(function () {
+                if (isHolding && !isPunchProcessing) {
+                    completePunchHold();
+                }
+            }, 2000); // Exactly 2 seconds
+        }
+
+        function cancelHold(e) {
+            if (!isHolding || isPunchProcessing) return;
+            isHolding = false;
+            clearTimeout(holdTimer);
+
+            const $btn = $('#dashboard-punch-btn');
+            const $container = $('#punch-container');
+            $btn.removeClass('is-pressing');
+            $container.removeClass('is-holding');
+        }
+
+        function completePunchHold() {
+            isHolding = false;
+            isPunchProcessing = true;
+
+            const $btn = $('#dashboard-punch-btn');
+            const $container = $('#punch-container');
+            const currentState = $btn.attr('data-punch-state') || 'out';
+            const targetAction = currentState === 'in' ? 'out' : 'in';
+
+            $container.addClass('is-animating');
+            if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
+            // Execute Punch AJAX
+            $.ajax({
+                url: "{{ route('software.dashboard.punch-action') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    punch_type: targetAction
+                },
+                success: function (res) {
+                    setTimeout(() => {
+                        $container.removeClass('is-animating is-holding');
+                        $btn.removeClass('is-pressing');
+                        isPunchProcessing = false;
+                    }, 400);
+
+                    if (res.success) {
+                        const newState = res.punch_state;
+                        updatePunchUI(newState);
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: res.message,
+                                html: `<div class="mt-2 text-muted fs-6">Recorded at: <strong>${res.punch_time || new Date().toLocaleTimeString()}</strong></div>`,
+                                timer: 2500,
+                                showConfirmButton: false,
+                                customClass: { popup: 'rounded-4 shadow' }
+                            });
+                        }
+
+                        // Trigger dashboard statistics refresh
+                        if (typeof loadStatistics === 'function') {
+                            loadStatistics();
+                        }
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Punch Failed',
+                                text: res.message || 'Error occurred'
+                            });
+                        }
+                    }
+                },
+                error: function (xhr) {
+                    $container.removeClass('is-animating is-holding');
+                    $btn.removeClass('is-pressing');
+                    isPunchProcessing = false;
+
+                    let errMsg = 'Something went wrong while recording punch.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errMsg
+                        });
+                    }
+                }
+            });
+        }
+
+        // Attach mouse & touch hold events
+        $(document).on('mousedown touchstart', '#dashboard-punch-btn', startHold);
+        $(document).on('mouseup mouseleave touchend touchcancel', '#dashboard-punch-btn', cancelHold);
+        $(document).on('click contextmenu', '#dashboard-punch-btn', function(e) {
+            e.preventDefault();
         });
     </script>
 
