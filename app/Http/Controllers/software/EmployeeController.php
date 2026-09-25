@@ -436,9 +436,6 @@ class EmployeeController extends Controller
             $countries = MasterCountry::where('status', 'active')->get();
             View::share('countries', $countries);
 
-            $states = MasterState::where('status', 'active')->where('country_id', 101)->get();
-            View::share('states', $states);
-
             if (!empty($modules['company_id'])) {
                 $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
                 $parentEmployees = Employee::where('status', 'active')
@@ -823,8 +820,8 @@ class EmployeeController extends Controller
             $countries = MasterCountry::where('status', 'active')->get();
             View::share('countries', $countries);
 
-            $selectedCountryId = ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists()) ? $edit->country_id : 101;
-            $states = MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->get();
+            $selectedCountryId = ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists()) ? $edit->country_id : null;
+            $states = $selectedCountryId ? MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->orderBy('name', 'asc')->get() : collect();
             View::share('states', $states);
 
             $selectedStateId = $edit->state_id;

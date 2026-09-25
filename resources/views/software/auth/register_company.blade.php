@@ -352,9 +352,9 @@
                                 </div>
 
                                 <!-- Hidden default values for Country, State, City, Plan, Date Format, Time Format, and HRA Percentage -->
-                                <input type="hidden" name="country_id" id="country_id" value="{{ old('country_id', 1) }}">
-                                <input type="hidden" name="state_id" id="state_id" value="{{ old('state_id', 1) }}">
-                                <input type="hidden" name="city_id" id="city_id" value="{{ old('city_id', 1) }}">
+                                <input type="hidden" name="country_id" id="country_id" value="{{ old('country_id') }}">
+                                <input type="hidden" name="state_id" id="state_id" value="{{ old('state_id') }}">
+                                <input type="hidden" name="city_id" id="city_id" value="{{ old('city_id') }}">
                                 <input type="hidden" name="plan_id" id="plan_id" value="{{ old('plan_id', $plans->first()?->id) }}">
                                 <input type="hidden" name="date_format" id="date_format" value="{{ old('date_format', \App\Helpers\Helper::getDefaultDateFormat()) }}">
                                 <input type="hidden" name="time_format" id="time_format" value="{{ old('time_format', \App\Helpers\Helper::getDefaultTimeFormat()) }}">

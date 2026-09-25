@@ -86,9 +86,9 @@ class CompanyRequest extends FormRequest
                 $isEdit ? ['nullable'] : ['required'],
                 ['regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/']
             ),
-            'country_id' => $isEdit ? ['nullable'] : ['required'],
-            'state_id' => $isEdit ? ['nullable'] : ['required'],
-            'city_id' => $isEdit ? ['nullable'] : ['required'],
+            'country_id' => ['nullable'],
+            'state_id' => ['nullable'],
+            'city_id' => ['nullable'],
             'plan_id' => $isEdit ? ['nullable'] : ['required'],
             'otp' => $isEdit ? ['nullable'] : ['required'],
             'company_logo' => ['nullable', 'mimes:jpeg,png,jpg,webp', 'max:2048'],

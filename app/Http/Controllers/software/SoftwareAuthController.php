@@ -127,9 +127,13 @@ class SoftwareAuthController extends Controller
             if (!empty($request->country_id)) {
                 $country = MasterCountry::where('id', $request->country_id)->first();
                 $validated['phonecode'] = $country?->code ?? '91';
+                $validated['country_id'] = $request->country_id;
             } else {
                 $validated['phonecode'] = '91';
+                $validated['country_id'] = null;
             }
+            $validated['state_id'] = !empty($request->state_id) ? $request->state_id : null;
+            $validated['city_id'] = !empty($request->city_id) ? $request->city_id : null;
 
             $validated['app_right'] = $plan_data?->app_right ?? [];
             $validated['panel_right'] = $plan_data?->panel_right ?? [];
@@ -266,9 +270,9 @@ class SoftwareAuthController extends Controller
                 'password' => Hash::make($request->password),
                 'sp' => Helper::generateSP($request->password),
 
-                'country_id' => $request->country_id,
-                'state_id' => $request->state_id,
-                'city_id' => $request->city_id,
+                'country_id' => $validated['country_id'],
+                'state_id' => $validated['state_id'],
+                'city_id' => $validated['city_id'],
                 'email' => $request->email,
                 'contact_number' => $request->whatsapp_number,
                 'other_number' => $request->whatsapp_number,
@@ -365,9 +369,9 @@ class SoftwareAuthController extends Controller
                 'email' => $request->email,
                 'password' => $validated['password'],
                 'sp' => $validated['sp'],
-                'country_id' => $request->country_id,
-                'state_id' => $request->state_id,
-                'city_id' => $request->city_id,
+                'country_id' => $validated['country_id'],
+                'state_id' => $validated['state_id'],
+                'city_id' => $validated['city_id'],
                 'plan_id' => $request->plan_id,
                 'date_format' => $validated['date_format'],
                 'time_format' => $validated['time_format'],

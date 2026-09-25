@@ -383,17 +383,17 @@
                             <select name="country_id" id="country_id"
                                 class="form-control @error('country_id') is-invalid @enderror search_by_country select2"
                                 data-append="search_by_country" data-filterByStatus="active"
-                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id', 101) }}"
+                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id') }}"
                                 data-selectedStateId="{{ isset($edit) && $edit?->state_id ? $edit?->state_id : old('state_id') }}"
                                 autofocus>
                                 <option value="" disabled
-                                    {{ old('country_id', $edit->country_id ?? 101) ? '' : 'selected' }}>
+                                    {{ old('country_id', $edit->country_id ?? '') ? '' : 'selected' }}>
                                     Select Country
                                 </option>
                                 @if (isset($countries) && count($countries) > 0)
                                     @foreach ($countries as $c)
                                         <option value="{{ $c->id }}"
-                                            {{ (old('country_id', $edit->country_id ?? 101) == $c->id) ? 'selected' : '' }}>
+                                            {{ (old('country_id', $edit->country_id ?? '') == $c->id) ? 'selected' : '' }}>
                                             {{ $c->name }}
                                         </option>
                                     @endforeach
@@ -412,7 +412,7 @@
                             <select name="state_id" id="state"
                                 class="form-control @error('state_id') is-invalid @enderror search_by_state select2"
                                 data-append="search_by_state"
-                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id', 101) }}"
+                                data-selectedCountryId="{{ isset($edit) && $edit?->country_id ? $edit?->country_id : old('country_id') }}"
                                 data-selectedStateId="{{ isset($edit) && $edit?->state_id ? $edit?->state_id : old('state_id') }}">
 
                                 <option value="" disabled
