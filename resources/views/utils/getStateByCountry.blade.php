@@ -2,8 +2,6 @@
     let stateSearchRequest = null; // Declare globally, outside the event
 
     $(document).on('change', '.search_by_country', function() {
-        // console.log("search_by_state L-5");
-
         let instance = $('.search_by_country');
         let country_id = instance.val();
         let is_required = instance.attr('required');
@@ -14,15 +12,19 @@
             country_id = instance.attr("data-selectedCountryId");
         }
 
-        let state_ids = [];
         if (!state_id) {
             state_id = $(".search_by_state").attr("data-selectedStateId");
         }
-
-        if (state_id) {
-            state_ids = state_id.split(",");
+        if (!state_id) {
+            state_id = $(".search_by_state").val();
         }
 
+        let state_ids = [];
+        if (state_id) {
+            state_ids = String(state_id).split(",").map(function(s) {
+                return String(s).trim();
+            });
+        }
 
         if (country_id) {
             // Abort previous request if any
@@ -42,7 +44,6 @@
                 },
                 success: function(response) {
                     if (response.status) {
-                        // console.log("getState 30",response.data, country_id, state_id);
                         let options = "";
                         if (select_aall_option == "true") {
                             options = "<option value='all'>Select All State</option>";
@@ -51,28 +52,18 @@
                         }
                         if (response.data && response.data.length > 0) {
                             $.each(response.data, function(i, item) {
-                                options += "<option value='" + item.id + "'";
-                                if (state_ids.length == 0 && state_id == item.id) {
-                                    options += " selected ";
-                                } else if (state_ids.length > 0 && state_ids.includes(item
-                                        ?.id)) {
-                                    options += " selected ";
+                                let isSelected = false;
+                                let itemIdStr = String(item.id);
+                                if (state_id && (String(state_id) === itemIdStr || state_ids.includes(itemIdStr))) {
+                                    isSelected = true;
                                 }
-                                options += ">" + item.name + "</option>";
-
+                                options += "<option value='" + item.id + "'" + (isSelected ? " selected" : "") + ">" + item.name + "</option>";
                             });
                         }
-                        // console.log("getState 33",instance.parent(),);
                         if ($(".search_by_state").attr('data-append')) {
                             $(".search_by_state").attr('data-selectedCountryId', country_id);
-                            if ($(document).find("." + $(".search_by_state").attr('data-append'))
-                                .length > 0) {
-                                $("." + $(".search_by_state").attr('data-append')).empty();
-                                $("." + $(".search_by_state").attr('data-append')).append(options);
-                            } else {
-                                $("." + $(".search_by_state").attr('data-append')).empty();
-                                $("." + $(".search_by_state").attr('data-append')).append(options);
-                            }
+                            let appendTarget = $("." + $(".search_by_state").attr('data-append'));
+                            appendTarget.empty().append(options);
                         } else if (instance.parent().parent().hasClass("col-md-6") || instance
                             .parent().parent().hasClass("col-md-4") || instance.parent().parent()
                             .hasClass("col-md-3")) {
@@ -106,23 +97,19 @@
                             $(".country_div").remove();
                             instance.parent().parent().after(html);
                         } else if (instance.parent("tr")) {
-                            // console.log("getState 39", instance, instance.parent(), instance.next("th"));
                             $(".search_by_country").removeClass('d-none').empty().append(options);
-                            /*
-                            // $(".search_by_country").remove();
-                            // instance.parent().next("th").remove();
-                            // instance.parent().after('<th>'+options+'</th>');
-                            */
                         } else {
-                            console.log("getState 82", instance.parent());
                             instance.parent().after(options);
                         }
                         $('.select2').select2();
+
+                        // If state has a selected value, trigger change to load city
+                        if ($(".search_by_state").val()) {
+                            $(".search_by_state").trigger("change");
+                        }
                     }
                 }
-
             });
-
         }
     });
 
@@ -139,6 +126,14 @@
 
             // Set select2 value to all values
             $select.val(allValues).trigger("change.select2");
+        }
+    });
+
+    $(document).ready(function() {
+        let country_id = $('.search_by_country').val() || $('.search_by_country').attr("data-selectedCountryId");
+        let state_options = $('.search_by_state').find('option');
+        if (country_id && state_options.length <= 1) {
+            $('.search_by_country').trigger('change');
         }
     });
 </script>

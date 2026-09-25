@@ -436,6 +436,18 @@ class EmployeeController extends Controller
             $countries = MasterCountry::where('status', 'active')->get();
             View::share('countries', $countries);
 
+            $selectedCountryId = old('country_id', (isset($edit) ? $edit?->country_id : null));
+            $states = ($selectedCountryId && MasterCountry::where('id', $selectedCountryId)->exists())
+                ? MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->orderBy('name', 'asc')->get()
+                : collect();
+            View::share('states', $states);
+
+            $selectedStateId = old('state_id', (isset($edit) ? $edit?->state_id : null));
+            $cities = $selectedStateId
+                ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->orderBy('name', 'asc')->get()
+                : collect();
+            View::share('cities', $cities);
+
             if (!empty($modules['company_id'])) {
                 $contractTypeIds = EmployeeType::where('name', 'like', '%contract%')->orWhere('name', 'like', '%contractor%')->pluck('id');
                 $parentEmployees = Employee::where('status', 'active')
@@ -555,6 +567,21 @@ class EmployeeController extends Controller
 
             View::share('edit', $edit);
             View::share('onboarding_id', $onboarding->id);
+
+            $countries = MasterCountry::where('status', 'active')->get();
+            View::share('countries', $countries);
+
+            $selectedCountryId = old('country_id', $edit?->country_id);
+            $states = ($selectedCountryId && MasterCountry::where('id', $selectedCountryId)->exists())
+                ? MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->orderBy('name', 'asc')->get()
+                : collect();
+            View::share('states', $states);
+
+            $selectedStateId = old('state_id', $edit?->state_id);
+            $cities = $selectedStateId
+                ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->orderBy('name', 'asc')->get()
+                : collect();
+            View::share('cities', $cities);
 
             return view($modules['folder_path'] . '.form');
         } catch (\Exception $e) {
@@ -820,12 +847,16 @@ class EmployeeController extends Controller
             $countries = MasterCountry::where('status', 'active')->get();
             View::share('countries', $countries);
 
-            $selectedCountryId = ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists()) ? $edit->country_id : null;
-            $states = $selectedCountryId ? MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->orderBy('name', 'asc')->get() : collect();
+            $selectedCountryId = old('country_id', ($edit->country_id && MasterCountry::where('id', $edit->country_id)->exists() ? $edit->country_id : null));
+            $states = ($selectedCountryId && MasterCountry::where('id', $selectedCountryId)->exists())
+                ? MasterState::where('status', 'active')->where('country_id', $selectedCountryId)->orderBy('name', 'asc')->get()
+                : collect();
             View::share('states', $states);
 
-            $selectedStateId = $edit->state_id;
-            $cities = $selectedStateId ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->get() : collect();
+            $selectedStateId = old('state_id', $edit->state_id);
+            $cities = $selectedStateId
+                ? MasterCity::where('status', 'active')->where('state_id', $selectedStateId)->orderBy('name', 'asc')->get()
+                : collect();
             View::share('cities', $cities);
 
             if (!empty($empCompanyId)) {
