@@ -701,14 +701,17 @@
                         const newState = res.punch_state;
                         updatePunchUI(newState);
 
-                        if (typeof Swal !== 'undefined') {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.options = { closeButton: true, progressBar: true, positionClass: "toast-top-right", timeOut: "4000" };
+                            toastr.success(res.message + (res.punch_time ? ' (' + res.punch_time + ')' : ''), 'Punch Recorded');
+                        } else if (typeof Swal !== 'undefined') {
                             Swal.fire({
+                                toast: true,
+                                position: 'top-end',
                                 icon: 'success',
                                 title: res.message,
-                                html: `<div class="mt-2 text-muted fs-6">Recorded at: <strong>${res.punch_time || new Date().toLocaleTimeString()}</strong></div>`,
-                                timer: 2500,
-                                showConfirmButton: false,
-                                customClass: { popup: 'rounded-4 shadow' }
+                                timer: 3000,
+                                showConfirmButton: false
                             });
                         }
 
@@ -717,11 +720,18 @@
                             loadStatistics();
                         }
                     } else {
-                        if (typeof Swal !== 'undefined') {
+                        const errMsg = res.message || 'Error occurred';
+                        if (typeof toastr !== 'undefined') {
+                            toastr.options = { closeButton: true, progressBar: true, positionClass: "toast-top-right", timeOut: "6000" };
+                            toastr.error(errMsg, 'Punch Restricted');
+                        } else if (typeof Swal !== 'undefined') {
                             Swal.fire({
+                                toast: true,
+                                position: 'top-end',
                                 icon: 'error',
-                                title: 'Punch Failed',
-                                text: res.message || 'Error occurred'
+                                title: errMsg,
+                                showConfirmButton: false,
+                                timer: 6000
                             });
                         }
                     }
@@ -735,11 +745,17 @@
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errMsg = xhr.responseJSON.message;
                     }
-                    if (typeof Swal !== 'undefined') {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.options = { closeButton: true, progressBar: true, positionClass: "toast-top-right", timeOut: "6000" };
+                        toastr.error(errMsg, 'Punch Restricted');
+                    } else if (typeof Swal !== 'undefined') {
                         Swal.fire({
+                            toast: true,
+                            position: 'top-end',
                             icon: 'error',
-                            title: 'Error',
-                            text: errMsg
+                            title: errMsg,
+                            showConfirmButton: false,
+                            timer: 6000
                         });
                     }
                 }

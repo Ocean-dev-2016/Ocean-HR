@@ -693,6 +693,7 @@ class DashboardController extends Controller
 
                 // Calculate Employee Personal Attendance & Leave Balance Stats (for non-admin or employee punch view)
                 $employeeStats = null;
+                $subordinateEmployees = [];
                 if ($currentEmployee) {
                     $empId = $currentEmployee->id;
                     $todayDate = Carbon::today()->format('Y-m-d');
@@ -795,6 +796,114 @@ class DashboardController extends Controller
                         'leave_balances' => $leaveBalances,
                         'punch_state' => $punchStateVal,
                     ];
+
+                    // Subordinate Employees (for Supervisors / Team Leads / Managers)
+                    $subordinateQuery = Employee::where('company_id', $currentEmployee->company_id)
+                        ->where('parent_id', $currentEmployee->id)
+                        ->where('status', 'active')
+                        ->with(['employmentDetail.department', 'employmentDetail.designation'])
+                        ->get();
+
+                    if ($subordinateQuery->isNotEmpty()) {
+                        $compLeaveTypes = \App\Models\LeaveType::where('company_id', $currentEmployee->company_id)
+                            ->where('status', 'active')
+                            ->get();
+
+                        foreach ($subordinateQuery as $sub) {
+                            $subId = $sub->id;
+
+                            // Today's punches
+                            $subTodayPunches = Attendance::where('employee_id', $subId)
+                                ->where('attendance_date', $todayDate)
+                                ->orderBy('id', 'asc')
+                                ->get();
+
+                            $subInPunch = $subTodayPunches->where('attendace_type', 'in')->first();
+                            $subOutPunch = $subTodayPunches->where('attendace_type', 'out')->last();
+                            $subLatestPunch = $subTodayPunches->last();
+
+                            $subPunchState = ($subLatestPunch && $subLatestPunch->attendace_type === 'in') ? 'in' : 'out';
+                            $subInTime = $subInPunch && $subInPunch->punch_in_time ? Carbon::parse($subInPunch->punch_in_time)->format('h:i A') : null;
+                            $subOutTime = $subOutPunch && $subOutPunch->punch_in_time ? Carbon::parse($subOutPunch->punch_in_time)->format('h:i A') : null;
+
+                            // Check approved leave today
+                            $subOnLeave = LeaveApplication::where('employee_id', $subId)
+                                ->where('status', 'approved')
+                                ->where(function ($q) use ($todayDate) {
+                                    $q->where(function ($subQ) use ($todayDate) {
+                                        $subQ->whereNotNull('todate_time')
+                                            ->whereDate('fromdate_time', '<=', $todayDate)
+                                            ->whereDate('todate_time', '>=', $todayDate);
+                                    })->orWhere(function ($subQ) use ($todayDate) {
+                                        $subQ->whereNull('todate_time')
+                                            ->whereDate('fromdate_time', '=', $todayDate);
+                                    });
+                                })
+                                ->with('leave_type')
+                                ->first();
+
+                            if ($subOnLeave) {
+                                $subStatusType = 'leave';
+                                $subStatusLabel = 'On Leave';
+                                $subStatusClass = 'warning';
+                                $subStatusIcon = 'ti-calendar';
+                            } elseif ($subInPunch) {
+                                if ($subPunchState === 'in') {
+                                    $subStatusType = 'present_in';
+                                    $subStatusLabel = 'Present (IN)';
+                                    $subStatusClass = 'success';
+                                    $subStatusIcon = 'ti-check';
+                                } else {
+                                    $subStatusType = 'present_out';
+                                    $subStatusLabel = 'Punched OUT';
+                                    $subStatusClass = 'secondary';
+                                    $subStatusIcon = 'ti-logout';
+                                }
+                            } else {
+                                $subStatusType = 'not_punched';
+                                $subStatusLabel = 'Not Punched';
+                                $subStatusClass = 'danger';
+                                $subStatusIcon = 'ti-alert-circle';
+                            }
+
+                            // Current month present days
+                            $subMonthPresent = Attendance::where('employee_id', $subId)
+                                ->whereBetween('attendance_date', [$currMonthStart, $currMonthEnd])
+                                ->where('attendace_type', 'in')
+                                ->distinct('attendance_date')
+                                ->count('attendance_date');
+
+                            // Leave balances summary
+                            $subLeaves = [];
+                            foreach ($compLeaveTypes as $lt) {
+                                $avail = $sub->getAvailableLeaveBalance($lt->id);
+                                $subLeaves[] = [
+                                    'name' => $lt->full_name,
+                                    'code' => $lt->sort_name ?: substr($lt->full_name, 0, 4),
+                                    'balance' => (float) $avail,
+                                ];
+                            }
+
+                            $subordinateEmployees[] = [
+                                'id' => $sub->id,
+                                'employee' => $sub,
+                                'name' => $sub->proper_name ?: ($sub->full_name ?: $sub->first_name),
+                                'code' => $sub->employee_code ?: 'EMP-' . $sub->id,
+                                'department' => $sub->employmentDetail?->department?->name ?? '—',
+                                'designation' => $sub->employmentDetail?->designation?->name ?? 'Employee',
+                                'avatar' => $sub->employee_photo_url,
+                                'punch_state' => $subPunchState,
+                                'punch_in_time' => $subInTime,
+                                'punch_out_time' => $subOutTime,
+                                'status_type' => $subStatusType,
+                                'status_label' => $subStatusLabel,
+                                'status_class' => $subStatusClass,
+                                'status_icon' => $subStatusIcon,
+                                'month_present' => $subMonthPresent,
+                                'leave_balances' => $subLeaves,
+                            ];
+                        }
+                    }
                 }
 
                 // Company Main Admin / HR Head / Owner — Full Organization Overview
@@ -1293,6 +1402,7 @@ class DashboardController extends Controller
                     'attendanceStats',
                     'operationStats',
                     'employeeStats',
+                    'subordinateEmployees',
                     'adminDashboardData',
                     'isCompanyAdmin',
                     'isEmployeeOnly'
@@ -1302,6 +1412,7 @@ class DashboardController extends Controller
                 $returnResponse['showNumericModule'] = $showNumericModule;
                 $returnResponse['attendanceStats'] = $attendanceStats;
                 $returnResponse['employeeStats'] = $employeeStats;
+                $returnResponse['subordinateEmployees'] = $subordinateEmployees;
                 return $this->sendResponse($returnResponse, 'Statistics updated');
 
                 dd("L-110 Dashboard Ajax");

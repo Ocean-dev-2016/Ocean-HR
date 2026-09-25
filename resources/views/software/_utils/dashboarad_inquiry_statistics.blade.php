@@ -69,11 +69,18 @@
     .admin-dashboard-root .od-card-b { padding: 16px; flex: 1 1 auto; }
     .admin-dashboard-root .od-card-b.od-scroll { max-height: 320px; overflow-y: auto; }
     .admin-dashboard-root .od-absent-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 12px;
     }
     .admin-dashboard-root .od-absent-item {
         display: flex; align-items: center; justify-content: space-between; gap: 8px;
         padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #fecaca;
+        min-height: 60px; box-shadow: 0 1px 3px rgba(0,0,0,.03);
+        transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .admin-dashboard-root .od-absent-item:hover {
+        transform: translateY(-2px);
+        border-color: #f87171;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
     }
     .admin-dashboard-root .od-link {
         font-size: 0.8rem; font-weight: 750; color: #fff; background: var(--blue);
@@ -126,7 +133,9 @@
         color: #fff; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;
     }
     .admin-dashboard-root .od-pill {
-        font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; display: inline-flex;
+        font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px;
+        display: inline-flex; align-items: center; justify-content: center;
+        white-space: nowrap; flex-shrink: 0; line-height: 1.2;
     }
     .admin-dashboard-root .od-pill.ok { background: #dcfce7; color: #15803d; }
     .admin-dashboard-root .od-pill.warn { background: #fef3c7; color: #b45309; }
@@ -402,14 +411,14 @@
     </div>
 
     {{-- Middle: Attendance + Dept + Actions (filled, no blank stretch) --}}
-    <div class="row g-3 od-gap align-items-start">
-        <div class="col-12 col-xl-4">
-            <div class="od-card" style="background:linear-gradient(180deg,#ffffff 0%,#f0f9ff 100%);">
+    <div class="row g-3 od-gap align-items-stretch">
+        <div class="col-12 col-xl-4 d-flex flex-column">
+            <div class="od-card w-100 flex-grow-1" style="background:linear-gradient(180deg,#ffffff 0%,#f0f9ff 100%);">
                 <div class="od-card-h" style="background:linear-gradient(90deg,#eff6ff,#dbeafe);">
                     <h5><i class="ti ti-chart-donut text-primary me-1"></i> Today's Attendance</h5>
                     <a href="{{ route('daily-attendance-report.index') }}" class="od-link">Report</a>
                 </div>
-                <div class="od-card-b">
+                <div class="od-card-b d-flex flex-column">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div style="width:130px;height:130px;min-width:130px;border-radius:50%;background:conic-gradient(#0d9f6e 0deg {{ $pEnd }}deg,#e11d48 {{ $pEnd }}deg {{ $aEnd }}deg,#f59e0b {{ $aEnd }}deg 360deg);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(15,28,63,.12);">
                             <div style="width:90px;height:90px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
@@ -467,31 +476,33 @@
                         @endforeach
                     </div>
 
-                    <div class="od-section-label">Late Today</div>
-                    @forelse ($ad['late_list'] ?? [] as $ll)
-                        <div class="od-row-item">
-                            <div class="min-w-0">
-                                <div class="text-truncate" style="font-size:.92rem;font-weight:750;">{{ $ll['name'] }}</div>
-                                <div style="font-size:.78rem;color:#64748b;font-weight:600;">{{ $ll['code'] }}</div>
+                    <div class="mt-auto pt-2">
+                        <div class="od-section-label">Late Today</div>
+                        @forelse ($ad['late_list'] ?? [] as $ll)
+                            <div class="od-row-item">
+                                <div class="min-w-0">
+                                    <div class="text-truncate" style="font-size:.92rem;font-weight:750;">{{ $ll['name'] }}</div>
+                                    <div style="font-size:.78rem;color:#64748b;font-weight:600;">{{ $ll['code'] }}</div>
+                                </div>
+                                <span class="od-pill warn">{{ $ll['time'] }}</span>
                             </div>
-                            <span class="od-pill warn">{{ $ll['time'] }}</span>
-                        </div>
-                    @empty
-                        <div class="text-center py-2 rounded-3" style="background:#ecfdf5;color:#065f46;font-weight:700;font-size:.9rem;">
-                            <i class="ti ti-checks me-1"></i> No late punches today
-                        </div>
-                    @endforelse
+                        @empty
+                            <div class="text-center py-2 rounded-3" style="background:#ecfdf5;color:#065f46;font-weight:700;font-size:.9rem;">
+                                <i class="ti ti-checks me-1"></i> No late punches today
+                            </div>
+                        @endforelse
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-xl-4">
-            <div class="od-card" style="background:linear-gradient(180deg,#ffffff 0%,#fffbeb 100%);">
+        <div class="col-12 col-xl-4 d-flex flex-column">
+            <div class="od-card w-100 flex-grow-1" style="background:linear-gradient(180deg,#ffffff 0%,#fffbeb 100%);">
                 <div class="od-card-h" style="background:linear-gradient(90deg,#fff7ed,#ffedd5);">
                     <h5><i class="ti ti-building text-warning me-1"></i> Workforce Mix</h5>
                     <span class="od-pill info">{{ count($ad['department_stats']) }} Depts</span>
                 </div>
-                <div class="od-card-b">
+                <div class="od-card-b d-flex flex-column">
                     <div class="od-section-label">Department Headcount</div>
                     @forelse ($ad['department_stats'] as $ds)
                         @php $pct = $ad['dept_max'] > 0 ? round(($ds['count'] / $ad['dept_max']) * 100) : 0; @endphp
@@ -545,7 +556,7 @@
                         </div>
                     @endforelse
 
-                    <div class="od-stat-grid mt-3">
+                    <div class="od-stat-grid mt-auto pt-3">
                         <div class="od-mini" style="background:#dcfce7;">
                             <div class="mn" style="color:#166534;">{{ $ad['regular_employees'] }}</div>
                             <div class="ml" style="color:#166534;">Active Staff</div>
@@ -559,15 +570,15 @@
             </div>
         </div>
 
-        <div class="col-12 col-xl-4">
-            <div class="od-card" style="background:linear-gradient(180deg,#ffffff 0%,#faf5ff 100%);">
+        <div class="col-12 col-xl-4 d-flex flex-column">
+            <div class="od-card w-100 flex-grow-1" style="background:linear-gradient(180deg,#ffffff 0%,#faf5ff 100%);">
                 <div class="od-card-h" style="background:linear-gradient(90deg,#f5f3ff,#ede9fe);">
                     <h5><i class="ti ti-bell-ringing text-danger me-1"></i> Needs Your Action</h5>
                     @if ($ad['pending_approvals'] > 0)
                         <span class="od-pill warn">{{ $ad['pending_approvals'] }} Pending</span>
                     @endif
                 </div>
-                <div class="od-card-b">
+                <div class="od-card-b d-flex flex-column">
                     <div class="od-chip-row">
                         <a href="{{ route('leave-application.index') }}?status=pending" class="od-chip" style="background:linear-gradient(135deg,#ffedd5,#fdba74);">
                             <div class="cn" style="color:#9a3412;">{{ $ad['pending_leaves'] }}</div>
@@ -613,13 +624,15 @@
                         </div>
                     @endforelse
 
-                    <div class="od-section-label mt-2">Quick Actions</div>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="{{ route('employees.create') }}" class="od-action"><span class="ai" style="background:#dbeafe;color:#1d4ed8;"><i class="ti ti-user-plus"></i></span>Add Employee</a>
-                        <a href="{{ route('attendance.index') }}" class="od-action"><span class="ai" style="background:#ede9fe;color:#6d28d9;"><i class="ti ti-checkbox"></i></span>Mark Attendance</a>
-                        <a href="{{ route('salary-calculation.index') }}" class="od-action"><span class="ai" style="background:#ffedd5;color:#c2410c;"><i class="ti ti-credit-card"></i></span>Generate Salary</a>
-                        <a href="{{ route('expense.index') }}" class="od-action"><span class="ai" style="background:#d1fae5;color:#047857;"><i class="ti ti-receipt"></i></span>Review Expenses</a>
-                        <a href="{{ route('daily-attendance-report.index') }}" class="od-action"><span class="ai" style="background:#e0e7ff;color:#4338ca;"><i class="ti ti-chart-bar"></i></span>View Reports</a>
+                    <div class="mt-auto pt-2">
+                        <div class="od-section-label mt-2">Quick Actions</div>
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ route('employees.create') }}" class="od-action"><span class="ai" style="background:#dbeafe;color:#1d4ed8;"><i class="ti ti-user-plus"></i></span>Add Employee</a>
+                            <a href="{{ route('attendance.index') }}" class="od-action"><span class="ai" style="background:#ede9fe;color:#6d28d9;"><i class="ti ti-checkbox"></i></span>Mark Attendance</a>
+                            <a href="{{ route('salary-calculation.index') }}" class="od-action"><span class="ai" style="background:#ffedd5;color:#c2410c;"><i class="ti ti-credit-card"></i></span>Generate Salary</a>
+                            <a href="{{ route('expense.index') }}" class="od-action"><span class="ai" style="background:#d1fae5;color:#047857;"><i class="ti ti-receipt"></i></span>Review Expenses</a>
+                            <a href="{{ route('daily-attendance-report.index') }}" class="od-action"><span class="ai" style="background:#e0e7ff;color:#4338ca;"><i class="ti ti-chart-bar"></i></span>View Reports</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -744,15 +757,15 @@
                     @if (!empty($ad['absent_list']))
                         <div class="od-absent-grid">
                             @foreach ($ad['absent_list'] as $ab)
-                                <div class="od-absent-item">
-                                    <div class="d-flex align-items-center gap-2 min-w-0">
+                                <div class="od-absent-item" title="{{ $ab['name'] }} ({{ $ab['code'] ?? '' }} · {{ $ab['department'] }})">
+                                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1" style="overflow:hidden;">
                                         <span class="od-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c);">{{ strtoupper(substr($ab['name'],0,1)) }}</span>
-                                        <div class="min-w-0">
-                                            <div class="text-truncate" style="font-size:.9rem;font-weight:750;">{{ $ab['name'] }}</div>
-                                            <div style="font-size:.76rem;color:#64748b;font-weight:600;">{{ $ab['code'] ?? '' }} · {{ $ab['department'] }}</div>
+                                        <div class="min-w-0 flex-grow-1" style="overflow:hidden;">
+                                            <div class="text-truncate" style="font-size:.88rem;font-weight:750;color:#0f172a;line-height:1.25;" title="{{ $ab['name'] }}">{{ $ab['name'] }}</div>
+                                            <div class="text-truncate mt-1" style="font-size:.75rem;color:#64748b;font-weight:600;line-height:1.2;" title="{{ $ab['code'] ?? '' }} · {{ $ab['department'] }}">{{ $ab['code'] ?? '' }} · {{ $ab['department'] }}</div>
                                         </div>
                                     </div>
-                                    <span class="od-pill bad">Absent</span>
+                                    <span class="od-pill bad ms-1" style="font-size:.72rem;padding:3px 8px;">Absent</span>
                                 </div>
                             @endforeach
                         </div>
@@ -791,7 +804,7 @@
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="od-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">{{ strtoupper(substr($la['name'],0,1)) }}</span>
-                                                <span class="text-truncate fw-bold" style="max-width:130px;" title="{{ $la['name'] }}">{{ $la['name'] }}</span>
+                                                <span class="fw-bold text-nowrap" title="{{ $la['name'] }}">{{ $la['name'] }}</span>
                                             </div>
                                         </td>
                                         <td class="text-muted fw-semibold">{{ $la['department'] }}</td>
@@ -830,7 +843,7 @@
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="od-avatar" style="background:linear-gradient(135deg,#f97316,#ea580c);">{{ strtoupper(substr($ul['name'],0,1)) }}</span>
-                                                <span class="text-truncate fw-bold" style="max-width:120px;" title="{{ $ul['name'] }}">{{ $ul['name'] }}</span>
+                                                <span class="fw-bold text-nowrap" title="{{ $ul['name'] }}">{{ $ul['name'] }}</span>
                                             </div>
                                         </td>
                                         <td class="text-muted fw-semibold">{{ $ul['department'] }}</td>
@@ -1104,4 +1117,128 @@ setInterval(function () {
             </div>
         @endif
     </div>
+
+    {{-- 3. TEAM MEMBERS MINI DASHBOARD (SUPERVISOR / REPORTING MANAGER VIEW) --}}
+    @if (!empty($subordinateEmployees) && count($subordinateEmployees) > 0)
+        @php
+            $teamTotal = count($subordinateEmployees);
+            $teamIn = collect($subordinateEmployees)->where('status_type', 'present_in')->count();
+            $teamOut = collect($subordinateEmployees)->where('status_type', 'present_out')->count();
+            $teamLeave = collect($subordinateEmployees)->where('status_type', 'leave')->count();
+            $teamNotPunched = collect($subordinateEmployees)->where('status_type', 'not_punched')->count();
+        @endphp
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-5 mb-3">
+            <div>
+                <h4 class="mb-1" style="color: #0f172a; font-weight: 850; letter-spacing: -0.02em;">
+                    <i class="ti ti-users-group text-primary me-2"></i> Team Members ({{ $teamTotal }})
+                </h4>
+                <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 650;">
+                    Live attendance & leave summary of employees reporting to you
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge px-3 py-2 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-check me-1"></i> {{ $teamIn }} In
+                </span>
+                @if ($teamOut > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-logout me-1"></i> {{ $teamOut }} Out
+                    </span>
+                @endif
+                <span class="badge px-3 py-2 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-alert-circle me-1"></i> {{ $teamNotPunched }} Not Punched
+                </span>
+                @if ($teamLeave > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-calendar me-1"></i> {{ $teamLeave }} Leave
+                    </span>
+                @endif
+            </div>
+        </div>
+
+        <div class="row g-3">
+            @foreach ($subordinateEmployees as $sub)
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 overflow-hidden shadow-sm"
+                         style="border-radius: 18px; border: 1px solid #e2e8f0 !important; background: #ffffff; transition: transform .2s ease, box-shadow .2s ease;">
+                        {{-- Top Header of Mini Dashboard Card --}}
+                        <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                                    <img src="{{ $sub['avatar'] }}" alt="{{ $sub['name'] }}"
+                                         class="rounded-circle border"
+                                         style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; background: #fff;"
+                                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sub['name']) }}';">
+                                    <div class="min-w-0 flex-grow-1">
+                                        <div class="text-truncate fw-bold text-dark" style="font-size: 1.02rem;" title="{{ $sub['name'] }}">
+                                            {{ $sub['name'] }}
+                                        </div>
+                                        <div class="text-muted text-truncate" style="font-size: 0.78rem; font-weight: 600;">
+                                            {{ $sub['code'] }} · {{ $sub['designation'] }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                      style="font-size: 0.75rem; font-weight: 800;
+                                      @if ($sub['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                      @elseif ($sub['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                      @elseif ($sub['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                      @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                      @endif">
+                                    <i class="ti {{ $sub['status_icon'] }} me-1"></i>{{ $sub['status_label'] }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Card Body --}}
+                        <div class="card-body p-3 d-flex flex-column justify-content-between">
+                            {{-- Mini Attendance Stats Row --}}
+                            <div class="row g-2 text-center mb-3">
+                                <div class="col-4">
+                                    <div class="p-2 rounded-3" style="background: #eff6ff; border: 1px solid #dbeafe;">
+                                        <div class="fw-bolder text-primary" style="font-size: 1.2rem; line-height: 1.1;">{{ $sub['month_present'] }}</div>
+                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Days MTD</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 rounded-3" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+                                        <div class="fw-bolder text-success text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sub['punch_in_time'] ?: '—' }}</div>
+                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">In Time</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                        <div class="fw-bolder text-secondary text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sub['punch_out_time'] ?: '—' }}</div>
+                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Out Time</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Leave Balance Section --}}
+                            @if (!empty($sub['leave_balances']) && count($sub['leave_balances']) > 0)
+                                <div class="border-top pt-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1.5">
+                                        <span class="text-muted text-uppercase" style="font-size: 0.7rem; font-weight: 800; letter-spacing: .03em;">Leave Balance</span>
+                                        <a href="{{ route('employees.show', $sub['id']) }}" class="text-primary text-decoration-none" style="font-size: 0.75rem; font-weight: 750;">
+                                            Profile <i class="ti ti-chevron-right"></i>
+                                        </a>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach ($sub['leave_balances'] as $lb)
+                                            <span class="badge px-2.5 py-1.5 rounded-2"
+                                                  style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.76rem; font-weight: 700;"
+                                                  title="{{ $lb['name'] }}: {{ $lb['balance'] }} days available">
+                                                {{ $lb['code'] }}: <strong style="color: #0f172a; font-weight: 850;">{{ number_format($lb['balance'], 1) }}</strong>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 @endif

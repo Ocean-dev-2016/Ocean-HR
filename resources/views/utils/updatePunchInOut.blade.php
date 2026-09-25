@@ -75,14 +75,19 @@ $(document).on('click', '#punch_in_out_btn', function() {
                             errorMsg = xhr.responseJSON.message;
                         }
 
-                        Swal.fire({
-                            title: "Error!",
-                            text: errorMsg,
-                            icon: "error",
-                            customClass: {
-                                confirmButton: 'btn btn-primary waves-effect waves-light',
-                            },
-                        });
+                        if (typeof toastr !== 'undefined') {
+                            toastr.options = { closeButton: true, progressBar: true, positionClass: "toast-top-right", timeOut: "6000" };
+                            toastr.error(errorMsg, "Punch Restricted");
+                        } else {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'error',
+                                title: errorMsg,
+                                showConfirmButton: false,
+                                timer: 6000
+                            });
+                        }
                     }
                 });
             } else {
