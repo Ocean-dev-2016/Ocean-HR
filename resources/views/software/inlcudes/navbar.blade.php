@@ -39,7 +39,15 @@
         $roleName = $currentUserProfile?->team_role?->name ?? ($currentUserProfile?->current_role?->name ?? ($currentUserProfile?->role?->name ?? ''));
         $desigName = $currentUserProfile?->employmentDetail?->designation?->name ?? '';
         
-        $loginDesignation = !empty($desigName) ? $desigName : (!empty($roleName) ? $roleName : '');
+        $isMainAdmin = ((int)($currentUserProfile?->parent_id ?? -1) === 0 || empty($currentUserProfile?->parent_id) || $currentUserProfile?->company_id == 1);
+
+        if ($isMainAdmin) {
+            $loginDesignation = (!empty($desigName) && strtolower($desigName) !== 'employee') ? $desigName : 'Admin';
+        } elseif (!empty($desigName)) {
+            $loginDesignation = $desigName;
+        } else {
+            $loginDesignation = !empty($roleName) ? $roleName : 'Employee';
+        }
         $u_name = $currentUserProfile?->username ?? '';
     } else {
         $currentUserProfile = \App\Helpers\Helper::getLoginUser();

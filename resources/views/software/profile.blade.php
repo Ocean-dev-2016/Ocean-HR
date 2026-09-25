@@ -9,8 +9,9 @@
     $currentGuard = $modules['currentGuard'] ?? null;
 
     $user = $user ?? $edit ?? $authLoginUserDetail;
+    $isCompanyMainAdmin = ($currentGuard == 'admin_software') || ((int)($user?->parent_id ?? -1) === 0 || empty($user?->parent_id));
     $userFullName = $userName ?? ($user?->proper_name ?? ($user?->full_name ?? ($user?->name ?? 'User')));
-    $userRole = $roleName ?? ($user?->role?->name ?? ($user?->type ?? 'Employee'));
+    $userRole = $isCompanyMainAdmin ? 'Admin' : ($roleName ?? ($user?->role?->name ?? ($user?->type ?? 'Employee')));
     $userEmail = $user?->email ?? '-';
     $userPhone = $user?->contact_number ?? ($user?->phone ?? '-');
     $userCode = $user?->employee_code ?? null;

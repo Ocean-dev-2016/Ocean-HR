@@ -533,7 +533,7 @@ class CompanyController extends Controller
             $teamPerson = Employee::create($defulatEmployeeCreate);
 
             // Designations
-            $defaultDesignations = ['Main HR', 'Department Head', 'Supervisor', 'Employee'];
+            $defaultDesignations = ['Admin', 'Main HR', 'Department Head', 'Supervisor', 'Employee'];
             foreach ($defaultDesignations as $designationName) {
                 Designation::create([
                     'company_id' => $company_id,
@@ -763,6 +763,10 @@ class CompanyController extends Controller
             if ((int)$id !== (int)$loggedInCompanyId) {
                 abort(404);
             }
+        }
+
+        if (!$this->checkCompanyDetailFullAccess()) {
+            abort(403, 'Unauthorized action. Only authorized roles can update organization details.');
         }
 
         $modules = $this->modules;
@@ -1823,6 +1827,13 @@ class CompanyController extends Controller
             }
         }
 
+        $hasFullAccess = $this->checkCompanyDetailFullAccess();
+        $isEmployee = !$hasFullAccess;
+
+        View::share('isCompanyAdmin', $hasFullAccess);
+        View::share('hasFullAccess', $hasFullAccess);
+        View::share('isEmployee', $isEmployee);
+
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
         $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
@@ -1839,6 +1850,9 @@ class CompanyController extends Controller
 
             if (!$tab) {
                 return redirect()->route('profile');
+            }
+            if ($isEmployee && $tab == 'subscription-tab') {
+                return redirect()->route('company.detail', ['id' => $id, 'tab' => 'profile-tab']);
             }
             if ($tab == 'profile-tab') {
                 $latestPlan = CompanySubscriptionPlan::where('company_id', $id)->where('plan_id', $company?->plan_id)->orderBy('id', 'desc')->first();
@@ -1968,5 +1982,40 @@ class CompanyController extends Controller
         } catch (\Throwable $th) {
             throw $th;
         }
+    }
+
+    /**
+     * Check if the authenticated user has full access to company details.
+     * Full access users:
+     * - Master Admin (admin_software guard or employee with company_id == 1)
+     * - Main Admin (company root employee: parent_id == 0 or null)
+     * - Main HR (role name contains 'hr' or designation contains 'hr')
+     * - Department Head (role or designation contains 'department head' or 'dept head' or 'hod')
+     * - Supervisor (role or designation contains 'supervisor')
+     */
+    private function checkCompanyDetailFullAccess(): bool
+    {
+        $isMasterAdmin = Auth::guard('admin_software')->check() || (Auth::guard('employees')->check() && Auth::guard('employees')->user()->company_id == 1);
+        if ($isMasterAdmin) {
+            return true;
+        }
+
+        if (Auth::guard('employees')->check()) {
+            $user = Auth::guard('employees')->user();
+            if ((int)$user->parent_id === 0 || $user->parent_id === null || $user->parent_id === '') {
+                return true;
+            }
+
+            $roleName = strtolower(trim($user->teamRole?->name ?? ''));
+            $desigName = strtolower(trim($user->designation?->name ?? ''));
+
+            $isMainHr = str_contains($roleName, 'hr') || str_contains($desigName, 'hr');
+            $isDeptHead = str_contains($roleName, 'department head') || str_contains($roleName, 'dept head') || str_contains($roleName, 'hod') || str_contains($desigName, 'department head') || str_contains($desigName, 'hod');
+            $isSupervisor = str_contains($roleName, 'supervisor') || str_contains($desigName, 'supervisor');
+
+            return $isMainHr || $isDeptHead || $isSupervisor;
+        }
+
+        return false;
     }
 }

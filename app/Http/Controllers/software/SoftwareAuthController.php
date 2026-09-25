@@ -285,7 +285,7 @@ class SoftwareAuthController extends Controller
             Employee::create($defulatEmployeeCreate);
 
             // 6. Designation
-            $defaultDesignations = ['Main HR', 'Department Head', 'Supervisor', 'Employee'];
+            $defaultDesignations = ['Admin', 'Main HR', 'Department Head', 'Supervisor', 'Employee'];
             foreach ($defaultDesignations as $designationName) {
                 Designation::create([
                     'company_id' => $company_id,

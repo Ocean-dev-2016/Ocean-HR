@@ -852,4 +852,14 @@ class Employee extends Authenticatable
 
         return $assigned;
     }
+
+    public function teamRole()
+    {
+        return $this->belongsTo(\App\Models\TeamRole::class, 'role_id');
+    }
+
+    public function designation()
+    {
+        return $this->belongsTo(\App\Models\Designation::class, 'designation_id');
+    }
 }
