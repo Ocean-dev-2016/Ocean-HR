@@ -330,8 +330,8 @@
             <li class="nav-item navbar-dropdown dropdown-user dropdown">
                 <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                     <div class="avatar avatar-online">
-                        <img src="{{ !empty($authLoginUserDetail->profile_image) ? asset($authLoginUserDetail->profile_image) : asset('software/img/default/profile.png') }}"
-                            alt="profile" class="rounded-circle" />
+                        <img src="{{ (!empty($authLoginUserDetail?->profile_image) && file_exists(public_path($authLoginUserDetail->profile_image))) ? asset($authLoginUserDetail->profile_image) : asset('software/img/default/profile.png') }}"
+                            alt="profile" class="rounded-circle" style="object-fit: cover;" />
                     </div>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -341,8 +341,8 @@
                             <div class="d-flex">
                                 <div class="flex-shrink-0 me-3">
                                     <div class="avatar avatar-online">
-                                        <img src="{{ !empty($authLoginUserDetail->profile_image) ? asset($authLoginUserDetail->profile_image) : asset('software/img/default/profile.png') }}"
-                            alt="profile" class="rounded-circle" />
+                                        <img src="{{ (!empty($authLoginUserDetail?->profile_image) && file_exists(public_path($authLoginUserDetail->profile_image))) ? asset($authLoginUserDetail->profile_image) : asset('software/img/default/profile.png') }}"
+                            alt="profile" class="rounded-circle" style="object-fit: cover;" />
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">

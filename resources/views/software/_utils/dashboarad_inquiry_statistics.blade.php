@@ -597,9 +597,16 @@
                     <div class="od-section-label">Pending Leave Requests</div>
                     @forelse ($ad['pending_leave_items'] as $pli)
                         <div class="od-row-item">
-                            <div class="min-w-0">
-                                <div class="text-truncate" style="font-size:.92rem;font-weight:750;">{{ $pli['name'] }}</div>
-                                <div style="font-size:.78rem;color:#64748b;font-weight:600;">{{ $pli['type'] }} · {{ $pli['date'] }}</div>
+                            <div class="d-flex align-items-center gap-2 min-w-0">
+                                @if(!empty($pli['has_avatar']) && !empty($pli['avatar']))
+                                    <img src="{{ $pli['avatar'] }}" alt="{{ $pli['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #fde047;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($pli['name']) }}';">
+                                @else
+                                    <span class="od-avatar" style="background:linear-gradient(135deg,#eab308,#ca8a04);">{{ strtoupper(substr($pli['name'],0,1)) }}</span>
+                                @endif
+                                <div class="min-w-0">
+                                    <div class="text-truncate" style="font-size:.92rem;font-weight:750;">{{ $pli['name'] }}</div>
+                                    <div style="font-size:.78rem;color:#64748b;font-weight:600;">{{ $pli['type'] }} · {{ $pli['date'] }}</div>
+                                </div>
                             </div>
                             <span class="od-pill warn">Pending</span>
                         </div>
@@ -697,7 +704,11 @@
                     @forelse ($ad['new_joiners'] ?? [] as $nj)
                         <div class="od-row-item">
                             <div class="d-flex align-items-center gap-2 min-w-0">
-                                <span class="od-avatar" style="background:linear-gradient(135deg,#2563eb,#1e3a8a);">{{ strtoupper(substr($nj['name'],0,1)) }}</span>
+                                @if(!empty($nj['has_avatar']) && !empty($nj['avatar']))
+                                    <img src="{{ $nj['avatar'] }}" alt="{{ $nj['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #e2e8f0;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($nj['name']) }}';">
+                                @else
+                                    <span class="od-avatar" style="background:linear-gradient(135deg,#2563eb,#1e3a8a);">{{ strtoupper(substr($nj['name'],0,1)) }}</span>
+                                @endif
                                 <div class="min-w-0">
                                     <div class="text-truncate" style="font-size:.88rem;font-weight:750;">{{ $nj['name'] }}</div>
                                     <div style="font-size:.76rem;color:#64748b;font-weight:600;">{{ $nj['code'] }} · {{ $nj['department'] }}</div>
@@ -722,7 +733,11 @@
                     @forelse ($ad['birthdays_anniversaries'] as $ba)
                         <div class="od-row-item">
                             <div class="d-flex align-items-center gap-2 min-w-0">
-                                <span class="od-avatar" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">{{ strtoupper(substr($ba['name'],0,1)) }}</span>
+                                @if(!empty($ba['has_avatar']) && !empty($ba['avatar']))
+                                    <img src="{{ $ba['avatar'] }}" alt="{{ $ba['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #e2e8f0;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($ba['name']) }}';">
+                                @else
+                                    <span class="od-avatar" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">{{ strtoupper(substr($ba['name'],0,1)) }}</span>
+                                @endif
                                 <div class="min-w-0">
                                     <div class="text-truncate" style="font-size:.88rem;font-weight:750;">{{ $ba['name'] }}</div>
                                     <div style="font-size:.76rem;color:#64748b;font-weight:600;">{{ $ba['subtitle'] }}</div>
@@ -759,7 +774,11 @@
                             @foreach ($ad['absent_list'] as $ab)
                                 <div class="od-absent-item" title="{{ $ab['name'] }} ({{ $ab['code'] ?? '' }} · {{ $ab['department'] }})">
                                     <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1" style="overflow:hidden;">
-                                        <span class="od-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c);">{{ strtoupper(substr($ab['name'],0,1)) }}</span>
+                                        @if(!empty($ab['has_avatar']) && !empty($ab['avatar']))
+                                            <img src="{{ $ab['avatar'] }}" alt="{{ $ab['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #fca5a5;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($ab['name']) }}';">
+                                        @else
+                                            <span class="od-avatar" style="background:linear-gradient(135deg,#ef4444,#b91c1c);">{{ strtoupper(substr($ab['name'],0,1)) }}</span>
+                                        @endif
                                         <div class="min-w-0 flex-grow-1" style="overflow:hidden;">
                                             <div class="text-truncate" style="font-size:.88rem;font-weight:750;color:#0f172a;line-height:1.25;" title="{{ $ab['name'] }}">{{ $ab['name'] }}</div>
                                             <div class="text-truncate mt-1" style="font-size:.75rem;color:#64748b;font-weight:600;line-height:1.2;" title="{{ $ab['code'] ?? '' }} · {{ $ab['department'] }}">{{ $ab['code'] ?? '' }} · {{ $ab['department'] }}</div>
@@ -803,7 +822,11 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
-                                                <span class="od-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">{{ strtoupper(substr($la['name'],0,1)) }}</span>
+                                                @if(!empty($la['has_avatar']) && !empty($la['avatar']))
+                                                    <img src="{{ $la['avatar'] }}" alt="{{ $la['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #bfdbfe;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($la['name']) }}';">
+                                                @else
+                                                    <span class="od-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">{{ strtoupper(substr($la['name'],0,1)) }}</span>
+                                                @endif
                                                 <span class="fw-bold text-nowrap" title="{{ $la['name'] }}">{{ $la['name'] }}</span>
                                             </div>
                                         </td>
@@ -842,7 +865,11 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
-                                                <span class="od-avatar" style="background:linear-gradient(135deg,#f97316,#ea580c);">{{ strtoupper(substr($ul['name'],0,1)) }}</span>
+                                                @if(!empty($ul['has_avatar']) && !empty($ul['avatar']))
+                                                    <img src="{{ $ul['avatar'] }}" alt="{{ $ul['name'] }}" class="od-avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid #fed7aa;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($ul['name']) }}';">
+                                                @else
+                                                    <span class="od-avatar" style="background:linear-gradient(135deg,#f97316,#ea580c);">{{ strtoupper(substr($ul['name'],0,1)) }}</span>
+                                                @endif
                                                 <span class="fw-bold text-nowrap" title="{{ $ul['name'] }}">{{ $ul['name'] }}</span>
                                             </div>
                                         </td>

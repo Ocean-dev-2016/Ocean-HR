@@ -347,6 +347,43 @@ class GoogleAuthController extends Controller
                 'created_by' => 0,
             ]);
 
+            // Default Team Role Hierarchy: Main HR -> Department Head -> Supervisor -> Employee
+            $mainHrRole = TeamRole::create([
+                'company_id' => $company_id,
+                'parent_id' => $team_role->id,
+                'name' => 'Main HR',
+                'status' => 'active',
+                'created_type' => 'guest',
+                'created_by' => 0,
+            ]);
+
+            $deptHeadRole = TeamRole::create([
+                'company_id' => $company_id,
+                'parent_id' => $mainHrRole->id,
+                'name' => 'Department Head',
+                'status' => 'active',
+                'created_type' => 'guest',
+                'created_by' => 0,
+            ]);
+
+            $supervisorRole = TeamRole::create([
+                'company_id' => $company_id,
+                'parent_id' => $deptHeadRole->id,
+                'name' => 'Supervisor',
+                'status' => 'active',
+                'created_type' => 'guest',
+                'created_by' => 0,
+            ]);
+
+            $employeeRole = TeamRole::create([
+                'company_id' => $company_id,
+                'parent_id' => $supervisorRole->id,
+                'name' => 'Employee',
+                'status' => 'active',
+                'created_type' => 'guest',
+                'created_by' => 0,
+            ]);
+
             // 4. Role Permissions
             $panelRights = $plan_data?->panel_right ?? [];
             if (is_string($panelRights)) {
@@ -429,9 +466,19 @@ class GoogleAuthController extends Controller
             // 8. Leave Type
             LeaveType::create([
                 'company_id' => $company_id,
-                'sort_name' => 'GL',
-                'full_name' => "General leave",
-                'count' => 6,
+                'sort_name' => 'SL',
+                'full_name' => "Sick Leave",
+                'count' => 12,
+                'mode' => 0,
+                'status' => 'active',
+                'created_by' => 0,
+            ]);
+
+            LeaveType::create([
+                'company_id' => $company_id,
+                'sort_name' => 'CL',
+                'full_name' => "Casual Leave",
+                'count' => 12,
                 'mode' => 0,
                 'status' => 'active',
                 'created_by' => 0,

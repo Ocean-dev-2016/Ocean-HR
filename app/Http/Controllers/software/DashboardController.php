@@ -1061,13 +1061,15 @@ class DashboardController extends Controller
                         $emp = $tp->employee;
                         if (!$emp) continue;
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                        $hasProfile = !empty($emp->profile_image) && file_exists(public_path($emp->profile_image));
                         $liveAttendanceList[] = [
                             'name' => $eName,
                             'department' => $emp->employmentDetail?->department?->name ?? '—',
                             'time' => $tp->punch_in_time ? Carbon::parse($tp->punch_in_time)->format('h:i A') : '—',
                             'status' => 'Present',
                             'badge' => 'present',
-                            'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=b6e3f4',
+                            'avatar' => $emp->employee_photo_url,
+                            'has_avatar' => $hasProfile,
                         ];
                     }
 
@@ -1096,13 +1098,15 @@ class DashboardController extends Controller
                         $emp = $lv->employee;
                         if (!$emp) continue;
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                        $hasProfile = !empty($emp->profile_image) && file_exists(public_path($emp->profile_image));
                         $upcomingLeavesList[] = [
                             'name' => $eName,
                             'department' => $emp->employmentDetail?->department?->name ?? '—',
                             'leave_type' => $lv->leave_type?->full_name ?? ($lv->leave_type?->sort_name ?? 'Leave'),
                             'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M Y') : '—',
                             'status' => $lv->status ?? 'pending',
-                            'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=ffd5dc',
+                            'avatar' => $emp->employee_photo_url,
+                            'has_avatar' => $hasProfile,
                         ];
                     }
 
@@ -1118,10 +1122,13 @@ class DashboardController extends Controller
                         $emp = $lv->employee;
                         if (!$emp) continue;
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                        $hasProfile = !empty($emp->profile_image) && file_exists(public_path($emp->profile_image));
                         $pendingLeaveItems[] = [
                             'name' => $eName,
                             'type' => $lv->leave_type?->sort_name ?? ($lv->leave_type?->full_name ?? 'Leave'),
                             'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M') : '—',
+                            'avatar' => $emp->employee_photo_url,
+                            'has_avatar' => $hasProfile,
                         ];
                     }
 
@@ -1139,6 +1146,7 @@ class DashboardController extends Controller
                                     : ($md >= $todayMd || $md <= $endMd);
                                 if ($inWindow) {
                                     $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
+                                    $hasProfile = !empty($emp->profile_image) && file_exists(public_path($emp->profile_image));
                                     $anniversariesList[] = [
                                         'name' => $eName,
                                         'event' => 'Birthday',
@@ -1147,7 +1155,8 @@ class DashboardController extends Controller
                                         'icon' => 'ti-cake',
                                         'color' => '#ef4444',
                                         'bg' => '#fef2f2',
-                                        'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=b6e3f4',
+                                        'avatar' => $emp->employee_photo_url,
+                                        'has_avatar' => $hasProfile,
                                     ];
                                 }
                             } catch (\Exception $e) {
@@ -1159,7 +1168,7 @@ class DashboardController extends Controller
                         ->where('employees.company_id', $currentCompanyId)
                         ->where('employees.status', 'active')
                         ->whereNotNull('employment_details.date_of_joining')
-                        ->select('employees.id', 'employees.full_name', 'employees.first_name', 'employment_details.date_of_joining')
+                        ->select('employees.id', 'employees.full_name', 'employees.first_name', 'employees.profile_image', 'employment_details.date_of_joining')
                         ->get();
                     foreach ($joinRows as $jr) {
                         try {
@@ -1171,6 +1180,7 @@ class DashboardController extends Controller
                             if ($inWindow && $doj->year < $now->year) {
                                 $years = $now->year - $doj->year;
                                 $eName = $jr->full_name ?: $jr->first_name;
+                                $hasProfile = !empty($jr->profile_image) && file_exists(public_path($jr->profile_image));
                                 $anniversariesList[] = [
                                     'name' => $eName,
                                     'event' => 'Work Anniversary',
@@ -1179,7 +1189,8 @@ class DashboardController extends Controller
                                     'icon' => 'ti-award',
                                     'color' => '#10b981',
                                     'bg' => '#ecfdf5',
-                                    'avatar' => 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($eName) . '&backgroundColor=ffdfbf',
+                                    'avatar' => $hasProfile ? asset($jr->profile_image) : ('https://ui-avatars.com/api/?name=' . urlencode($eName)),
+                                    'has_avatar' => $hasProfile,
                                 ];
                             }
                         } catch (\Exception $e) {
@@ -1221,16 +1232,19 @@ class DashboardController extends Controller
                         ->leftJoin('departments', 'departments.id', '=', 'employment_details.department_id')
                         ->where('employees.company_id', $currentCompanyId)
                         ->whereBetween('employment_details.date_of_joining', [$monthStart, $monthEnd])
-                        ->select('employees.full_name', 'employees.first_name', 'employees.employee_code', 'employment_details.date_of_joining', 'departments.name as dept_name')
+                        ->select('employees.full_name', 'employees.first_name', 'employees.employee_code', 'employees.profile_image', 'employment_details.date_of_joining', 'departments.name as dept_name')
                         ->orderBy('employment_details.date_of_joining', 'desc')
                         ->take(5)
                         ->get();
                     foreach ($newJoinerRows as $nj) {
+                        $hasProfile = !empty($nj->profile_image) && file_exists(public_path($nj->profile_image));
                         $newJoinersList[] = [
                             'name' => $nj->full_name ?: $nj->first_name,
                             'code' => $nj->employee_code ?: '—',
                             'department' => $nj->dept_name ?: '—',
                             'date' => $nj->date_of_joining ? Carbon::parse($nj->date_of_joining)->format('d M Y') : '—',
+                            'avatar' => $hasProfile ? asset($nj->profile_image) : ('https://ui-avatars.com/api/?name=' . urlencode($nj->full_name ?: $nj->first_name)),
+                            'has_avatar' => $hasProfile,
                         ];
                     }
 
@@ -1243,10 +1257,13 @@ class DashboardController extends Controller
                         ->take(5)
                         ->get();
                     foreach ($absentEmpIds as $ae) {
+                        $hasProfile = !empty($ae->profile_image) && file_exists(public_path($ae->profile_image));
                         $absentList[] = [
                             'name' => $ae->proper_name ?: ($ae->full_name ?: $ae->first_name),
                             'department' => $ae->employmentDetail?->department?->name ?? '—',
                             'code' => $ae->employee_code ?: '—',
+                            'avatar' => $ae->employee_photo_url,
+                            'has_avatar' => $hasProfile,
                         ];
                     }
 
@@ -1656,17 +1673,26 @@ class DashboardController extends Controller
             $user = Auth::user();
 
             if (!empty($user?->company_id)) {
-                $company = Company::with(['plan'])->findOrFail($user->company_id);
+                $company = Company::with(['plan'])->find($user->company_id);
             } else {
                 $company = null;
             }
+
+            if ($modules['currentGuard'] == 'employees' && $user instanceof Employee) {
+                $user->loadMissing(['role', 'employmentDetail.department', 'employmentDetail.designation', 'branch', 'company']);
+            }
+
+            $userName = $user->proper_name ?? $user->full_name ?? $user->name ?? 'User';
+            $roleName = $user->role->name ?? ($user->type ?? 'User');
+
             View::share('company', $company);
-            View::share('userName', $user->name);
-            View::share('roleName', $user->role->name ?? 'User');
+            View::share('userName', $userName);
+            View::share('roleName', $roleName);
             View::share('profileIcon', $user->profile_photo ?? 'default.png');
             View::share('edit', $user);
+            View::share('user', $user);
 
-            return view('software.profile');
+            return view('software.profile', compact('user', 'company', 'userName', 'roleName'));
         } catch (\Exception $e) {
             return $e->getMessage();
         }

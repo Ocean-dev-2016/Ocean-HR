@@ -281,7 +281,7 @@
         <!-- Top Header Bar -->
         <div class="emp-top-header d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
-                <img src="{{ $show?->employee_photo_url . '&size=96' }}" alt="{{ $show?->full_name }}" class="emp-avatar-img" />
+                <img src="{{ $show?->has_profile_image ? asset($show->profile_image) : ($show?->employee_photo_url . '&size=96') }}" alt="{{ $show?->full_name }}" class="emp-avatar-img" />
                 <div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="emp-title-text">{{ strtoupper($show?->proper_name ?? $show?->full_name ?? 'EMPLOYEE') }}</span>

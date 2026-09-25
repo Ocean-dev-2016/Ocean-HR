@@ -133,10 +133,16 @@
                         {{-- Middle Section: Avatar & Basic Details --}}
                         <div class="text-center mb-3">
                             <div class="position-relative d-inline-block mt-n2 mb-2">
-                                <div class="avatar-initials-circle rounded-circle d-flex align-items-center justify-content-center shadow-xs mx-auto"
-                                     style="width: 60px; height: 60px; background-color: {{ $scheme['bg'] }}; color: {{ $scheme['color'] }}; font-weight: 700; font-size: 1.25rem; border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.08);">
-                                    {{ $initials }}
-                                </div>
+                                @if ($emp->has_profile_image)
+                                    <img src="{{ asset($emp->profile_image) }}" alt="{{ $emp->full_name }}"
+                                         class="rounded-circle shadow-xs mx-auto d-block"
+                                         style="width: 60px; height: 60px; object-fit: cover; border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.08);">
+                                @else
+                                    <div class="avatar-initials-circle rounded-circle d-flex align-items-center justify-content-center shadow-xs mx-auto"
+                                         style="width: 60px; height: 60px; background-color: {{ $scheme['bg'] }}; color: {{ $scheme['color'] }}; font-weight: 700; font-size: 1.25rem; border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.08);">
+                                        {{ $initials }}
+                                    </div>
+                                @endif
                             </div>
                             <h6 class="mb-1 text-truncate fw-bold">
                                 <a href="{{ route($modules['route'] . '.show', [$emp->id]) }}" class="text-heading text-hover-primary" title="{{ $emp->full_name }}">

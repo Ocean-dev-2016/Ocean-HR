@@ -61,6 +61,7 @@ class Employee extends Authenticatable
         'device_token',
         'device_token_app',
 
+        'profile_image',
         'status',
         'resign_date',
         'created_by',
@@ -68,12 +69,20 @@ class Employee extends Authenticatable
         'deleted_by',
     ];
 
-    protected $appends = ['employee_photo_url', 'proper_name'];
+    protected $appends = ['employee_photo_url', 'proper_name', 'has_profile_image'];
+
+    public function getHasProfileImageAttribute()
+    {
+        return !empty($this->profile_image) && file_exists(public_path($this->profile_image));
+    }
 
     public function getEmployeePhotoUrlAttribute()
     {
         # employee_photo_url
-        return "https://ui-avatars.com/api/?name=" . $this->full_name;
+        if (!empty($this->profile_image) && file_exists(public_path($this->profile_image))) {
+            return asset($this->profile_image);
+        }
+        return "https://ui-avatars.com/api/?name=" . urlencode($this->proper_name ?? $this->full_name);
     }
 
     public function getProperNameAttribute()

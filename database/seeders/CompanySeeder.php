@@ -124,6 +124,43 @@ class CompanySeeder extends Seeder
             'created_by' => $company->created_by,
             // 'updated_by' => $company->created_by,
         ]);
+
+        $mainHrRole = TeamRole::create([
+            'company_id' => $company->id,
+            'parent_id' => $team_role->id,
+            'name' => 'Main HR',
+            'status' => 'active',
+            'created_type' => 'admin_software',
+            'created_by' => $company->created_by,
+        ]);
+
+        $deptHeadRole = TeamRole::create([
+            'company_id' => $company->id,
+            'parent_id' => $mainHrRole->id,
+            'name' => 'Department Head',
+            'status' => 'active',
+            'created_type' => 'admin_software',
+            'created_by' => $company->created_by,
+        ]);
+
+        $supervisorRole = TeamRole::create([
+            'company_id' => $company->id,
+            'parent_id' => $deptHeadRole->id,
+            'name' => 'Supervisor',
+            'status' => 'active',
+            'created_type' => 'admin_software',
+            'created_by' => $company->created_by,
+        ]);
+
+        $employeeRole = TeamRole::create([
+            'company_id' => $company->id,
+            'parent_id' => $supervisorRole->id,
+            'name' => 'Employee',
+            'status' => 'active',
+            'created_type' => 'admin_software',
+            'created_by' => $company->created_by,
+        ]);
+
         $this->command->info("TeamRole Done.");
 
         if (CompanyDetails::count()) {
@@ -234,7 +271,16 @@ class CompanySeeder extends Seeder
             'company_id' => $company_id,
             'sort_name' => 'SL',
             'full_name' => "Sick Leave",
-            'count' => 6,
+            'count' => 12,
+            'mode' => 0,
+            'status' => 'active',
+            'created_by' => $company->created_by,
+        ]);
+        LeaveType::create([
+            'company_id' => $company_id,
+            'sort_name' => 'CL',
+            'full_name' => "Casual Leave",
+            'count' => 12,
             'mode' => 0,
             'status' => 'active',
             'created_by' => $company->created_by,

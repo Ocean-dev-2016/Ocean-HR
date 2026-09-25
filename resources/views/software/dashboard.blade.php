@@ -556,11 +556,14 @@
                         $link.attr('href', url.pathname + url.search);
                     }
                     else if (href.indexOf('employees') !== -1) {
-                        // Employee and Contractor employee lists
-                        var url = new URL(href, window.location.origin);
-                        if (companyId) url.searchParams.set('filter_company', companyId);
-                        url.searchParams.set('status', 'active');
-                        $link.attr('href', url.pathname + url.search);
+                        // Employee and Contractor employee lists (exclude individual profile /employees/{id} and create pages)
+                        var isSingleEmployee = /\/employees\/\d+/.test(href) || href.indexOf('employees/create') !== -1;
+                        if (!isSingleEmployee) {
+                            var url = new URL(href, window.location.origin);
+                            if (companyId) url.searchParams.set('filter_company', companyId);
+                            url.searchParams.set('status', 'active');
+                            $link.attr('href', url.pathname + url.search);
+                        }
                     }
                     else if (href.indexOf('daily-attendance-report') !== -1) {
                         // Daily Attendance Report (Present / Absent stat cards)
