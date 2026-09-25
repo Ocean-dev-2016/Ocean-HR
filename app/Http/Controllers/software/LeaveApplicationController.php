@@ -47,6 +47,79 @@ class LeaveApplicationController extends Controller
         View::share("leaveTypes", LeaveType::get());
     }
 
+    private function getRoleType($user)
+    {
+        if (!$user) {
+            return 'employee';
+        }
+
+        if (Auth::guard('admin_software')->check()) {
+            return 'admin';
+        }
+
+        $roleId = $user->role_id ?? 0;
+        if ($roleId == 26) {
+            return 'admin';
+        }
+        if ($roleId == 29) {
+            return 'hr';
+        }
+        if ($roleId == 30) {
+            return 'hod';
+        }
+        if ($roleId == 31) {
+            return 'supervisor';
+        }
+
+        $roleObj = null;
+        if (isset($user->role) && !empty($user->role?->name)) {
+            $roleObj = $user->role;
+        } elseif ($roleId > 0) {
+            $roleObj = \App\Models\TeamRole::find($roleId);
+        }
+
+        if (!$roleObj) {
+            return 'employee';
+        }
+
+        $roleName = strtolower(trim($roleObj->name ?? ''));
+
+        // Check top parent (parent_id == 0 or explicit admin keywords)
+        if ($roleObj->parent_id == 0 || str_contains($roleName, 'admin') || str_contains($roleName, 'user role') || str_contains($roleName, 'super') || str_contains($roleName, 'master')) {
+            return 'admin';
+        }
+
+        // Check HR keywords
+        if (str_contains($roleName, 'hr')) {
+            return 'hr';
+        }
+
+        // Calculate role depth from top parent (parent_id == 0)
+        $depth = 0;
+        $curr = $roleObj;
+        while ($curr && $curr->parent_id != 0 && $depth < 10) {
+            $depth++;
+            $curr = \App\Models\TeamRole::find($curr->parent_id);
+        }
+
+        // Depth 1: Immediate child of Super Admin (Main HR level)
+        if ($depth <= 1) {
+            return 'hr';
+        }
+
+        // Depth 2: Department Head / Manager level
+        if ($depth == 2 || str_contains($roleName, 'head') || str_contains($roleName, 'hod') || str_contains($roleName, 'dept') || str_contains($roleName, 'manager')) {
+            return 'hod';
+        }
+
+        // Depth 3: Supervisor / Team Lead level
+        if ($depth == 3 || str_contains($roleName, 'supervisor') || str_contains($roleName, 'lead')) {
+            return 'supervisor';
+        }
+
+        return 'employee';
+    }
+
 
     public function index(Request $request)
     {
@@ -308,25 +381,23 @@ class LeaveApplicationController extends Controller
                         }
                         return $returnHtml;
                     })
-                    ->addColumn('action', function ($row) use ($modules, $userRoleId, $loginUserId) {
+                    ->addColumn('action', function ($row) use ($modules, $userRoleId, $loginUserId, $authUser) {
                         $btn = '';
 
+                        $userRoleType = $this->getRoleType($authUser);
                         $canTakeAction = false;
                         if ($row->status === 'pending') {
                             $level = (int) ($row->approval_level ?? 1);
                             $isSelf = ($row->employee_id == $loginUserId);
 
                             if (!$isSelf) {
-                                if (Auth::guard('admin_software')->check() || $userRoleId == 26) {
-                                    // Master Admin can act at any stage (1, 2, 3)
+                                if ($userRoleType === 'admin' || $userRoleType === 'hr') {
+                                    // Master Admin or Main HR can act directly at any stage (1, 2, 3)
                                     $canTakeAction = true;
-                                } elseif ($userRoleId == 29) {
-                                    // Main HR can act directly at any stage (1, 2, 3)
-                                    $canTakeAction = true;
-                                } elseif ($userRoleId == 30) {
+                                } elseif ($userRoleType === 'hod') {
                                     // Dept Head can act directly on Level 1 (Supervisor) and Level 2 (Dept Head)
                                     $canTakeAction = ($level === 1 || $level === 2);
-                                } elseif ($userRoleId == 31) {
+                                } elseif ($userRoleType === 'supervisor') {
                                     // Supervisor acts at Level 1
                                     $canTakeAction = ($level === 1);
                                 }
@@ -584,20 +655,20 @@ class LeaveApplicationController extends Controller
 
             // Set starting approval_level based on applicant role
             $applicantEmpId = $validated['employee_id'] ?? $loginUserId;
-            $applicant = \App\Models\Employee::find($applicantEmpId);
-            $applicantRoleId = $applicant?->role_id ?? 32;
+            $applicant = \App\Models\Employee::with('role')->find($applicantEmpId);
+            $applicantRoleType = $this->getRoleType($applicant);
 
             $validated['status'] = 'pending';
-            if ($applicantRoleId == 32) {
+            if ($applicantRoleType === 'employee') {
                 // Employee -> Level 1 (Supervisor)
                 $validated['approval_level'] = 1;
                 $validated['supervisor_status'] = 'pending';
-            } elseif ($applicantRoleId == 31) {
+            } elseif ($applicantRoleType === 'supervisor') {
                 // Supervisor -> Level 2 (Dept Head)
                 $validated['approval_level'] = 2;
                 $validated['supervisor_status'] = 'approved';
                 $validated['hod_status'] = 'pending';
-            } elseif ($applicantRoleId == 30) {
+            } elseif ($applicantRoleType === 'hod') {
                 // Dept Head -> Level 3 (Main HR)
                 $validated['approval_level'] = 3;
                 $validated['supervisor_status'] = 'approved';
@@ -1178,13 +1249,15 @@ class LeaveApplicationController extends Controller
             $startDate = Carbon::parse($leave->fromdate_time)->format('d-m-Y');
             $endDate = ($leave->todate_time) ? Carbon::parse($leave->todate_time)->format('d-m-Y') : $startDate;
 
+            $userRoleType = $this->getRoleType($authUser);
+
             // Determine approver role title
             $roleTitle = 'Admin';
-            if ($userRoleId == 31) {
+            if ($userRoleType === 'supervisor') {
                 $roleTitle = 'Supervisor';
-            } elseif ($userRoleId == 30) {
+            } elseif ($userRoleType === 'hod') {
                 $roleTitle = 'Department Head';
-            } elseif ($userRoleId == 29) {
+            } elseif ($userRoleType === 'hr') {
                 $roleTitle = 'Main HR';
             }
 
@@ -1201,12 +1274,12 @@ class LeaveApplicationController extends Controller
                 $leave->rejected_by = $loginUserId;
                 $leave->rejected_by_role = $roleTitle;
 
-                if ($userRoleId == 31) {
+                if ($userRoleType === 'supervisor') {
                     $leave->supervisor_status = 'rejected';
                     $leave->supervisor_remark = $request->reject;
                     $leave->supervisor_approved_by = $loginUserId;
                     $leave->supervisor_approved_at = now();
-                } elseif ($userRoleId == 30) {
+                } elseif ($userRoleType === 'hod') {
                     $leave->hod_status = 'rejected';
                     $leave->hod_remark = $request->reject;
                     $leave->hod_approved_by = $loginUserId;
@@ -1227,7 +1300,7 @@ class LeaveApplicationController extends Controller
             } elseif ($actionStatus === 'approved' || $actionStatus === 'approve') {
                 $leave->rejection_reason = null;
 
-                if ($userRoleId == 31) {
+                if ($userRoleType === 'supervisor') {
                     // Supervisor Approval -> Move to Level 2 (Dept Head)
                     $leave->supervisor_status = 'approved';
                     $leave->supervisor_approved_by = $loginUserId;
@@ -1239,7 +1312,7 @@ class LeaveApplicationController extends Controller
 
                     $body = "Your leave ({$startDate} to {$endDate}) was approved by Supervisor ({$approverName}) and forwarded to Department Head.";
                     $responseMsg = "Leave approved by Supervisor and forwarded to Department Head.";
-                } elseif ($userRoleId == 30) {
+                } elseif ($userRoleType === 'hod') {
                     // Department Head Approval -> Move to Level 3 (Main HR)
                     $leave->hod_status = 'approved';
                     $leave->hod_approved_by = $loginUserId;
@@ -1255,7 +1328,7 @@ class LeaveApplicationController extends Controller
                     $body = "Your leave ({$startDate} to {$endDate}) was approved by Department Head ({$approverName}) and forwarded to Main HR.";
                     $responseMsg = "Leave approved by Department Head and forwarded to Main HR.";
                 } else {
-                    // Main HR (Role 29) or Admin (Role 26) -> Final Approval
+                    // Main HR or Admin -> Final Approval
                     $leave->hr_status = 'approved';
                     $leave->hr_approved_by = $loginUserId;
                     $leave->hr_approved_at = now();
