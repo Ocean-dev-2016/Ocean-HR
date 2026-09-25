@@ -534,11 +534,11 @@
 
                             <div class="col-12 col-md-6">
                                 <div class="info-grid-box">
-                                    <div class="info-grid-label"><i class="ti ti-brand-whatsapp text-success"></i> WhatsApp Support</div>
+                                    <div class="info-grid-label"><i class="ti ti-phone"></i> Mobile Number</div>
                                     <div class="info-grid-value">
                                         @if (!empty($company->whatsapp_number))
-                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $company->whatsapp_number) }}" target="_blank" class="text-success text-decoration-none">
-                                                {{ $company->whatsapp_number }} <i class="ti ti-external-link font-size-xs"></i>
+                                            <a href="tel:{{ $company->whatsapp_number }}" class="text-decoration-none text-dark">
+                                                {{ $company->whatsapp_number }}
                                             </a>
                                         @else
                                             -
