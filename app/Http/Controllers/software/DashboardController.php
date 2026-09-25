@@ -682,7 +682,7 @@ class DashboardController extends Controller
                     $isParentZero = ($currentEmployee->parent_id === 0 || $currentEmployee->parent_id === '0' || $currentEmployee->parent_id === null);
                     $isAdminRole = in_array($roleName, ['super-admin', 'admin', 'main hr', 'owner', $companyName]) || str_contains($roleName, 'super-admin');
 
-                    if (($isParentZero || $isAdminRole || !empty($modules['all_data_permission'])) && !in_array($roleName, ['user role', 'employee', 'supervisor', 'department head'])) {
+                    if (($isParentZero || $isAdminRole || !empty($modules['all_data_permission'])) && !in_array($roleName, ['user role', 'employee', 'supervisor', 'department head', 'main hr', 'hr'])) {
                         $isCompanyAdmin = true;
                     }
                 }
@@ -797,111 +797,130 @@ class DashboardController extends Controller
                         'punch_state' => $punchStateVal,
                     ];
 
-                    // Subordinate Employees (for Supervisors / Team Leads / Managers)
-                    $subordinateQuery = Employee::where('company_id', $currentEmployee->company_id)
+                    // Multi-tier Hierarchy Processing (Main HR -> Department Head -> Supervisor -> Employee)
+                    $directSubordinates = Employee::where('company_id', $currentEmployee->company_id)
                         ->where('parent_id', $currentEmployee->id)
                         ->where('status', 'active')
-                        ->with(['employmentDetail.department', 'employmentDetail.designation'])
+                        ->with(['employmentDetail.department', 'employmentDetail.designation', 'teamRole', 'current_role'])
                         ->get();
 
-                    if ($subordinateQuery->isNotEmpty()) {
-                        $compLeaveTypes = \App\Models\LeaveType::where('company_id', $currentEmployee->company_id)
-                            ->where('status', 'active')
-                            ->get();
+                    $compLeaveTypes = \App\Models\LeaveType::where('company_id', $currentEmployee->company_id)
+                        ->where('status', 'active')
+                        ->get();
 
-                        foreach ($subordinateQuery as $sub) {
-                            $subId = $sub->id;
+                    $departmentHeadsHierarchy = [];
+                    $hierarchySupervisors = [];
+                    $directEmployees = [];
 
-                            // Today's punches
-                            $subTodayPunches = Attendance::where('employee_id', $subId)
-                                ->where('attendance_date', $todayDate)
-                                ->orderBy('id', 'asc')
+                    if ($directSubordinates->isNotEmpty()) {
+                        foreach ($directSubordinates as $sub) {
+                            $subCard = $this->getEmployeeDashboardCardData($sub, $todayDate, $currMonthStart, $currMonthEnd, $compLeaveTypes);
+                            $subordinateEmployees[] = $subCard;
+
+                            $subRoleName = strtolower(trim($sub->teamRole?->name ?? ($sub->current_role?->name ?? '')));
+                            $subDesigName = strtolower(trim($sub->employmentDetail?->designation?->name ?? ''));
+                            $isDeptHeadRole = str_contains($subRoleName, 'department head') || str_contains($subRoleName, 'dept head') || str_contains($subRoleName, 'hod')
+                                || str_contains($subDesigName, 'department head') || str_contains($subDesigName, 'dept head') || str_contains($subDesigName, 'hod');
+                            $isSupervisorRole = str_contains($subRoleName, 'supervisor') || str_contains($subDesigName, 'supervisor');
+
+                            // Level-2 Subordinates (Under $sub)
+                            $level2Subordinates = Employee::where('company_id', $currentEmployee->company_id)
+                                ->where('parent_id', $sub->id)
+                                ->where('status', 'active')
+                                ->with(['employmentDetail.department', 'employmentDetail.designation', 'teamRole', 'current_role'])
                                 ->get();
 
-                            $subInPunch = $subTodayPunches->where('attendace_type', 'in')->first();
-                            $subOutPunch = $subTodayPunches->where('attendace_type', 'out')->last();
-                            $subLatestPunch = $subTodayPunches->last();
-
-                            $subPunchState = ($subLatestPunch && $subLatestPunch->attendace_type === 'in') ? 'in' : 'out';
-                            $subInTime = $subInPunch && $subInPunch->punch_in_time ? Carbon::parse($subInPunch->punch_in_time)->format('h:i A') : null;
-                            $subOutTime = $subOutPunch && $subOutPunch->punch_in_time ? Carbon::parse($subOutPunch->punch_in_time)->format('h:i A') : null;
-
-                            // Check approved leave today
-                            $subOnLeave = LeaveApplication::where('employee_id', $subId)
-                                ->where('status', 'approved')
-                                ->where(function ($q) use ($todayDate) {
-                                    $q->where(function ($subQ) use ($todayDate) {
-                                        $subQ->whereNotNull('todate_time')
-                                            ->whereDate('fromdate_time', '<=', $todayDate)
-                                            ->whereDate('todate_time', '>=', $todayDate);
-                                    })->orWhere(function ($subQ) use ($todayDate) {
-                                        $subQ->whereNull('todate_time')
-                                            ->whereDate('fromdate_time', '=', $todayDate);
-                                    });
-                                })
-                                ->with('leave_type')
-                                ->first();
-
-                            if ($subOnLeave) {
-                                $subStatusType = 'leave';
-                                $subStatusLabel = 'On Leave';
-                                $subStatusClass = 'warning';
-                                $subStatusIcon = 'ti-calendar';
-                            } elseif ($subInPunch) {
-                                if ($subPunchState === 'in') {
-                                    $subStatusType = 'present_in';
-                                    $subStatusLabel = 'Present (IN)';
-                                    $subStatusClass = 'success';
-                                    $subStatusIcon = 'ti-check';
-                                } else {
-                                    $subStatusType = 'present_out';
-                                    $subStatusLabel = 'Punched OUT';
-                                    $subStatusClass = 'secondary';
-                                    $subStatusIcon = 'ti-logout';
+                            // Check if any level-2 subordinate is a Supervisor or has their own subordinates
+                            $hasSupervisorsUnderneath = false;
+                            if ($level2Subordinates->isNotEmpty()) {
+                                foreach ($level2Subordinates as $l2) {
+                                    $l2RoleName = strtolower(trim($l2->teamRole?->name ?? ($l2->current_role?->name ?? '')));
+                                    $l2DesigName = strtolower(trim($l2->employmentDetail?->designation?->name ?? ''));
+                                    if (str_contains($l2RoleName, 'supervisor') || str_contains($l2DesigName, 'supervisor')) {
+                                        $hasSupervisorsUnderneath = true;
+                                        break;
+                                    }
+                                    $hasL3 = Employee::where('company_id', $currentEmployee->company_id)->where('parent_id', $l2->id)->where('status', 'active')->exists();
+                                    if ($hasL3) {
+                                        $hasSupervisorsUnderneath = true;
+                                        break;
+                                    }
                                 }
-                            } else {
-                                $subStatusType = 'not_punched';
-                                $subStatusLabel = 'Not Punched';
-                                $subStatusClass = 'danger';
-                                $subStatusIcon = 'ti-alert-circle';
                             }
 
-                            // Current month present days
-                            $subMonthPresent = Attendance::where('employee_id', $subId)
-                                ->whereBetween('attendance_date', [$currMonthStart, $currMonthEnd])
-                                ->where('attendace_type', 'in')
-                                ->distinct('attendance_date')
-                                ->count('attendance_date');
+                            if ($isDeptHeadRole || $hasSupervisorsUnderneath) {
+                                // === DEPARTMENT HEAD LEVEL ===
+                                $deptSupervisors = [];
+                                $deptDirectEmployees = [];
 
-                            // Leave balances summary
-                            $subLeaves = [];
-                            foreach ($compLeaveTypes as $lt) {
-                                $avail = $sub->getAvailableLeaveBalance($lt->id);
-                                $subLeaves[] = [
-                                    'name' => $lt->full_name,
-                                    'code' => $lt->sort_name ?: substr($lt->full_name, 0, 4),
-                                    'balance' => (float) $avail,
+                                foreach ($level2Subordinates as $l2) {
+                                    $l2Card = $this->getEmployeeDashboardCardData($l2, $todayDate, $currMonthStart, $currMonthEnd, $compLeaveTypes);
+                                    $l2RoleName = strtolower(trim($l2->teamRole?->name ?? ($l2->current_role?->name ?? '')));
+                                    $l2DesigName = strtolower(trim($l2->employmentDetail?->designation?->name ?? ''));
+                                    $isL2Sup = str_contains($l2RoleName, 'supervisor') || str_contains($l2DesigName, 'supervisor');
+
+                                    // Level-3 Subordinates (Employees under supervisor $l2)
+                                    $level3Subordinates = Employee::where('company_id', $currentEmployee->company_id)
+                                        ->where('parent_id', $l2->id)
+                                        ->where('status', 'active')
+                                        ->with(['employmentDetail.department', 'employmentDetail.designation', 'teamRole', 'current_role'])
+                                        ->get();
+
+                                    if ($level3Subordinates->isNotEmpty() || $isL2Sup) {
+                                        $l3Cards = [];
+                                        foreach ($level3Subordinates as $l3) {
+                                            $l3Card = $this->getEmployeeDashboardCardData($l3, $todayDate, $currMonthStart, $currMonthEnd, $compLeaveTypes);
+                                            $l3Cards[] = $l3Card;
+                                        }
+
+                                        $deptSupervisors[] = [
+                                            'supervisor' => $l2Card,
+                                            'employees' => $l3Cards,
+                                            'employee_count' => count($l3Cards),
+                                            'in_count' => collect($l3Cards)->where('status_type', 'present_in')->count(),
+                                            'out_count' => collect($l3Cards)->where('status_type', 'present_out')->count(),
+                                            'leave_count' => collect($l3Cards)->where('status_type', 'leave')->count(),
+                                            'not_punched_count' => collect($l3Cards)->where('status_type', 'not_punched')->count(),
+                                        ];
+                                    } else {
+                                        $deptDirectEmployees[] = $l2Card;
+                                    }
+                                }
+
+                                $allDeptEmployees = collect($deptSupervisors)->pluck('employees')->flatten(1)->concat($deptDirectEmployees);
+
+                                $departmentHeadsHierarchy[] = [
+                                    'dept_head' => $subCard,
+                                    'supervisors' => $deptSupervisors,
+                                    'direct_employees' => $deptDirectEmployees,
+                                    'supervisor_count' => count($deptSupervisors),
+                                    'total_employees_count' => $allDeptEmployees->count(),
+                                    'in_count' => $allDeptEmployees->where('status_type', 'present_in')->count(),
+                                    'out_count' => $allDeptEmployees->where('status_type', 'present_out')->count(),
+                                    'leave_count' => $allDeptEmployees->where('status_type', 'leave')->count(),
+                                    'not_punched_count' => $allDeptEmployees->where('status_type', 'not_punched')->count(),
                                 ];
-                            }
+                            } elseif ($isSupervisorRole || $level2Subordinates->isNotEmpty()) {
+                                // === DIRECT SUPERVISOR LEVEL ===
+                                $childCards = [];
+                                foreach ($level2Subordinates as $child) {
+                                    $childCard = $this->getEmployeeDashboardCardData($child, $todayDate, $currMonthStart, $currMonthEnd, $compLeaveTypes);
+                                    $childCards[] = $childCard;
+                                }
 
-                            $subordinateEmployees[] = [
-                                'id' => $sub->id,
-                                'employee' => $sub,
-                                'name' => $sub->proper_name ?: ($sub->full_name ?: $sub->first_name),
-                                'code' => $sub->employee_code ?: 'EMP-' . $sub->id,
-                                'department' => $sub->employmentDetail?->department?->name ?? '—',
-                                'designation' => $sub->employmentDetail?->designation?->name ?? 'Employee',
-                                'avatar' => $sub->employee_photo_url,
-                                'punch_state' => $subPunchState,
-                                'punch_in_time' => $subInTime,
-                                'punch_out_time' => $subOutTime,
-                                'status_type' => $subStatusType,
-                                'status_label' => $subStatusLabel,
-                                'status_class' => $subStatusClass,
-                                'status_icon' => $subStatusIcon,
-                                'month_present' => $subMonthPresent,
-                                'leave_balances' => $subLeaves,
-                            ];
+                                $hierarchySupervisors[] = [
+                                    'supervisor' => $subCard,
+                                    'employees' => $childCards,
+                                    'employee_count' => count($childCards),
+                                    'in_count' => collect($childCards)->where('status_type', 'present_in')->count(),
+                                    'out_count' => collect($childCards)->where('status_type', 'present_out')->count(),
+                                    'leave_count' => collect($childCards)->where('status_type', 'leave')->count(),
+                                    'not_punched_count' => collect($childCards)->where('status_type', 'not_punched')->count(),
+                                ];
+                            } else {
+                                // === DIRECT EMPLOYEE LEVEL ===
+                                $directEmployees[] = $subCard;
+                            }
                         }
                     }
                 }
@@ -1420,6 +1439,9 @@ class DashboardController extends Controller
                     'operationStats',
                     'employeeStats',
                     'subordinateEmployees',
+                    'departmentHeadsHierarchy',
+                    'hierarchySupervisors',
+                    'directEmployees',
                     'adminDashboardData',
                     'isCompanyAdmin',
                     'isEmployeeOnly'
@@ -1430,6 +1452,9 @@ class DashboardController extends Controller
                 $returnResponse['attendanceStats'] = $attendanceStats;
                 $returnResponse['employeeStats'] = $employeeStats;
                 $returnResponse['subordinateEmployees'] = $subordinateEmployees;
+                $returnResponse['departmentHeadsHierarchy'] = $departmentHeadsHierarchy ?? [];
+                $returnResponse['hierarchySupervisors'] = $hierarchySupervisors ?? [];
+                $returnResponse['directEmployees'] = $directEmployees ?? [];
                 return $this->sendResponse($returnResponse, 'Statistics updated');
 
                 dd("L-110 Dashboard Ajax");
@@ -2134,5 +2159,136 @@ class DashboardController extends Controller
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Format an employee's live attendance, punches, leave balances for dashboard display.
+     */
+    private function getEmployeeDashboardCardData(Employee $sub, string $todayDate, string $currMonthStart, string $currMonthEnd, $compLeaveTypes): array
+    {
+        $subId = $sub->id;
+
+        // Today's punches
+        $subTodayPunches = Attendance::where('employee_id', $subId)
+            ->where('attendance_date', $todayDate)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $subInPunch = $subTodayPunches->where('attendace_type', 'in')->first();
+        $subOutPunch = $subTodayPunches->where('attendace_type', 'out')->last();
+        $subLatestPunch = $subTodayPunches->last();
+
+        $subPunchState = ($subLatestPunch && $subLatestPunch->attendace_type === 'in') ? 'in' : 'out';
+        $subInTime = $subInPunch && $subInPunch->punch_in_time ? Carbon::parse($subInPunch->punch_in_time)->format('h:i A') : null;
+        $subOutTime = $subOutPunch && $subOutPunch->punch_in_time ? Carbon::parse($subOutPunch->punch_in_time)->format('h:i A') : null;
+
+        // Check approved leave today
+        $subOnLeave = LeaveApplication::where('employee_id', $subId)
+            ->where('status', 'approved')
+            ->where(function ($q) use ($todayDate) {
+                $q->where(function ($subQ) use ($todayDate) {
+                    $subQ->whereNotNull('todate_time')
+                        ->whereDate('fromdate_time', '<=', $todayDate)
+                        ->whereDate('todate_time', '>=', $todayDate);
+                })->orWhere(function ($subQ) use ($todayDate) {
+                    $subQ->whereNull('todate_time')
+                        ->whereDate('fromdate_time', '=', $todayDate);
+                });
+            })
+            ->with('leave_type')
+            ->first();
+
+        if ($subOnLeave) {
+            $subStatusType = 'leave';
+            $subStatusLabel = 'On Leave';
+            $subStatusClass = 'warning';
+            $subStatusIcon = 'ti-calendar';
+        } elseif ($subInPunch) {
+            if ($subPunchState === 'in') {
+                $subStatusType = 'present_in';
+                $subStatusLabel = 'Present (IN)';
+                $subStatusClass = 'success';
+                $subStatusIcon = 'ti-check';
+            } else {
+                $subStatusType = 'present_out';
+                $subStatusLabel = 'Punched OUT';
+                $subStatusClass = 'secondary';
+                $subStatusIcon = 'ti-logout';
+            }
+        } else {
+            $subStatusType = 'not_punched';
+            $subStatusLabel = 'Not Punched';
+            $subStatusClass = 'danger';
+            $subStatusIcon = 'ti-alert-circle';
+        }
+
+        // Current month present days & punch counts
+        $subMonthPresent = Attendance::where('employee_id', $subId)
+            ->whereBetween('attendance_date', [$currMonthStart, $currMonthEnd])
+            ->where('attendace_type', 'in')
+            ->distinct('attendance_date')
+            ->count('attendance_date');
+
+        $subTotalPunchIn = Attendance::where('employee_id', $subId)
+            ->whereBetween('attendance_date', [$currMonthStart, $currMonthEnd])
+            ->where('attendace_type', 'in')
+            ->count();
+
+        $subTotalPunchOut = Attendance::where('employee_id', $subId)
+            ->whereBetween('attendance_date', [$currMonthStart, $currMonthEnd])
+            ->where('attendace_type', 'out')
+            ->count();
+
+        // Leave balances summary
+        $subLeaves = [];
+        $colorPalettes = [
+            ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0'],
+            ['bg' => 'rgba(40, 199, 111, 0.1)', 'border' => '#28c76f', 'text' => '#28c76f'],
+            ['bg' => 'rgba(0, 207, 232, 0.1)', 'border' => '#00cfe8', 'text' => '#00cfe8'],
+            ['bg' => 'rgba(255, 159, 67, 0.1)', 'border' => '#ff9f43', 'text' => '#ff9f43'],
+        ];
+        $cIdx = 0;
+        foreach ($compLeaveTypes as $lt) {
+            $avail = $sub->getAvailableLeaveBalance($lt->id);
+            $usedInFY = $sub->getUsedLeaveCountForReport($lt->id, (int) Carbon::now()->year, (int) Carbon::now()->month);
+            $palette = $colorPalettes[$cIdx % count($colorPalettes)];
+            $cIdx++;
+
+            $subLeaves[] = [
+                'id' => $lt->id,
+                'name' => $lt->full_name,
+                'code' => $lt->sort_name ?: substr($lt->full_name, 0, 4),
+                'allocated' => (float) $lt->count,
+                'balance' => (float) $avail,
+                'used_year' => (float) $usedInFY,
+                'carry_forward' => $lt->carry_forward == 1,
+                'palette' => $palette,
+            ];
+        }
+
+        $roleName = $sub->teamRole?->name ?? ($sub->current_role?->name ?? 'Employee');
+        $desigName = $sub->employmentDetail?->designation?->name ?? $roleName;
+
+        return [
+            'id' => $sub->id,
+            'employee' => $sub,
+            'name' => $sub->proper_name ?: ($sub->full_name ?: $sub->first_name),
+            'code' => $sub->employee_code ?: 'EMP-' . $sub->id,
+            'department' => $sub->employmentDetail?->department?->name ?? '—',
+            'designation' => $desigName,
+            'role' => $roleName,
+            'avatar' => $sub->employee_photo_url,
+            'punch_state' => $subPunchState,
+            'punch_in_time' => $subInTime,
+            'punch_out_time' => $subOutTime,
+            'status_type' => $subStatusType,
+            'status_label' => $subStatusLabel,
+            'status_class' => $subStatusClass,
+            'status_icon' => $subStatusIcon,
+            'month_present' => $subMonthPresent,
+            'total_punch_in_count' => $subTotalPunchIn,
+            'total_punch_out_count' => $subTotalPunchOut,
+            'leave_balances' => $subLeaves,
+        ];
     }
 }

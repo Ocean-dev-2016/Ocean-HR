@@ -15,9 +15,16 @@
         --soft-bg: #f8fafc;
         --shadow: 0 2px 4px rgba(15, 28, 63, 0.04), 0 12px 28px rgba(15, 28, 63, 0.07);
         color: #0f172a;
-        font-size: 15px;
         padding-bottom: 2.75rem;
         margin-bottom: 1.25rem;
+    }
+    .employee-mini-card {
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .employee-mini-card:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 12px 28px rgba(99, 102, 241, 0.12) !important;
+        border-color: #a5b4fc !important;
     }
     .admin-dashboard-root .od-gap { margin-bottom: 1.15rem; }
     .admin-dashboard-root .od-hero {
@@ -1137,16 +1144,1686 @@ setInterval(function () {
                 </div>
             @endforeach
         @else
-            <div class="col-12">
-                <div class="alert alert-info py-3 px-4 rounded-3 d-flex align-items-center" style="font-size: 0.95rem; font-weight: 700;">
-                    <i class="ti ti-info-circle fs-4 me-2"></i> No active leave types configured for your company.
-                </div>
-            </div>
         @endif
     </div>
 
-    {{-- 3. TEAM MEMBERS MINI DASHBOARD (SUPERVISOR / REPORTING MANAGER VIEW) --}}
-    @if (!empty($subordinateEmployees) && count($subordinateEmployees) > 0)
+    {{-- 3. MULTI-TIER HIERARCHY: DEPARTMENT HEADS -> SUPERVISORS -> EMPLOYEES (MAIN HR / TOP LEVEL VIEW) --}}
+    @if (!empty($departmentHeadsHierarchy) && count($departmentHeadsHierarchy) > 0)
+        @php
+            $totalDeptHeads = count($departmentHeadsHierarchy);
+            $allSupervisorsInDept = collect($departmentHeadsHierarchy)->pluck('supervisors')->flatten(1);
+            $allEmployeesInDept = $allSupervisorsInDept->pluck('employees')->flatten(1);
+            
+            $dhIn = collect($departmentHeadsHierarchy)->filter(fn($d) => ($d['dept_head']['status_type'] ?? '') === 'present_in')->count();
+            $dhOut = collect($departmentHeadsHierarchy)->filter(fn($d) => ($d['dept_head']['status_type'] ?? '') === 'present_out')->count();
+            $dhLeave = collect($departmentHeadsHierarchy)->filter(fn($d) => ($d['dept_head']['status_type'] ?? '') === 'leave')->count();
+            $dhNotPunched = collect($departmentHeadsHierarchy)->filter(fn($d) => ($d['dept_head']['status_type'] ?? '') === 'not_punched')->count();
+        @endphp
+
+        {{-- Department Heads Overview Header --}}
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-5 mb-3">
+            <div>
+                <h4 class="mb-1" style="color: #0f172a; font-weight: 850; letter-spacing: -0.02em;">
+                    <i class="ti ti-building-community text-primary me-2"></i> Department Heads ({{ $totalDeptHeads }})
+                </h4>
+                <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 650;">
+                    Live hierarchy of Department Heads, Supervisors & their Employees
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge px-3 py-2 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-check me-1"></i> {{ $dhIn }} In
+                </span>
+                @if ($dhOut > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-logout me-1"></i> {{ $dhOut }} Out
+                    </span>
+                @endif
+                <span class="badge px-3 py-2 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-alert-circle me-1"></i> {{ $dhNotPunched }} Not Punched
+                </span>
+                @if ($dhLeave > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-calendar me-1"></i> {{ $dhLeave }} Leave
+                    </span>
+                @endif
+            </div>
+        </div>
+
+        {{-- Single Department Head Layout --}}
+        @if ($totalDeptHeads == 1)
+            @php 
+                $dh = $departmentHeadsHierarchy[0];
+                $deptHead = $dh['dept_head'];
+                $deptSups = $dh['supervisors'];
+                $deptDirectEmps = $dh['direct_employees'];
+            @endphp
+
+            {{-- 1. Department Head Profile Banner --}}
+            <div class="card border-0 mb-4 shadow-sm" style="border-radius: 18px; border: 2px solid #6366f1 !important; background: #ffffff;">
+                <div class="p-3.5 p-md-4" style="background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%);">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3 min-w-0">
+                            <div class="position-relative">
+                                <img src="{{ $deptHead['avatar'] }}" alt="{{ $deptHead['name'] }}"
+                                     class="rounded-circle border border-2 border-white shadow-xs"
+                                     style="width: 58px; height: 58px; object-fit: cover; background: #fff;"
+                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($deptHead['name']) }}';">
+                                <span class="position-absolute bottom-0 end-0 badge p-1 rounded-circle bg-warning text-dark border border-white" title="Department Head">
+                                    <i class="ti ti-shield-check" style="font-size: 0.75rem;"></i>
+                                </span>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h4 class="mb-0 fw-bold text-dark text-truncate" style="letter-spacing: -0.02em;">
+                                        {{ $deptHead['name'] }}
+                                    </h4>
+                                    <span class="badge rounded-pill px-2.5 py-1"
+                                          style="font-size: 0.75rem; font-weight: 800;
+                                          @if ($deptHead['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                          @elseif ($deptHead['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                          @elseif ($deptHead['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                          @endif">
+                                        <i class="ti {{ $deptHead['status_icon'] }} me-1"></i>{{ $deptHead['status_label'] }}
+                                    </span>
+                                </div>
+                                <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
+                                    {{ $deptHead['code'] }} · <span class="text-dark">{{ $deptHead['designation'] ?: 'Department Head' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-label-primary px-3 py-2 rounded-pill" style="font-size: 0.85rem; font-weight: 800;">
+                                <i class="ti ti-crown me-1"></i> {{ count($deptSups) }} Supervisors
+                            </span>
+                            <a href="{{ route('employees.show', $deptHead['id']) }}" class="btn btn-outline-primary rounded-pill px-3 py-1.5" style="font-weight: 750; font-size: 0.82rem;">
+                                View Profile <i class="ti ti-chevron-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 2. Department Head Full Attendance Stat Cards --}}
+            <div class="row g-3 g-xl-4 mb-4 emp-stat-row">
+                {{-- Card 1: Total Attendance --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #6366f1 !important; background: linear-gradient(180deg,#ffffff 0%,#eef2ff 100%); box-shadow: 0 6px 22px rgba(99,102,241,0.12);">
+                        <div class="card-body p-4 p-xl-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.15); color: #4f46e5;">
+                                    <i class="ti ti-calendar-event" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(99, 102, 241, 0.14); color: #4338ca; font-size: 0.88rem; font-weight: 800;">
+                                    Attendance
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #4f46e5; letter-spacing: -0.04em;">{{ $deptHead['month_present'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Days</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Total Attendance</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Month Total</span>
+                                <span class="badge bg-success px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $deptHead['month_present'] ?? 0 }} Days
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 2: Punch In Count --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #10b981 !important; background: linear-gradient(180deg,#ffffff 0%,#ecfdf5 100%); box-shadow: 0 6px 22px rgba(16,185,129,0.12);">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(16, 185, 129, 0.15); color: #059669;">
+                                    <i class="ti ti-login" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(16, 185, 129, 0.14); color: #047857; font-size: 0.88rem; font-weight: 800;">
+                                    Total: {{ $deptHead['total_punch_in_count'] ?? 0 }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #059669; letter-spacing: -0.04em;">{{ $deptHead['total_punch_in_count'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch In Count</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Today's In Time</span>
+                                <span class="badge bg-{{ $deptHead['punch_in_time'] ? 'success' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $deptHead['punch_in_time'] ?: '--:--' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 3: Punch Out Count --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #ef4444 !important; background: linear-gradient(180deg,#ffffff 0%,#fef2f2 100%); box-shadow: 0 6px 22px rgba(239,68,68,0.12);">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(239, 68, 68, 0.15); color: #dc2626;">
+                                    <i class="ti ti-logout" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(239, 68, 68, 0.14); color: #b91c1c; font-size: 0.88rem; font-weight: 800;">
+                                    Total: {{ $deptHead['total_punch_out_count'] ?? 0 }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #dc2626; letter-spacing: -0.04em;">{{ $deptHead['total_punch_out_count'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch Out Count</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Today's Out Time</span>
+                                <span class="badge bg-{{ $deptHead['punch_out_time'] ? 'danger' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $deptHead['punch_out_time'] ?: '--:--' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 3. Department Head Leave Balance (Type-Wise) --}}
+            <div class="row g-3 g-xl-4 mb-4">
+                <div class="col-12 mb-1">
+                    <h5 class="mb-0 d-flex align-items-center" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em;">
+                        <i class="ti ti-calendar-event text-primary me-2" style="font-size:1.5rem;"></i> Leave Balance (Type-Wise) - {{ $deptHead['name'] }}
+                    </h5>
+                </div>
+
+                @if (!empty($deptHead['leave_balances']) && count($deptHead['leave_balances']) > 0)
+                    @foreach ($deptHead['leave_balances'] as $leave)
+                        @php
+                            $pal = $leave['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0'];
+                            $leaveCount = count($deptHead['leave_balances']);
+                            $leaveCol = $leaveCount <= 2 ? 'col-12 col-lg-6' : 'col-12 col-md-4';
+                        @endphp
+                        <div class="{{ $leaveCol }}">
+                            <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                 style="border-radius: 18px; border-left: 6px solid {{ $pal['border'] }} !important; background: #ffffff; box-shadow: 0 6px 20px rgba(15,23,42,0.06); min-height: 150px;">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="d-flex align-items-center justify-content-center"
+                                                 style="width: 56px; height: 56px; border-radius: 14px; background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; font-size: 1.2rem; font-weight: 900; flex-shrink: 0;">
+                                                {{ $leave['code'] }}
+                                            </div>
+                                            <div>
+                                                <h5 class="mb-1 text-truncate" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; max-width: 220px;" title="{{ $leave['name'] }}">
+                                                   {{ $leave['name'] }}
+                                                </h5>
+                                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                                    <span style="color: {{ $pal['text'] }}; font-size: 2rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em;">
+                                                        {{ number_format($leave['balance'], 1) }}
+                                                    </span>
+                                                    <span style="color: #0f172a; font-size: 1.05rem; font-weight: 800;">Days Available</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="badge rounded-pill px-3 py-2" style="font-size: 0.82rem; font-weight: 750; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;">
+                                            {{ !empty($leave['carry_forward']) ? 'Carry Forward' : 'Monthly Accrual' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="border-top pt-3 d-flex justify-content-between align-items-center" style="font-size: 0.98rem; font-weight: 700; color: #475569;">
+                                        <span>Allocated: <strong style="color:#0f172a; font-weight: 900;">{{ number_format($leave['allocated'] ?? 0, 1) }}</strong></span>
+                                        <span>Used (FY): <strong style="color:#dc2626; font-weight: 900;">{{ number_format($leave['used_year'] ?? 0, 1) }}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+
+            {{-- 4. Supervisors under this Single Department Head --}}
+            @if (!empty($deptSups) && count($deptSups) > 0)
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4 mb-3">
+                    <div>
+                        <h4 class="mb-1" style="color: #0f172a; font-weight: 850; letter-spacing: -0.02em;">
+                            <i class="ti ti-user-star text-primary me-2"></i> Supervisors under {{ $deptHead['name'] }} ({{ count($deptSups) }})
+                        </h4>
+                        <p class="text-muted mb-0" style="font-size: 0.92rem; font-weight: 650;">
+                            Supervisors reporting to {{ $deptHead['name'] }} and their direct team members
+                        </p>
+                    </div>
+                </div>
+
+                @if (count($deptSups) == 1)
+                    @php 
+                        $sItem = $deptSups[0];
+                        $sSup = $sItem['supervisor'];
+                    @endphp
+                    {{-- 4.1 Single Supervisor Profile Banner --}}
+                    <div class="card border-0 mb-4 shadow-sm" style="border-radius: 18px; border: 2px solid #818cf8 !important; background: #ffffff;">
+                        <div class="p-3.5 p-md-4" style="background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%);">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div class="d-flex align-items-center gap-3 min-w-0">
+                                    <div class="position-relative">
+                                        <img src="{{ $sSup['avatar'] }}" alt="{{ $sSup['name'] }}"
+                                             class="rounded-circle border border-2 border-white shadow-xs"
+                                             style="width: 58px; height: 58px; object-fit: cover; background: #fff;"
+                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sSup['name']) }}';">
+                                        <span class="position-absolute bottom-0 end-0 badge p-1 rounded-circle bg-primary text-white border border-white" title="Supervisor">
+                                            <i class="ti ti-crown" style="font-size: 0.75rem;"></i>
+                                        </span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <h4 class="mb-0 fw-bold text-dark text-truncate" style="letter-spacing: -0.02em;">
+                                                {{ $sSup['name'] }}
+                                            </h4>
+                                            <span class="badge rounded-pill px-2.5 py-1"
+                                                  style="font-size: 0.75rem; font-weight: 800;
+                                                  @if ($sSup['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                                  @elseif ($sSup['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                                  @elseif ($sSup['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                                  @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                                  @endif">
+                                                <i class="ti {{ $sSup['status_icon'] }} me-1"></i>{{ $sSup['status_label'] }}
+                                            </span>
+                                        </div>
+                                        <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
+                                            {{ $sSup['code'] }} · <span class="text-dark">{{ $sSup['designation'] ?: 'Supervisor' }}</span> ({{ $sSup['department'] }})
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-label-primary px-3 py-2 rounded-pill" style="font-size: 0.85rem; font-weight: 800;">
+                                        <i class="ti ti-users me-1"></i> {{ $sItem['employee_count'] }} Team Members
+                                    </span>
+                                    <a href="{{ route('employees.show', $sSup['id']) }}" class="btn btn-outline-primary rounded-pill px-3 py-1.5" style="font-weight: 750; font-size: 0.82rem;">
+                                        View Profile <i class="ti ti-chevron-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4.2 Single Supervisor 3 Stat Cards --}}
+                    <div class="row g-3 g-xl-4 mb-4 emp-stat-row">
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                 style="border-radius: 18px; border-bottom: 5px solid #6366f1 !important; background: linear-gradient(180deg,#ffffff 0%,#eef2ff 100%); box-shadow: 0 6px 22px rgba(99,102,241,0.12);">
+                                <div class="card-body p-4 p-xl-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center justify-content-center"
+                                             style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.15); color: #4f46e5;">
+                                            <i class="ti ti-calendar-event" style="font-size:1.6rem;"></i>
+                                        </div>
+                                        <span class="badge rounded-pill px-3 py-2" style="background: rgba(99, 102, 241, 0.14); color: #4338ca; font-size: 0.88rem; font-weight: 800;">
+                                            Attendance
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-baseline gap-2 my-2">
+                                        <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #4f46e5; letter-spacing: -0.04em;">{{ $sSup['month_present'] ?? 0 }}</h1>
+                                        <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Days</span>
+                                    </div>
+                                    <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Total Attendance</h5>
+                                    <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                        <span style="color:#475569;">Month Total</span>
+                                        <span class="badge bg-success px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                            {{ $sSup['month_present'] ?? 0 }} Days
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                 style="border-radius: 18px; border-bottom: 5px solid #10b981 !important; background: linear-gradient(180deg,#ffffff 0%,#ecfdf5 100%); box-shadow: 0 6px 22px rgba(16,185,129,0.12);">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center justify-content-center"
+                                             style="width: 52px; height: 52px; border-radius: 14px; background: rgba(16, 185, 129, 0.15); color: #059669;">
+                                            <i class="ti ti-login" style="font-size:1.6rem;"></i>
+                                        </div>
+                                        <span class="badge rounded-pill px-3 py-2" style="background: rgba(16, 185, 129, 0.14); color: #047857; font-size: 0.88rem; font-weight: 800;">
+                                            Total: {{ $sSup['total_punch_in_count'] ?? 0 }}
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-baseline gap-2 my-2">
+                                        <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #059669; letter-spacing: -0.04em;">{{ $sSup['total_punch_in_count'] ?? 0 }}</h1>
+                                        <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                                    </div>
+                                    <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch In Count</h5>
+                                    <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                        <span style="color:#475569;">Today's In Time</span>
+                                        <span class="badge bg-{{ $sSup['punch_in_time'] ? 'success' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                            {{ $sSup['punch_in_time'] ?: '--:--' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                            <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                 style="border-radius: 18px; border-bottom: 5px solid #ef4444 !important; background: linear-gradient(180deg,#ffffff 0%,#fef2f2 100%); box-shadow: 0 6px 22px rgba(239,68,68,0.12);">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center justify-content-center"
+                                             style="width: 52px; height: 52px; border-radius: 14px; background: rgba(239, 68, 68, 0.15); color: #dc2626;">
+                                            <i class="ti ti-logout" style="font-size:1.6rem;"></i>
+                                        </div>
+                                        <span class="badge rounded-pill px-3 py-2" style="background: rgba(239, 68, 68, 0.14); color: #b91c1c; font-size: 0.88rem; font-weight: 800;">
+                                            Total: {{ $sSup['total_punch_out_count'] ?? 0 }}
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-baseline gap-2 my-2">
+                                        <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #dc2626; letter-spacing: -0.04em;">{{ $sSup['total_punch_out_count'] ?? 0 }}</h1>
+                                        <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                                    </div>
+                                    <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch Out Count</h5>
+                                    <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                        <span style="color:#475569;">Today's Out Time</span>
+                                        <span class="badge bg-{{ $sSup['punch_out_time'] ? 'danger' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                            {{ $sSup['punch_out_time'] ?: '--:--' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4.3 Single Supervisor Leave Balance --}}
+                    <div class="row g-3 g-xl-4 mb-4">
+                        <div class="col-12 mb-1">
+                            <h5 class="mb-0 d-flex align-items-center" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em;">
+                                <i class="ti ti-calendar-event text-primary me-2" style="font-size:1.5rem;"></i> Leave Balance (Type-Wise) - {{ $sSup['name'] }}
+                            </h5>
+                        </div>
+
+                        @if (!empty($sSup['leave_balances']) && count($sSup['leave_balances']) > 0)
+                            @foreach ($sSup['leave_balances'] as $leave)
+                                @php
+                                    $pal = $leave['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0'];
+                                    $leaveCount = count($sSup['leave_balances']);
+                                    $leaveCol = $leaveCount <= 2 ? 'col-12 col-lg-6' : 'col-12 col-md-4';
+                                @endphp
+                                <div class="{{ $leaveCol }}">
+                                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                         style="border-radius: 18px; border-left: 6px solid {{ $pal['border'] }} !important; background: #ffffff; box-shadow: 0 6px 20px rgba(15,23,42,0.06); min-height: 150px;">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="d-flex align-items-center justify-content-center"
+                                                         style="width: 56px; height: 56px; border-radius: 14px; background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; font-size: 1.2rem; font-weight: 900; flex-shrink: 0;">
+                                                        {{ $leave['code'] }}
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="mb-1 text-truncate" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; max-width: 220px;" title="{{ $leave['name'] }}">
+                                                            {{ $leave['name'] }}
+                                                        </h5>
+                                                        <div class="d-flex align-items-baseline gap-2 mt-1">
+                                                            <span style="color: {{ $pal['text'] }}; font-size: 2rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em;">
+                                                                {{ number_format($leave['balance'], 1) }}
+                                                            </span>
+                                                            <span style="color: #0f172a; font-size: 1.05rem; font-weight: 800;">Days Available</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="badge rounded-pill px-3 py-2" style="font-size: 0.82rem; font-weight: 750; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;">
+                                                    {{ !empty($leave['carry_forward']) ? 'Carry Forward' : 'Monthly Accrual' }}
+                                                </span>
+                                            </div>
+
+                                            <div class="border-top pt-3 d-flex justify-content-between align-items-center" style="font-size: 0.98rem; font-weight: 700; color: #475569;">
+                                                <span>Allocated: <strong style="color:#0f172a; font-weight: 900;">{{ number_format($leave['allocated'] ?? 0, 1) }}</strong></span>
+                                                <span>Used (FY): <strong style="color:#dc2626; font-weight: 900;">{{ number_format($leave['used_year'] ?? 0, 1) }}</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+                @else
+                    {{-- 4.4 Multi Supervisors Grid (2+) --}}
+                    <div class="row g-3 mb-4">
+                        @php
+                            $supGridCol = count($deptSups) == 2 ? 'col-12 col-md-6' : 'col-12 col-md-4';
+                        @endphp
+                        @foreach ($deptSups as $sItem)
+                            @php $sSup = $sItem['supervisor']; @endphp
+                            <div class="{{ $supGridCol }}">
+                                <div class="card h-100 border-0 overflow-hidden shadow-xs"
+                                     style="border-radius: 16px; border: 1.5px solid #a5b4fc !important; background: #ffffff;">
+                                    <div class="p-3" style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-bottom: 1px solid #ddd6fe;">
+                                        <div class="d-flex align-items-center justify-content-between gap-2">
+                                            <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                                                <img src="{{ $sSup['avatar'] }}" alt="{{ $sSup['name'] }}"
+                                                     class="rounded-circle border"
+                                                     style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; background: #fff;"
+                                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sSup['name']) }}';">
+                                                <div class="min-w-0 flex-grow-1">
+                                                    <div class="text-truncate fw-bold text-dark" style="font-size: 1rem;" title="{{ $sSup['name'] }}">
+                                                        {{ $sSup['name'] }}
+                                                    </div>
+                                                    <div class="text-primary text-truncate" style="font-size: 0.78rem; font-weight: 750;">
+                                                        {{ $sSup['code'] }} · {{ $sSup['designation'] ?: 'Supervisor' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span class="badge rounded-pill px-2 py-1 flex-shrink-0"
+                                                  style="font-size: 0.72rem; font-weight: 800;
+                                                  @if ($sSup['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                                  @elseif ($sSup['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                                  @elseif ($sSup['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                                  @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                                  @endif">
+                                                <i class="ti {{ $sSup['status_icon'] }} me-1"></i>{{ $sSup['status_label'] }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                        <div class="row g-2 text-center mb-2">
+                                            <div class="col-4">
+                                                <div class="p-1.5 rounded-2" style="background: #eff6ff; border: 1px solid #dbeafe;">
+                                                    <div class="fw-bolder text-primary" style="font-size: 1.15rem; line-height: 1.1;">{{ $sSup['month_present'] }}</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">Days MTD</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-1.5 rounded-2" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+                                                    <div class="fw-bolder text-success text-truncate" style="font-size: 0.85rem; line-height: 1.4;">{{ $sSup['punch_in_time'] ?: '—' }}</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">In Time</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="p-1.5 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                                    <div class="fw-bolder text-secondary text-truncate" style="font-size: 0.85rem; line-height: 1.4;">{{ $sSup['punch_out_time'] ?: '—' }}</div>
+                                                    <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">Out Time</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex align-items-center justify-content-between py-1.5 border-top border-bottom my-1.5">
+                                            <span style="font-size: 0.8rem; font-weight: 750; color: #475569;">
+                                                <i class="ti ti-users me-1 text-primary"></i> Team Size:
+                                            </span>
+                                            <span class="badge bg-label-primary rounded-pill px-2.5 py-0.5" style="font-weight: 800; font-size: 0.78rem;">
+                                                {{ $sItem['employee_count'] }} Employees
+                                            </span>
+                                        </div>
+
+                                        @if (!empty($sSup['leave_balances']) && count($sSup['leave_balances']) > 0)
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach ($sSup['leave_balances'] as $lb)
+                                                    <span class="badge px-2 py-0.5 rounded-1"
+                                                          style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.72rem; font-weight: 700;">
+                                                        {{ $lb['code'] }}: <strong style="color: #0f172a; font-weight: 850;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                {{-- 4.5 Employees under each Supervisor --}}
+                @foreach ($deptSups as $sItem)
+                    @php 
+                        $sSup = $sItem['supervisor'];
+                        $sEmpList = $sItem['employees'];
+                    @endphp
+
+                    <div class="card border-0 mb-4 shadow-sm" style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff;">
+                        <div class="card-body p-3.5 p-md-4">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2.5 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-label-primary p-2 rounded-2">
+                                        <i class="ti ti-users fs-4"></i>
+                                    </span>
+                                    <div>
+                                        <h5 class="mb-0 fw-bolder text-dark">
+                                            Team Members under <span class="text-primary">{{ $sSup['name'] }}</span> (Supervisor)
+                                        </h5>
+                                        <span class="text-muted" style="font-size: 0.82rem; font-weight: 650;">Total {{ count($sEmpList) }} Team Members</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                    <span class="badge px-2.5 py-1.5 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.8rem;">
+                                        {{ $sItem['in_count'] }} In
+                                    </span>
+                                    @if ($sItem['out_count'] > 0)
+                                        <span class="badge px-2.5 py-1.5 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.8rem;">
+                                            {{ $sItem['out_count'] }} Out
+                                        </span>
+                                    @endif
+                                    <span class="badge px-2.5 py-1.5 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.8rem;">
+                                        {{ $sItem['not_punched_count'] }} Not Punched
+                                    </span>
+                                    @if ($sItem['leave_count'] > 0)
+                                        <span class="badge px-2.5 py-1.5 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.8rem;">
+                                            {{ $sItem['leave_count'] }} Leave
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            @if (!empty($sEmpList) && count($sEmpList) > 0)
+                                <div class="row g-3">
+                                    @foreach ($sEmpList as $cEmp)
+                                        <div class="col-12 col-md-4">
+                                            <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                                                 style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                                                
+                                                {{-- Employee Header --}}
+                                                <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                        <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                                            <div class="position-relative flex-shrink-0">
+                                                                <img src="{{ $cEmp['avatar'] }}" alt="{{ $cEmp['name'] }}"
+                                                                     class="rounded-circle border border-2 border-white shadow-xs"
+                                                                     style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($cEmp['name']) }}';">
+                                                            </div>
+                                                            <div class="min-w-0 flex-grow-1">
+                                                                <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $cEmp['name'] }}">
+                                                                    {{ $cEmp['name'] }}
+                                                                </div>
+                                                                <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                                                    <span class="text-primary fw-bold">{{ $cEmp['code'] }}</span> · {{ $cEmp['designation'] ?: 'Employee' }}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                                              style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                                              @if ($cEmp['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                                              @elseif ($cEmp['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                                              @elseif ($cEmp['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                                              @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+                                                              @endif">
+                                                            <i class="ti {{ $cEmp['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $cEmp['status_label'] }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Employee Body --}}
+                                                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                                    {{-- 3 Attendance Stats Row --}}
+                                                    <div class="row g-2 text-center mb-2.5">
+                                                        <div class="col-4">
+                                                            <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                                                <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $cEmp['month_present'] }}</div>
+                                                                <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-4">
+                                                            <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                                                <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                                    {{ $cEmp['punch_in_time'] ?: '—' }}
+                                                                </div>
+                                                                <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-4">
+                                                            <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                                                <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                                    {{ $cEmp['punch_out_time'] ?: '—' }}
+                                                                </div>
+                                                                <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Leave Balances & View Profile Footer --}}
+                                                    <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                                        @if (!empty($cEmp['leave_balances']) && count($cEmp['leave_balances']) > 0)
+                                                            <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
+                                                                @foreach ($cEmp['leave_balances'] as $lb)
+                                                                    @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                                                    <span class="badge px-2.5 py-1 rounded-pill"
+                                                                          style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                                          title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                                        {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                        @else
+                                                            <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                                        @endif
+                                                        <a href="{{ route('employees.show', $cEmp['id']) }}" class="btn btn-sm btn-icon btn-light rounded-circle shadow-none flex-shrink-0"
+                                                           title="View Profile" style="width: 30px; height: 30px; color: #6366f1; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center;">
+                                                            <i class="ti ti-chevron-right" style="font-size: 0.85rem;"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-muted py-2" style="font-size: 0.85rem;">No team members assigned under this supervisor.</div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+
+            {{-- 5. Direct Employees under Single Department Head (if any) --}}
+            @if (!empty($deptDirectEmps) && count($deptDirectEmps) > 0)
+                <div class="card border-0 mb-4 shadow-sm" style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff;">
+                    <div class="card-body p-3.5 p-md-4">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2.5 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-label-info p-2 rounded-2">
+                                    <i class="ti ti-users fs-4"></i>
+                                </span>
+                                <div>
+                                    <h5 class="mb-0 fw-bolder text-dark">
+                                        Direct Team Members under <span class="text-primary">{{ $deptHead['name'] }}</span>
+                                    </h5>
+                                    <span class="text-muted" style="font-size: 0.82rem; font-weight: 650;">Total {{ count($deptDirectEmps) }} Team Members</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            @foreach ($deptDirectEmps as $cEmp)
+                                <div class="col-12 col-md-4">
+                                    <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                                         style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                                        
+                                        {{-- Employee Header --}}
+                                        <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                                    <div class="position-relative flex-shrink-0">
+                                                        <img src="{{ $cEmp['avatar'] }}" alt="{{ $cEmp['name'] }}"
+                                                             class="rounded-circle border border-2 border-white shadow-xs"
+                                                             style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($cEmp['name']) }}';">
+                                                    </div>
+                                                    <div class="min-w-0 flex-grow-1">
+                                                        <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $cEmp['name'] }}">
+                                                            {{ $cEmp['name'] }}
+                                                        </div>
+                                                        <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                                            <span class="text-primary fw-bold">{{ $cEmp['code'] }}</span> · {{ $cEmp['designation'] ?: 'Employee' }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                                      style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                                      @if ($cEmp['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                                      @elseif ($cEmp['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                                      @elseif ($cEmp['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                                      @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+                                                      @endif">
+                                                    <i class="ti {{ $cEmp['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $cEmp['status_label'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Employee Body --}}
+                                        <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                            {{-- 3 Attendance Stats Row --}}
+                                            <div class="row g-2 text-center mb-2.5">
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                                        <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $cEmp['month_present'] }}</div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                                        <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                            {{ $cEmp['punch_in_time'] ?: '—' }}
+                                                        </div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                                        <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                            {{ $cEmp['punch_out_time'] ?: '—' }}
+                                                        </div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Leave Balances & View Profile Footer --}}
+                                            <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                                @if (!empty($cEmp['leave_balances']) && count($cEmp['leave_balances']) > 0)
+                                                    <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
+                                                        @foreach ($cEmp['leave_balances'] as $lb)
+                                                            @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                                            <span class="badge px-2.5 py-1 rounded-pill"
+                                                                  style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                                  title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                                {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                                @endif
+                                                <a href="{{ route('employees.show', $cEmp['id']) }}" class="btn btn-sm btn-icon btn-light rounded-circle shadow-none flex-shrink-0"
+                                                   title="View Profile" style="width: 30px; height: 30px; color: #6366f1; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; justify-content: center;">
+                                                    <i class="ti ti-chevron-right" style="font-size: 0.85rem;"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+        {{-- Multiple Department Heads Layout (2+) --}}
+        @else
+            {{-- Iterate Each Department Head Container --}}
+            @foreach ($departmentHeadsHierarchy as $dh)
+                @php 
+                    $deptHead = $dh['dept_head'];
+                    $deptSups = $dh['supervisors'];
+                    $deptDirectEmps = $dh['direct_employees'];
+                @endphp
+
+                <div class="card border-0 mb-4 shadow-sm" style="border-radius: 20px; border: 2px solid #6366f1 !important; background: #ffffff;">
+                    {{-- Department Head Card Header Banner --}}
+                    <div class="p-3.5 p-md-4" style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-bottom: 2px solid #c7d2fe; border-radius: 18px 18px 0 0;">
+                        <div class="row align-items-center g-3">
+                            <div class="col-12 col-lg-7">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="position-relative">
+                                        <img src="{{ $deptHead['avatar'] }}" alt="{{ $deptHead['name'] }}"
+                                             class="rounded-circle border border-2 border-white shadow-sm"
+                                             style="width: 58px; height: 58px; object-fit: cover; background: #fff;"
+                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($deptHead['name']) }}';">
+                                        <span class="position-absolute bottom-0 end-0 badge p-1 rounded-circle bg-warning text-dark border border-white" title="Department Head">
+                                            <i class="ti ti-shield-check" style="font-size: 0.75rem;"></i>
+                                        </span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <h4 class="mb-0 fw-bolder text-dark" style="letter-spacing: -0.02em;">{{ $deptHead['name'] }}</h4>
+                                            <span class="badge rounded-pill px-2.5 py-1"
+                                                  style="font-size: 0.75rem; font-weight: 800;
+                                                  @if ($deptHead['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                                  @elseif ($deptHead['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                                  @elseif ($deptHead['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                                  @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                                  @endif">
+                                                <i class="ti {{ $deptHead['status_icon'] }} me-1"></i>{{ $deptHead['status_label'] }}
+                                            </span>
+                                        </div>
+                                        <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
+                                            {{ $deptHead['code'] }} · <span class="text-dark">{{ $deptHead['designation'] ?: 'Department Head' }}</span> ({{ $deptHead['department'] }})
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Department Head Live Punch & Stats Capsule --}}
+                            <div class="col-12 col-lg-5">
+                                <div class="d-flex align-items-center justify-content-lg-end gap-2 flex-wrap">
+                                    <div class="p-2 px-3 rounded-3 bg-white border text-center shadow-xs">
+                                        <div class="fw-bolder text-primary" style="font-size: 1.1rem; line-height: 1;">{{ $deptHead['month_present'] }}</div>
+                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 800; margin-top: 2px;">Days MTD</div>
+                                    </div>
+                                    <div class="p-2 px-3 rounded-3 bg-white border text-center shadow-xs">
+                                        <div class="fw-bolder text-success" style="font-size: 0.88rem; line-height: 1.2;">{{ $deptHead['punch_in_time'] ?: '—' }}</div>
+                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 800; margin-top: 2px;">In Time</div>
+                                    </div>
+                                    <div class="p-2 px-3 rounded-3 bg-white border text-center shadow-xs">
+                                        <div class="fw-bolder text-secondary" style="font-size: 0.88rem; line-height: 1.2;">{{ $deptHead['punch_out_time'] ?: '—' }}</div>
+                                        <div class="text-muted" style="font-size: 0.68rem; font-weight: 800; margin-top: 2px;">Out Time</div>
+                                    </div>
+                                    <div class="p-2 px-3 rounded-3 bg-primary text-white text-center shadow-xs">
+                                        <div class="fw-bolder" style="font-size: 1.1rem; line-height: 1;">{{ $dh['supervisor_count'] }}</div>
+                                        <div class="text-white-50" style="font-size: 0.68rem; font-weight: 800; margin-top: 2px;">Supervisors</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Department Head Body: Supervisors and Employees --}}
+                    <div class="card-body p-3.5 p-md-4" style="background: #f8fafc;">
+                        {{-- 1. Supervisors under this Department Head --}}
+                        @if (!empty($deptSups) && count($deptSups) > 0)
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h5 class="mb-0 fw-bold text-dark">
+                                    <i class="ti ti-user-star text-primary me-2"></i> Supervisors under {{ $deptHead['name'] }} ({{ count($deptSups) }})
+                                </h5>
+                            </div>
+
+                            {{-- Supervisors Cards Grid --}}
+                            <div class="row g-3 mb-4">
+                                @php
+                                    $supGridCol = count($deptSups) == 2 ? 'col-12 col-md-6' : 'col-12 col-md-4';
+                                @endphp
+                                @foreach ($deptSups as $sItem)
+                                    @php $sSup = $sItem['supervisor']; @endphp
+                                    <div class="{{ $supGridCol }}">
+                                        <div class="card h-100 border-0 overflow-hidden shadow-xs"
+                                             style="border-radius: 16px; border: 1.5px solid #a5b4fc !important; background: #ffffff;">
+                                            <div class="p-3" style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border-bottom: 1px solid #ddd6fe;">
+                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                                                        <img src="{{ $sSup['avatar'] }}" alt="{{ $sSup['name'] }}"
+                                                             class="rounded-circle border"
+                                                             style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; background: #fff;"
+                                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sSup['name']) }}';">
+                                                        <div class="min-w-0 flex-grow-1">
+                                                            <div class="text-truncate fw-bold text-dark" style="font-size: 1rem;" title="{{ $sSup['name'] }}">
+                                                                {{ $sSup['name'] }}
+                                                            </div>
+                                                            <div class="text-primary text-truncate" style="font-size: 0.78rem; font-weight: 750;">
+                                                                {{ $sSup['code'] }} · {{ $sSup['designation'] ?: 'Supervisor' }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span class="badge rounded-pill px-2 py-1 flex-shrink-0"
+                                                          style="font-size: 0.72rem; font-weight: 800;
+                                                          @if ($sSup['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                                          @elseif ($sSup['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                                          @elseif ($sSup['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                                          @endif">
+                                                        <i class="ti {{ $sSup['status_icon'] }} me-1"></i>{{ $sSup['status_label'] }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                                <div class="row g-2 text-center mb-2">
+                                                    <div class="col-4">
+                                                        <div class="p-1.5 rounded-2" style="background: #eff6ff; border: 1px solid #dbeafe;">
+                                                            <div class="fw-bolder text-primary" style="font-size: 1.15rem; line-height: 1.1;">{{ $sSup['month_present'] }}</div>
+                                                            <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">Days MTD</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="p-1.5 rounded-2" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+                                                            <div class="fw-bolder text-success text-truncate" style="font-size: 0.85rem; line-height: 1.4;">{{ $sSup['punch_in_time'] ?: '—' }}</div>
+                                                            <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">In Time</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <div class="p-1.5 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                                            <div class="fw-bolder text-secondary text-truncate" style="font-size: 0.85rem; line-height: 1.4;">{{ $sSup['punch_out_time'] ?: '—' }}</div>
+                                                            <div class="text-muted" style="font-size: 0.7rem; font-weight: 700; margin-top: 2px;">Out Time</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex align-items-center justify-content-between py-1.5 border-top border-bottom my-1.5">
+                                                    <span style="font-size: 0.8rem; font-weight: 750; color: #475569;">
+                                                        <i class="ti ti-users me-1 text-primary"></i> Team Size:
+                                                    </span>
+                                                    <span class="badge bg-label-primary rounded-pill px-2.5 py-0.5" style="font-weight: 800; font-size: 0.78rem;">
+                                                        {{ $sItem['employee_count'] }} Employees
+                                                    </span>
+                                                </div>
+
+                                                @if (!empty($sSup['leave_balances']) && count($sSup['leave_balances']) > 0)
+                                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                                        @foreach ($sSup['leave_balances'] as $lb)
+                                                            <span class="badge px-2 py-0.5 rounded-1"
+                                                                  style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.72rem; font-weight: 700;">
+                                                                {{ $lb['code'] }}: <strong style="color: #0f172a; font-weight: 850;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- 2. Employees under each Supervisor --}}
+                            @foreach ($deptSups as $sItem)
+                                @php 
+                                    $sSup = $sItem['supervisor'];
+                                    $sEmpList = $sItem['employees'];
+                                @endphp
+
+                                <div class="card border-0 mb-3 shadow-xs" style="border-radius: 14px; border: 1px solid #e2e8f0 !important; background: #ffffff;">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2.5 pb-2 border-bottom">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-label-primary p-1.5 rounded-2">
+                                                    <i class="ti ti-users fs-5"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bolder text-dark">
+                                                        Employees under <span class="text-primary">{{ $sSup['name'] }}</span> (Supervisor)
+                                                    </h6>
+                                                    <span class="text-muted" style="font-size: 0.78rem; font-weight: 650;">Total {{ count($sEmpList) }} Employees</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                                <span class="badge px-2.5 py-1 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.76rem;">
+                                                    {{ $sItem['in_count'] }} In
+                                                </span>
+                                                @if ($sItem['out_count'] > 0)
+                                                    <span class="badge px-2.5 py-1 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.76rem;">
+                                                        {{ $sItem['out_count'] }} Out
+                                                    </span>
+                                                @endif
+                                                <span class="badge px-2.5 py-1 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.76rem;">
+                                                    {{ $sItem['not_punched_count'] }} Not Punched
+                                                </span>
+                                                @if ($sItem['leave_count'] > 0)
+                                                    <span class="badge px-2.5 py-1 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.76rem;">
+                                                        {{ $sItem['leave_count'] }} Leave
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        @if (!empty($sEmpList) && count($sEmpList) > 0)
+                                            <div class="row g-3">
+                                                @foreach ($sEmpList as $cEmp)
+                                                    <div class="col-12 col-md-4">
+                                                        <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                                                             style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                                                            
+                                                            {{-- Employee Header --}}
+                                                            <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                                                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                                                    <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                                                        <div class="position-relative flex-shrink-0">
+                                                                            <img src="{{ $cEmp['avatar'] }}" alt="{{ $cEmp['name'] }}"
+                                                                                 class="rounded-circle border border-2 border-white shadow-xs"
+                                                                                 style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                                                                 onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($cEmp['name']) }}';">
+                                                                        </div>
+                                                                        <div class="min-w-0 flex-grow-1">
+                                                                            <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $cEmp['name'] }}">
+                                                                                {{ $cEmp['name'] }}
+                                                                            </div>
+                                                                            <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                                                                <span class="text-primary fw-bold">{{ $cEmp['code'] }}</span> · {{ $cEmp['designation'] ?: 'Employee' }}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                                                          style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                                                          @if ($cEmp['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                                                          @elseif ($cEmp['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                                                          @elseif ($cEmp['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+                                                                          @endif">
+                                                                        <i class="ti {{ $cEmp['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $cEmp['status_label'] }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- Employee Body --}}
+                                                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                                                {{-- 3 Attendance Stats Row --}}
+                                                                <div class="row g-2 text-center mb-2.5">
+                                                                    <div class="col-4">
+                                                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                                                            <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $cEmp['month_present'] }}</div>
+                                                                            <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-4">
+                                                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                                                            <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                                                {{ $cEmp['punch_in_time'] ?: '—' }}
+                                                                            </div>
+                                                                            <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-4">
+                                                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                                                            <div class="fw-bolder text-truncate" style="color: {{ $cEmp['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                                                {{ $cEmp['punch_out_time'] ?: '—' }}
+                                                                            </div>
+                                                                            <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {{-- Leave Balances Footer --}}
+                                                                <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                                                    @if (!empty($cEmp['leave_balances']) && count($cEmp['leave_balances']) > 0)
+                                                                        <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
+                                                                            @foreach ($cEmp['leave_balances'] as $lb)
+                                                                                @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                                                                <span class="badge px-2.5 py-1 rounded-pill"
+                                                                                      style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                                                      title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                                                    {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                                                </span>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    @else
+                                                                        <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="text-muted py-2" style="font-size: 0.82rem;">No employees assigned under this supervisor.</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
+            @endforeach
+        @endif
+
+    {{-- 4. DEPARTMENT HEAD VIEW (SUPERVISORS -> EMPLOYEES) --}}
+    @elseif (!empty($hierarchySupervisors) && count($hierarchySupervisors) > 0)
+        @php
+            $totalSupervisors = count($hierarchySupervisors);
+            $allChildEmployees = collect($hierarchySupervisors)->pluck('employees')->flatten(1);
+            $totalEmployeesUnderSup = $allChildEmployees->count();
+            
+            $supIn = collect($hierarchySupervisors)->filter(fn($s) => ($s['supervisor']['status_type'] ?? '') === 'present_in')->count();
+            $supOut = collect($hierarchySupervisors)->filter(fn($s) => ($s['supervisor']['status_type'] ?? '') === 'present_out')->count();
+            $supLeave = collect($hierarchySupervisors)->filter(fn($s) => ($s['supervisor']['status_type'] ?? '') === 'leave')->count();
+            $supNotPunched = collect($hierarchySupervisors)->filter(fn($s) => ($s['supervisor']['status_type'] ?? '') === 'not_punched')->count();
+        @endphp
+
+        {{-- Supervisors Header --}}
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-5 mb-3">
+            <div>
+                <h4 class="mb-1" style="color: #0f172a; font-weight: 850; letter-spacing: -0.02em;">
+                    <i class="ti ti-user-star text-primary me-2"></i> Supervisors ({{ $totalSupervisors }})
+                </h4>
+                <p class="text-muted mb-0" style="font-size: 0.95rem; font-weight: 650;">
+                    Live attendance & status of Supervisors reporting to you
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge px-3 py-2 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-check me-1"></i> {{ $supIn }} In
+                </span>
+                @if ($supOut > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-logout me-1"></i> {{ $supOut }} Out
+                    </span>
+                @endif
+                <span class="badge px-3 py-2 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.84rem;">
+                    <i class="ti ti-alert-circle me-1"></i> {{ $supNotPunched }} Not Punched
+                </span>
+                @if ($supLeave > 0)
+                    <span class="badge px-3 py-2 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.84rem;">
+                        <i class="ti ti-calendar me-1"></i> {{ $supLeave }} Leave
+                    </span>
+                @endif
+            </div>
+        </div>
+
+        {{-- Supervisors Cards Grid (Full-width for 1 supervisor, multi-column grid for 2+) --}}
+        @if ($totalSupervisors == 1)
+            @php 
+                $item = $hierarchySupervisors[0];
+                $sup = $item['supervisor'];
+            @endphp
+            {{-- 1. Supervisor Profile Banner --}}
+            <div class="card border-0 mb-4 shadow-sm" style="border-radius: 18px; border: 2px solid #818cf8 !important; background: #ffffff;">
+                <div class="p-3.5 p-md-4" style="background: linear-gradient(135deg, #eef2ff 0%, #ffffff 100%);">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3 min-w-0">
+                            <div class="position-relative">
+                                <img src="{{ $sup['avatar'] }}" alt="{{ $sup['name'] }}"
+                                     class="rounded-circle border border-2 border-white shadow-xs"
+                                     style="width: 58px; height: 58px; object-fit: cover; background: #fff;"
+                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sup['name']) }}';">
+                                <span class="position-absolute bottom-0 end-0 badge p-1 rounded-circle bg-primary text-white border border-white" title="Supervisor">
+                                    <i class="ti ti-crown" style="font-size: 0.75rem;"></i>
+                                </span>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <h4 class="mb-0 fw-bold text-dark text-truncate" style="letter-spacing: -0.02em;">
+                                        {{ $sup['name'] }}
+                                    </h4>
+                                    <span class="badge rounded-pill px-2.5 py-1"
+                                          style="font-size: 0.75rem; font-weight: 800;
+                                          @if ($sup['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                          @elseif ($sup['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                          @elseif ($sup['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                          @endif">
+                                        <i class="ti {{ $sup['status_icon'] }} me-1"></i>{{ $sup['status_label'] }}
+                                    </span>
+                                </div>
+                                <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
+                                    {{ $sup['code'] }} · <span class="text-dark">{{ $sup['designation'] ?: 'Supervisor' }}</span> ({{ $sup['department'] }})
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-label-primary px-3 py-2 rounded-pill" style="font-size: 0.85rem; font-weight: 800;">
+                                <i class="ti ti-users me-1"></i> {{ $item['employee_count'] }} Team Members
+                            </span>
+                            <a href="{{ route('employees.show', $sup['id']) }}" class="btn btn-outline-primary rounded-pill px-3 py-1.5" style="font-weight: 750; font-size: 0.82rem;">
+                                View Profile <i class="ti ti-chevron-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 2. Supervisor Full Attendance Stat Cards --}}
+            <div class="row g-3 g-xl-4 mb-4 emp-stat-row">
+                {{-- Card 1: Total Attendance --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #6366f1 !important; background: linear-gradient(180deg,#ffffff 0%,#eef2ff 100%); box-shadow: 0 6px 22px rgba(99,102,241,0.12);">
+                        <div class="card-body p-4 p-xl-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.15); color: #4f46e5;">
+                                    <i class="ti ti-calendar-event" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(99, 102, 241, 0.14); color: #4338ca; font-size: 0.88rem; font-weight: 800;">
+                                    Attendance
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #4f46e5; letter-spacing: -0.04em;">{{ $sup['month_present'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Days</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Total Attendance</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Month Total</span>
+                                <span class="badge bg-success px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $sup['month_present'] ?? 0 }} Days
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 2: Punch In Count --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #10b981 !important; background: linear-gradient(180deg,#ffffff 0%,#ecfdf5 100%); box-shadow: 0 6px 22px rgba(16,185,129,0.12);">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(16, 185, 129, 0.15); color: #059669;">
+                                    <i class="ti ti-login" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(16, 185, 129, 0.14); color: #047857; font-size: 0.88rem; font-weight: 800;">
+                                    Total: {{ $sup['total_punch_in_count'] ?? 0 }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #059669; letter-spacing: -0.04em;">{{ $sup['total_punch_in_count'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch In Count</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Today's In Time</span>
+                                <span class="badge bg-{{ $sup['punch_in_time'] ? 'success' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $sup['punch_in_time'] ?: '--:--' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 3: Punch Out Count --}}
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                         style="border-radius: 18px; border-bottom: 5px solid #ef4444 !important; background: linear-gradient(180deg,#ffffff 0%,#fef2f2 100%); box-shadow: 0 6px 22px rgba(239,68,68,0.12);">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center justify-content-center"
+                                     style="width: 52px; height: 52px; border-radius: 14px; background: rgba(239, 68, 68, 0.15); color: #dc2626;">
+                                    <i class="ti ti-logout" style="font-size:1.6rem;"></i>
+                                </div>
+                                <span class="badge rounded-pill px-3 py-2" style="background: rgba(239, 68, 68, 0.14); color: #b91c1c; font-size: 0.88rem; font-weight: 800;">
+                                    Total: {{ $sup['total_punch_out_count'] ?? 0 }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 my-2">
+                                <h1 class="mb-0" style="font-size: 2.75rem; line-height: 1; font-weight: 900; color: #dc2626; letter-spacing: -0.04em;">{{ $sup['total_punch_out_count'] ?? 0 }}</h1>
+                                <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Punches</span>
+                            </div>
+                            <h5 class="card-title mb-3" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">Punch Out Count</h5>
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" style="font-size: 0.95rem; font-weight: 700;">
+                                <span style="color:#475569;">Today's Out Time</span>
+                                <span class="badge bg-{{ $sup['punch_out_time'] ? 'danger' : 'secondary' }} px-3 py-2 rounded-pill" style="font-size: 0.9rem; font-weight: 800;">
+                                    {{ $sup['punch_out_time'] ?: '--:--' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 3. Supervisor Leave Balance (Type-Wise) --}}
+            <div class="row g-3 g-xl-4 mb-4">
+                <div class="col-12 mb-1">
+                    <h5 class="mb-0 d-flex align-items-center" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em;">
+                        <i class="ti ti-calendar-event text-primary me-2" style="font-size:1.5rem;"></i> Leave Balance (Type-Wise) - {{ $sup['name'] }}
+                    </h5>
+                </div>
+
+                @if (!empty($sup['leave_balances']) && count($sup['leave_balances']) > 0)
+                    @foreach ($sup['leave_balances'] as $leave)
+                        @php
+                            $pal = $leave['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0'];
+                            $leaveCount = count($sup['leave_balances']);
+                            $leaveCol = $leaveCount <= 2 ? 'col-12 col-lg-6' : 'col-12 col-md-4';
+                        @endphp
+                        <div class="{{ $leaveCol }}">
+                            <div class="card h-100 border-0 position-relative overflow-hidden emp-stat-card"
+                                 style="border-radius: 18px; border-left: 6px solid {{ $pal['border'] }} !important; background: #ffffff; box-shadow: 0 6px 20px rgba(15,23,42,0.06); min-height: 150px;">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="d-flex align-items-center justify-content-center"
+                                                 style="width: 56px; height: 56px; border-radius: 14px; background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; font-size: 1.2rem; font-weight: 900; flex-shrink: 0;">
+                                                {{ $leave['code'] }}
+                                            </div>
+                                            <div>
+                                                <h5 class="mb-1 text-truncate" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; max-width: 220px;" title="{{ $leave['name'] }}">
+                                                    {{ $leave['name'] }}
+                                                </h5>
+                                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                                    <span style="color: {{ $pal['text'] }}; font-size: 2rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em;">
+                                                        {{ number_format($leave['balance'], 1) }}
+                                                    </span>
+                                                    <span style="color: #0f172a; font-size: 1.05rem; font-weight: 800;">Days Available</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="badge rounded-pill px-3 py-2" style="font-size: 0.82rem; font-weight: 750; background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;">
+                                            {{ !empty($leave['carry_forward']) ? 'Carry Forward' : 'Monthly Accrual' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="border-top pt-3 d-flex justify-content-between align-items-center" style="font-size: 0.98rem; font-weight: 700; color: #475569;">
+                                        <span>Allocated: <strong style="color:#0f172a; font-weight: 900;">{{ number_format($leave['allocated'] ?? 0, 1) }}</strong></span>
+                                        <span>Used (FY): <strong style="color:#dc2626; font-weight: 900;">{{ number_format($leave['used_year'] ?? 0, 1) }}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+        @else
+            <div class="row g-3 mb-4">
+                @php
+                    $supCol = $totalSupervisors == 2 ? 'col-12 col-md-6' : 'col-12 col-md-4';
+                @endphp
+                @foreach ($hierarchySupervisors as $item)
+                    @php $sup = $item['supervisor']; @endphp
+                    <div class="{{ $supCol }}">
+                        <div class="card h-100 border-0 overflow-hidden shadow-sm"
+                             style="border-radius: 18px; border: 2px solid #818cf8 !important; background: #ffffff; transition: transform .2s ease, box-shadow .2s ease;">
+                            {{-- Top Header of Supervisor Card --}}
+                            <div class="p-3" style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-bottom: 1px solid #c7d2fe;">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                                        <div class="position-relative">
+                                            <img src="{{ $sup['avatar'] }}" alt="{{ $sup['name'] }}"
+                                                 class="rounded-circle border"
+                                                 style="width: 46px; height: 46px; object-fit: cover; flex-shrink: 0; background: #fff;"
+                                                 onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sup['name']) }}';">
+                                            <span class="position-absolute bottom-0 end-0 badge p-1 rounded-circle bg-primary" title="Supervisor">
+                                                <i class="ti ti-crown" style="font-size: 0.65rem;"></i>
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-grow-1">
+                                            <div class="text-truncate fw-bold text-dark" style="font-size: 1.05rem;" title="{{ $sup['name'] }}">
+                                                {{ $sup['name'] }}
+                                            </div>
+                                            <div class="text-primary text-truncate" style="font-size: 0.8rem; font-weight: 750;">
+                                                {{ $sup['code'] }} · {{ $sup['designation'] ?: 'Supervisor' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                          style="font-size: 0.75rem; font-weight: 800;
+                                          @if ($sup['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
+                                          @elseif ($sup['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
+                                          @elseif ($sup['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
+                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                          @endif">
+                                        <i class="ti {{ $sup['status_icon'] }} me-1"></i>{{ $sup['status_label'] }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Supervisor Card Body --}}
+                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                {{-- Attendance Mini Stats Row --}}
+                                <div class="row g-2 text-center mb-2">
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3" style="background: #eff6ff; border: 1px solid #dbeafe;">
+                                            <div class="fw-bolder text-primary" style="font-size: 1.2rem; line-height: 1.1;">{{ $sup['month_present'] }}</div>
+                                            <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Days MTD</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
+                                            <div class="fw-bolder text-success text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sup['punch_in_time'] ?: '—' }}</div>
+                                            <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">In Time</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                            <div class="fw-bolder text-secondary text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sup['punch_out_time'] ?: '—' }}</div>
+                                            <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Out Time</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Team Count Tag --}}
+                                <div class="d-flex align-items-center justify-content-between py-2 border-top border-bottom my-2">
+                                    <span style="font-size: 0.82rem; font-weight: 750; color: #475569;">
+                                        <i class="ti ti-users me-1 text-primary"></i> Team Size:
+                                    </span>
+                                    <span class="badge bg-label-primary rounded-pill px-2.5 py-1" style="font-weight: 800; font-size: 0.8rem;">
+                                        {{ $item['employee_count'] }} Employees
+                                    </span>
+                                </div>
+
+                                {{-- Leave Balances --}}
+                                @if (!empty($sup['leave_balances']) && count($sup['leave_balances']) > 0)
+                                    <div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1.5">
+                                            <span class="text-muted text-uppercase" style="font-size: 0.7rem; font-weight: 800; letter-spacing: .03em;">Leave Balance</span>
+                                            <a href="{{ route('employees.show', $sup['id']) }}" class="text-primary text-decoration-none" style="font-size: 0.75rem; font-weight: 750;">
+                                                Profile <i class="ti ti-chevron-right"></i>
+                                            </a>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-1.5">
+                                            @foreach ($sup['leave_balances'] as $lb)
+                                                <span class="badge px-2 py-1 rounded-2"
+                                                      style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.74rem; font-weight: 700;"
+                                                      title="{{ $lb['name'] }}: {{ $lb['balance'] }} days available">
+                                                    {{ $lb['code'] }}: <strong style="color: #0f172a; font-weight: 850;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Employees Reporting Under Each Supervisor --}}
+        @foreach ($hierarchySupervisors as $item)
+            @php 
+                $sup = $item['supervisor'];
+                $empList = $item['employees'];
+            @endphp
+
+            <div class="card border-0 mb-4 shadow-sm" style="border-radius: 18px; border: 1px solid #e2e8f0 !important; background: #fafafa;">
+                <div class="card-body p-4">
+                    {{-- Section Header for this Supervisor's team --}}
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center justify-content-center"
+                                 style="width: 44px; height: 44px; border-radius: 12px; background: rgba(99, 102, 241, 0.15); color: #4f46e5;">
+                                <i class="ti ti-users-group fs-4"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0" style="color: #0f172a; font-weight: 850;">
+                                    Team Members under <span class="text-primary">{{ $sup['name'] }}</span> (Supervisor)
+                                </h5>
+                                <div class="text-muted" style="font-size: 0.85rem; font-weight: 650;">
+                                    Total {{ count($empList) }} Employees reporting directly to {{ $sup['name'] }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge px-3 py-1.5 rounded-pill" style="background:#dcfce7; color:#166534; font-weight:800; font-size:.8rem;">
+                                <i class="ti ti-check me-1"></i> {{ $item['in_count'] }} In
+                            </span>
+                            @if ($item['out_count'] > 0)
+                                <span class="badge px-3 py-1.5 rounded-pill" style="background:#f1f5f9; color:#475569; font-weight:800; font-size:.8rem;">
+                                    <i class="ti ti-logout me-1"></i> {{ $item['out_count'] }} Out
+                                </span>
+                            @endif
+                            <span class="badge px-3 py-1.5 rounded-pill" style="background:#fee2e2; color:#991b1b; font-weight:800; font-size:.8rem;">
+                                <i class="ti ti-alert-circle me-1"></i> {{ $item['not_punched_count'] }} Not Punched
+                            </span>
+                            @if ($item['leave_count'] > 0)
+                                <span class="badge px-3 py-1.5 rounded-pill" style="background:#ffedd5; color:#9a3412; font-weight:800; font-size:.8rem;">
+                                    <i class="ti ti-calendar me-1"></i> {{ $item['leave_count'] }} Leave
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if (!empty($empList) && count($empList) > 0)
+                        <div class="row g-3">
+                            @foreach ($empList as $child)
+                                <div class="col-12 col-md-4">
+                                    <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                                         style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                                        
+                                        {{-- Employee Header --}}
+                                        <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                                    <div class="position-relative flex-shrink-0">
+                                                        <img src="{{ $child['avatar'] }}" alt="{{ $child['name'] }}"
+                                                             class="rounded-circle border border-2 border-white shadow-xs"
+                                                             style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($child['name']) }}';">
+                                                    </div>
+                                                    <div class="min-w-0 flex-grow-1">
+                                                        <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $child['name'] }}">
+                                                            {{ $child['name'] }}
+                                                        </div>
+                                                        <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                                            <span class="text-primary fw-bold">{{ $child['code'] }}</span> · {{ $child['designation'] ?: 'Employee' }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                                      style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                                      @if ($child['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                                      @elseif ($child['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                                      @elseif ($child['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                                      @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+                                                      @endif">
+                                                    <i class="ti {{ $child['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $child['status_label'] }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Employee Body --}}
+                                        <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                            {{-- 3 Attendance Stats Row --}}
+                                            <div class="row g-2 text-center mb-2.5">
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                                        <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $child['month_present'] }}</div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                                        <div class="fw-bolder text-truncate" style="color: {{ $child['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                            {{ $child['punch_in_time'] ?: '—' }}
+                                                        </div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                                        <div class="fw-bolder text-truncate" style="color: {{ $child['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                            {{ $child['punch_out_time'] ?: '—' }}
+                                                        </div>
+                                                        <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Leave Balances Footer --}}
+                                            <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                                @if (!empty($child['leave_balances']) && count($child['leave_balances']) > 0)
+                                                    <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
+                                                        @foreach ($child['leave_balances'] as $lb)
+                                                            @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                                            <span class="badge px-2.5 py-1 rounded-pill"
+                                                                  style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                                  title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                                {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="alert alert-light border text-muted py-2 px-3 mb-0" style="font-size: 0.88rem;">
+                            <i class="ti ti-info-circle me-1"></i> No employees currently assigned under {{ $sup['name'] }}.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endforeach
+
+        {{-- Direct Employees under Dept Head (if any without supervisor) --}}
+        @if (!empty($directEmployees) && count($directEmployees) > 0)
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4 mb-3">
+                <div>
+                    <h5 class="mb-1" style="color: #0f172a; font-weight: 850;">
+                        <i class="ti ti-users text-primary me-2"></i> Direct Team Members ({{ count($directEmployees) }})
+                    </h5>
+                    <p class="text-muted mb-0" style="font-size: 0.88rem; font-weight: 650;">
+                        Employees reporting directly to you
+                    </p>
+                </div>
+            </div>
+            <div class="row g-3">
+                @foreach ($directEmployees as $sub)
+                    <div class="col-12 col-md-4">
+                        <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                             style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                            
+                            {{-- Employee Header --}}
+                            <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                        <div class="position-relative flex-shrink-0">
+                                            <img src="{{ $sub['avatar'] }}" alt="{{ $sub['name'] }}"
+                                                 class="rounded-circle border border-2 border-white shadow-xs"
+                                                 style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                                 onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sub['name']) }}';">
+                                        </div>
+                                        <div class="min-w-0 flex-grow-1">
+                                            <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $sub['name'] }}">
+                                                {{ $sub['name'] }}
+                                            </div>
+                                            <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                                <span class="text-primary fw-bold">{{ $sub['code'] }}</span> · {{ $sub['designation'] ?: 'Employee' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
+                                          style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                          @if ($sub['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                          @elseif ($sub['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                          @elseif ($sub['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                          @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
+                                          @endif">
+                                        <i class="ti {{ $sub['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $sub['status_label'] }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- Employee Body --}}
+                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                {{-- 3 Attendance Stats Row --}}
+                                <div class="row g-2 text-center mb-2.5">
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                            <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $sub['month_present'] }}</div>
+                                            <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                            <div class="fw-bolder text-truncate" style="color: {{ $sub['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                {{ $sub['punch_in_time'] ?: '—' }}
+                                            </div>
+                                            <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                            <div class="fw-bolder text-truncate" style="color: {{ $sub['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                                {{ $sub['punch_out_time'] ?: '—' }}
+                                            </div>
+                                            <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Leave Balances Footer --}}
+                                <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                    @if (!empty($sub['leave_balances']) && count($sub['leave_balances']) > 0)
+                                        <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
+                                            @foreach ($sub['leave_balances'] as $lb)
+                                                @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                                <span class="badge px-2.5 py-1 rounded-pill"
+                                                      style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                      title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                    {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+    {{-- 5. REGULAR SUPERVISOR / MANAGER TEAM VIEW (FLAT DIRECT SUBORDINATES) --}}
+    @elseif (!empty($subordinateEmployees) && count($subordinateEmployees) > 0)
         @php
             $teamTotal = count($subordinateEmployees);
             $teamIn = collect($subordinateEmployees)->where('status_type', 'present_in')->count();
@@ -1186,34 +2863,37 @@ setInterval(function () {
 
         <div class="row g-3">
             @foreach ($subordinateEmployees as $sub)
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card h-100 border-0 overflow-hidden shadow-sm"
-                         style="border-radius: 18px; border: 1px solid #e2e8f0 !important; background: #ffffff; transition: transform .2s ease, box-shadow .2s ease;">
+                <div class="col-12 col-md-4">
+                    <div class="card h-100 border-0 shadow-sm employee-mini-card"
+                         style="border-radius: 16px; border: 1.5px solid #e2e8f0 !important; background: #ffffff; overflow: hidden;">
+                        
                         {{-- Top Header of Mini Dashboard Card --}}
                         <div class="p-3" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 1px solid #eef2f7;">
                             <div class="d-flex align-items-center justify-content-between gap-2">
-                                <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
-                                    <img src="{{ $sub['avatar'] }}" alt="{{ $sub['name'] }}"
-                                         class="rounded-circle border"
-                                         style="width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; background: #fff;"
-                                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sub['name']) }}';">
+                                <div class="d-flex align-items-center gap-2.5 min-w-0 flex-grow-1">
+                                    <div class="position-relative flex-shrink-0">
+                                        <img src="{{ $sub['avatar'] }}" alt="{{ $sub['name'] }}"
+                                             class="rounded-circle border border-2 border-white shadow-xs"
+                                             style="width: 44px; height: 44px; object-fit: cover; background: #fff;"
+                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($sub['name']) }}';">
+                                    </div>
                                     <div class="min-w-0 flex-grow-1">
-                                        <div class="text-truncate fw-bold text-dark" style="font-size: 1.02rem;" title="{{ $sub['name'] }}">
+                                        <div class="text-truncate fw-bold text-dark" style="font-size: 0.96rem; letter-spacing: -0.01em;" title="{{ $sub['name'] }}">
                                             {{ $sub['name'] }}
                                         </div>
-                                        <div class="text-muted text-truncate" style="font-size: 0.78rem; font-weight: 600;">
-                                            {{ $sub['code'] }} · {{ $sub['designation'] }}
+                                        <div class="text-muted text-truncate" style="font-size: 0.76rem; font-weight: 600; margin-top: 1px;">
+                                            <span class="text-primary fw-bold">{{ $sub['code'] }}</span> · {{ $sub['designation'] ?: 'Employee' }}
                                         </div>
                                     </div>
                                 </div>
                                 <span class="badge rounded-pill px-2.5 py-1.5 flex-shrink-0"
-                                      style="font-size: 0.75rem; font-weight: 800;
-                                      @if ($sub['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
-                                      @elseif ($sub['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
-                                      @elseif ($sub['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa;
-                                      @else background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+                                      style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em;
+                                      @if ($sub['status_type'] === 'present_in') background: #dcfce7; color: #15803d; border: 1px solid #86efac;
+                                      @elseif ($sub['status_type'] === 'present_out') background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;
+                                      @elseif ($sub['status_type'] === 'leave') background: #ffedd5; color: #c2410c; border: 1px solid #fdba74;
+                                      @else background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;
                                       @endif">
-                                    <i class="ti {{ $sub['status_icon'] }} me-1"></i>{{ $sub['status_label'] }}
+                                    <i class="ti {{ $sub['status_icon'] }} me-1" style="font-size: 0.75rem;"></i>{{ $sub['status_label'] }}
                                 </span>
                             </div>
                         </div>
@@ -1221,47 +2901,48 @@ setInterval(function () {
                         {{-- Card Body --}}
                         <div class="card-body p-3 d-flex flex-column justify-content-between">
                             {{-- Mini Attendance Stats Row --}}
-                            <div class="row g-2 text-center mb-3">
+                            <div class="row g-2 text-center mb-2.5">
                                 <div class="col-4">
-                                    <div class="p-2 rounded-3" style="background: #eff6ff; border: 1px solid #dbeafe;">
-                                        <div class="fw-bolder text-primary" style="font-size: 1.2rem; line-height: 1.1;">{{ $sub['month_present'] }}</div>
-                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Days MTD</div>
+                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); border: 1.5px solid #e0e7ff; box-shadow: 0 1px 3px rgba(99,102,241,0.04);">
+                                        <div class="fw-bolder" style="color: #4338ca; font-size: 1.25rem; line-height: 1.1; letter-spacing: -0.03em;">{{ $sub['month_present'] }}</div>
+                                        <div style="font-size: 0.68rem; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">MTD</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
-                                    <div class="p-2 rounded-3" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
-                                        <div class="fw-bolder text-success text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sub['punch_in_time'] ?: '—' }}</div>
-                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">In Time</div>
+                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%); border: 1.5px solid #d1fae5; box-shadow: 0 1px 3px rgba(16,185,129,0.04);">
+                                        <div class="fw-bolder text-truncate" style="color: {{ $sub['punch_in_time'] ? '#047857' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                            {{ $sub['punch_in_time'] ?: '—' }}
+                                        </div>
+                                        <div style="font-size: 0.68rem; font-weight: 800; color: #059669; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">In Time</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
-                                    <div class="p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                        <div class="fw-bolder text-secondary text-truncate" style="font-size: 0.88rem; line-height: 1.4;">{{ $sub['punch_out_time'] ?: '—' }}</div>
-                                        <div class="text-muted" style="font-size: 0.72rem; font-weight: 700; margin-top: 3px;">Out Time</div>
+                                    <div class="p-2 rounded-3 text-center" style="background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%); border: 1.5px solid #fee2e2; box-shadow: 0 1px 3px rgba(239,68,68,0.04);">
+                                        <div class="fw-bolder text-truncate" style="color: {{ $sub['punch_out_time'] ? '#b91c1c' : '#94a3b8' }}; font-size: 0.85rem; line-height: 1.45; font-weight: 850;">
+                                            {{ $sub['punch_out_time'] ?: '—' }}
+                                        </div>
+                                        <div style="font-size: 0.68rem; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.03em;">Out Time</div>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Leave Balance Section --}}
-                            @if (!empty($sub['leave_balances']) && count($sub['leave_balances']) > 0)
-                                <div class="border-top pt-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-1.5">
-                                        <span class="text-muted text-uppercase" style="font-size: 0.7rem; font-weight: 800; letter-spacing: .03em;">Leave Balance</span>
-                                        <a href="{{ route('employees.show', $sub['id']) }}" class="text-primary text-decoration-none" style="font-size: 0.75rem; font-weight: 750;">
-                                            Profile <i class="ti ti-chevron-right"></i>
-                                        </a>
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2">
+                            <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-1.5" style="border-color: #f1f5f9 !important;">
+                                @if (!empty($sub['leave_balances']) && count($sub['leave_balances']) > 0)
+                                    <div class="d-flex flex-wrap align-items-center gap-1.5 flex-grow-1 min-w-0">
                                         @foreach ($sub['leave_balances'] as $lb)
-                                            <span class="badge px-2.5 py-1.5 rounded-2"
-                                                  style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; font-size: 0.76rem; font-weight: 700;"
-                                                  title="{{ $lb['name'] }}: {{ $lb['balance'] }} days available">
-                                                {{ $lb['code'] }}: <strong style="color: #0f172a; font-weight: 850;">{{ number_format($lb['balance'], 1) }}</strong>
+                                            @php $pal = $lb['palette'] ?? ['bg' => 'rgba(115, 103, 240, 0.1)', 'border' => '#7367f0', 'text' => '#7367f0']; @endphp
+                                            <span class="badge px-2.5 py-1 rounded-pill"
+                                                  style="background: {{ $pal['bg'] }}; color: {{ $pal['text'] }}; border: 1px solid {{ $pal['border'] }}40; font-size: 0.72rem; font-weight: 750;"
+                                                  title="{{ $lb['name'] }}: {{ $lb['balance'] }} available">
+                                                {{ $lb['code'] }}: <strong style="font-weight: 900;">{{ number_format($lb['balance'], 1) }}</strong>
                                             </span>
                                         @endforeach
                                     </div>
-                                </div>
-                            @endif
+                                @else
+                                    <span class="text-muted" style="font-size: 0.72rem;">No leave data</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
