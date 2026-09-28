@@ -61,7 +61,7 @@ class Attendance extends Model
     {
         $img = $this->imageFile;
         if (!$img) {
-            return null;
+            return '';
         }
         if (filter_var($img, FILTER_VALIDATE_URL)) {
             return $img;

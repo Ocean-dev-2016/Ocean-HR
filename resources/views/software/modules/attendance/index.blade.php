@@ -262,6 +262,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Punch Image Preview Modal -->
+    <div class="modal fade" id="punchImageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fa-solid fa-camera me-2 text-primary"></i> Punch Image Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-3">
+                    <img id="modalPunchImage" src="" class="img-fluid rounded shadow" style="max-height: 450px;" alt="Punch Image" />
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <a id="downloadPunchImg" href="#" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Original</a>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('page_leavel_script')
@@ -602,6 +621,17 @@
                         $btn.html(originalHtml);
                     }
                 });
+            });
+
+            // Punch Image Preview Modal Event
+            $(document).on('click', '.view-punch-image-btn', function(e) {
+                var imgUrl = $(this).attr('data-img-url') || $(this).attr('href');
+                if (imgUrl && imgUrl !== '#') {
+                    e.preventDefault();
+                    $('#modalPunchImage').attr('src', imgUrl);
+                    $('#downloadPunchImg').attr('href', imgUrl);
+                    $('#punchImageModal').modal('show');
+                }
             });
         }
 

@@ -55,7 +55,7 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
 
-        $authUser = Auth::guard('employees')->user() ?? Auth::guard('admin_software')->user();
+        $authUser = Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
         if ($authUser) {
             $this->authenticateLoginUserDetails = $authUser;
         }
@@ -93,6 +93,7 @@ class AttendanceController extends Controller
                 // (object)['data' => "create_date", 'name' => 'create_date', 'td_label' => 'Create Date', 'className' => 'text-start'],
                 // (object)['data' => "punch_in_time", 'name' => 'punch_in_time', 'td_label' => 'Punch In/Out Time', 'className' => 'text-start'],
                 (object) ['data' => "show_punch", 'name' => 'punch_in_time', 'td_label' => 'Show Punch In/Out', 'className' => 'text-start', 'orderable' => false, 'searchable' => false],
+                (object) ['data' => "punch_image", 'name' => 'imageFile', 'td_label' => 'Punch Image', 'className' => 'text-center', 'orderable' => false, 'searchable' => false],
                 // (object) ['data' => "records_source", 'name' => 'records_source', 'td_label' => 'Source', 'className' => 'text-start'],
                 (object) ['data' => "entry_by", 'name' => 'created_by', 'td_label' => 'Entry By', 'className' => 'text-start'],
                 (object) ['data' => "action", 'name' => 'action', 'td_label' => 'Action', 'orderable' => false, 'searchable' => false, 'className' => 'w-10 text-start'],
@@ -374,25 +375,31 @@ class AttendanceController extends Controller
                         if ($row instanceof Employee) {
                             return '<span class="badge bg-danger">Absent</span>';
                         }
-                        $show_punch = '';
+                        $show_punch = '<div class="d-inline-flex align-items-center gap-2">';
                         if ($row->punch_in_time) {
-                            $show_punch .= \Carbon\Carbon::parse($row->punch_in_time)->format('h:i A');
+                            $show_punch .= '<span class="fw-semibold">' . \Carbon\Carbon::parse($row->punch_in_time)->format('h:i A') . '</span>';
                         }
                         if ($row->attendace_type) {
                             $type = strtolower(trim($row->attendace_type));
                             if ($type == 'in') {
-                                $show_punch .= ' <span class="badge bg-success">In</span>';
+                                $show_punch .= '<span class="badge bg-success">In</span>';
                             } elseif ($type == 'out') {
-                                $show_punch .= ' <span class="badge bg-warning">Out</span>';
+                                $show_punch .= '<span class="badge bg-warning text-dark">Out</span>';
                             } else {
-                                $show_punch .= ' <span class="badge bg-secondary">' . ucfirst($row->attendace_type) . '</span>';
+                                $show_punch .= '<span class="badge bg-secondary">' . ucfirst($row->attendace_type) . '</span>';
                             }
                         }
-                        if (!empty($row->imageFile)) {
-                            $imgUrl = $row->punch_image_url;
-                            $show_punch .= ' <a href="' . $imgUrl . '" target="_blank" class="ms-1" title="View Punch Selfie"><i class="fa-solid fa-camera text-primary"></i></a>';
-                        }
+                        $show_punch .= '</div>';
                         return $show_punch;
+                    })
+                    ->addColumn('punch_image', function ($row) {
+                        if ($row instanceof Employee || empty($row->imageFile)) {
+                            return '<span class="text-muted">-</span>';
+                        }
+                        $imgUrl = $row->punch_image_url;
+                        return '<a href="' . $imgUrl . '" target="_blank" class="view-punch-image-btn" data-img-url="' . $imgUrl . '" title="View Punch Image">' .
+                               '<img src="' . $imgUrl . '" class="rounded shadow-sm border border-primary" style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;" alt="Punch Image" onerror="this.onerror=null; this.parentElement.innerHTML=\'<span class=\\\''.'text-muted\\\'>-</span>\';" />' .
+                               '</a>';
                     })
                     ->addColumn('action', function ($row) use ($modules) {
                         if ($row instanceof Employee) {
@@ -424,7 +431,7 @@ class AttendanceController extends Controller
                     });
                 }
 
-                $returnData = $dataTable->rawColumns(['show_punch', 'status', 'action', 'records_source'])
+                $returnData = $dataTable->rawColumns(['show_punch', 'punch_image', 'status', 'action', 'records_source'])
                     ->make(true);
 
                 // Log Query

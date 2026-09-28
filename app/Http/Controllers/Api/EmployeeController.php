@@ -133,16 +133,16 @@ class EmployeeController extends Controller
             if ($request->hasFile('imageFile')) {
                 $file = $request->file('imageFile');
                 $filename = 'punch_' . $employee->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destinationPath = public_path('uploads/attendance_images');
+                $destinationPath = public_path('uploads/employee/attendance_details');
                 if (!file_exists($destinationPath)) {
                     mkdir($destinationPath, 0777, true);
                 }
                 $file->move($destinationPath, $filename);
-                $punchImagePath = 'uploads/attendance_images/' . $filename;
+                $punchImagePath = 'uploads/employee/attendance_details/' . $filename;
             } elseif ($request->filled('imageFile')) {
                 $imgData = $request->input('imageFile');
                 if (is_string($imgData) && (strpos($imgData, 'data:image') === 0 || base64_encode(base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $imgData), true)) === preg_replace('#^data:image/\w+;base64,#i', '', $imgData))) {
-                    $destinationPath = public_path('uploads/attendance_images');
+                    $destinationPath = public_path('uploads/employee/attendance_details');
                     if (!file_exists($destinationPath)) {
                         mkdir($destinationPath, 0777, true);
                     }
@@ -156,7 +156,7 @@ class EmployeeController extends Controller
                     }
                     $filename = 'punch_' . $employee->id . '_' . time() . '_' . uniqid() . '.' . $type;
                     file_put_contents($destinationPath . '/' . $filename, base64_decode($data));
-                    $punchImagePath = 'uploads/attendance_images/' . $filename;
+                    $punchImagePath = 'uploads/employee/attendance_details/' . $filename;
                 }
             }
 
