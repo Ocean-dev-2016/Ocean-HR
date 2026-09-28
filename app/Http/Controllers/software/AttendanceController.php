@@ -388,7 +388,7 @@ class AttendanceController extends Controller
                                 $show_punch .= ' <span class="badge bg-secondary">' . ucfirst($row->attendace_type) . '</span>';
                             }
                         }
-                        if (!empty($row->punch_image)) {
+                        if (!empty($row->imageFile)) {
                             $imgUrl = $row->punch_image_url;
                             $show_punch .= ' <a href="' . $imgUrl . '" target="_blank" class="ms-1" title="View Punch Selfie"><i class="fa-solid fa-camera text-primary"></i></a>';
                         }

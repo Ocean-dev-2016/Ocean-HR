@@ -35,7 +35,6 @@ app()->booted(function () {
     //         \Illuminate\Support\Facades\Log::error('Biometric sync scheduled task failed at ' . now());
     //     });
 
-    /** Auto Punch Out - Commented out: TeamAttendance model not found */
-    // $schedule->command('app:auto-punch-out')->everySecond();
-    // $schedule->command('app:auto-punch-out')->everyMinute()->withoutOverlapping();
+    /** Auto Punch Out */
+    $schedule->command('attendance:auto-punch-out')->everyMinute()->withoutOverlapping();
 });

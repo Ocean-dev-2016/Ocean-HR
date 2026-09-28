@@ -1521,6 +1521,9 @@ class DashboardController extends Controller
             $punchTime24 = $now->format('H:i:s');
             $punchTime12 = $now->format('h:i A');
 
+            // Auto punch-out pending punches
+            $this->autoPunchOutPending($employee, $attendanceDate);
+
             // Find last punch for today
             $lastPunch = Attendance::where('employee_id', $employee->id)
                 ->where('attendance_date', $attendanceDate)
@@ -1600,6 +1603,8 @@ class DashboardController extends Controller
             $punchTimeFormatted = '';
 
             if ($employee) {
+                $this->autoPunchOutPending($employee, $today);
+
                 $lastPunch = Attendance::where('employee_id', $employee->id)
                     ->where('attendance_date', $today)
                     ->orderBy('id', 'desc')
@@ -1618,6 +1623,57 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    private function autoPunchOutPending($employee, $currentDate)
+    {
+        $nowTime = Carbon::now()->format('H:i:s');
+
+        $lastRecord = Attendance::where('employee_id', $employee->id)
+            ->where('status', 'active')
+            ->orderBy('attendance_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastRecord && $lastRecord->attendace_type == 'in') {
+            $shift = Shift::find($lastRecord->shift_id);
+            if (!$shift) {
+                $shift = Shift::where('company_id', $employee->company_id)->first();
+            }
+
+            $punchOutTime = (!empty($shift?->auto_punch_out) && $shift?->auto_punch_out !== '00:00:00')
+                ? $shift->auto_punch_out
+                : (!empty($shift?->punch_out) ? $shift->punch_out : null);
+
+            if (empty($punchOutTime) || $punchOutTime === '00:00:00') {
+                return false;
+            }
+
+            if ($lastRecord->attendance_date < $currentDate || ($lastRecord->attendance_date === $currentDate && $nowTime >= $punchOutTime)) {
+                $hasOutPunch = Attendance::where('employee_id', $employee->id)
+                    ->where('attendance_date', $lastRecord->attendance_date)
+                    ->where('attendace_type', 'out')
+                    ->exists();
+
+                if (!$hasOutPunch) {
+                    Attendance::create([
+                        'company_id' => $employee->company_id,
+                        'employee_id' => $employee->id,
+                        'shift_id' => $shift?->id ?? $lastRecord->shift_id,
+                        'attendance_date' => $lastRecord->attendance_date,
+                        'create_date' => $lastRecord->attendance_date . ' ' . $punchOutTime,
+                        'punch_in_time' => $punchOutTime,
+                        'attendace_type' => 'out',
+                        'remark' => 'System Auto Punch-Out',
+                        'status' => 'active',
+                        'records_source' => 'system',
+                        'created_by' => $employee->id,
+                    ]);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 

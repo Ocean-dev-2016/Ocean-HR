@@ -1436,7 +1436,7 @@ setInterval(function () {
                                             </span>
                                         </div>
                                         <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
-                                            {{ $sSup['code'] }} · <span class="text-dark">{{ $sSup['designation'] ?: 'Supervisor' }}</span> ({{ $sSup['department'] }})
+                                            {{ $sSup['code'] }} · <span class="text-dark">{{ $sSup['designation'] ?: 'Supervisor' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1971,7 +1971,7 @@ setInterval(function () {
                                             </span>
                                         </div>
                                         <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
-                                            {{ $deptHead['code'] }} · <span class="text-dark">{{ $deptHead['designation'] ?: 'Department Head' }}</span> ({{ $deptHead['department'] }})
+                                            {{ $deptHead['code'] }} · <span class="text-dark">{{ $deptHead['designation'] ?: 'Department Head' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -2315,7 +2315,7 @@ setInterval(function () {
                                     </span>
                                 </div>
                                 <div class="text-primary fw-bold" style="font-size: 0.92rem; margin-top: 2px;">
-                                    {{ $sup['code'] }} · <span class="text-dark">{{ $sup['designation'] ?: 'Supervisor' }}</span> ({{ $sup['department'] }})
+                                    {{ $sup['code'] }} · <span class="text-dark">{{ $sup['designation'] ?: 'Supervisor' }}</span>
                                 </div>
                             </div>
                         </div>

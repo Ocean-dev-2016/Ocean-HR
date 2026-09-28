@@ -257,17 +257,12 @@
                 }
             </style>
 
-            {{-- Logged-in User Name & Designation Badge (Single Row) --}}
+            {{-- Logged-in User Name Badge --}}
             <li class="nav-item me-3 d-none d-lg-flex align-items-center">
                 <div class="user-identity-badge d-flex align-items-center">
-                    <span class="user-identity-name fw-bold me-2" title="{{ $userName }}" style="font-size: 0.94rem;">
+                    <span class="user-identity-name fw-bold" title="{{ $userName }}" style="font-size: 0.94rem;">
                         {{ $userName }}
                     </span>
-                    @if (!empty($loginDesignation))
-                        <span class="user-identity-desig fw-bold" title="Designation - {{ $loginDesignation }}" style="font-size: 0.88rem;">
-                            Designation - {{ $loginDesignation }}
-                        </span>
-                    @endif
                 </div>
             </li>
 

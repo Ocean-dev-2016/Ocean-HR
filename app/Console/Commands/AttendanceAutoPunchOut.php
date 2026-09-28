@@ -22,67 +22,78 @@ class AttendanceAutoPunchOut extends Command
      *
      * @var string
      */
-    protected $description = 'Automatically punch out employees who forgot to punch out yesterday.';
+    protected $description = 'Automatically punch out employees based on shift auto punch out time.';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info("Auto punch-out is disabled per user request.");
-        return Command::SUCCESS;
-
         try {
-            $yesterday = Carbon::yesterday()->format('Y-m-d');
+            $today = Carbon::today()->format('Y-m-d');
+            $nowTime = Carbon::now()->format('H:i:s');
 
-            // Find all "In" punches from yesterday that have no corresponding "Out" punch for the same day
-            // Actually, per Attendance model, we should find "in" records where there's no "out" record for that employee on that same date.
-
-            $pendingInPunches = Attendance::where('attendance_date', $yesterday)
-                ->where('attendace_type', 'in')
-                ->whereNotIn('employee_id', function ($query) use ($yesterday) {
-                    $query->select('employee_id')
-                        ->from('attendances')
-                        ->where('attendance_date', $yesterday)
-                        ->where('attendace_type', 'out');
+            // Find all "in" punches that do NOT have a corresponding "out" punch for that employee on that attendance_date
+            $pendingInPunches = Attendance::where('attendace_type', 'in')
+                ->where('attendance_date', '<=', $today)
+                ->whereNotExists(function ($query) {
+                    $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('attendances as out_att')
+                        ->whereColumn('out_att.employee_id', 'attendances.employee_id')
+                        ->whereColumn('out_att.attendance_date', 'attendances.attendance_date')
+                        ->where('out_att.attendace_type', 'out');
                 })
                 ->get();
 
-            Log::info("AttendanceAutoPunchOut: Found " . $pendingInPunches->count() . " pending punch-outs for " . $yesterday);
+            Log::info("AttendanceAutoPunchOut: Found " . $pendingInPunches->count() . " potential pending punch-outs.");
+
+            $autoPunchCount = 0;
 
             foreach ($pendingInPunches as $record) {
                 $shift = Shift::find($record->shift_id);
-                
-                // Only auto-punch out if the shift has an explicit auto_punch_out time set
-                if (!$shift || empty($shift->auto_punch_out) || $shift->auto_punch_out === '00:00:00') {
-                    Log::info("AttendanceAutoPunchOut: Skipped Employee #" . $record->employee_id . " - No auto_punch_out time set in shift.");
+                if (!$shift) {
+                    $shift = Shift::where('company_id', $record->company_id)->first();
+                }
+
+                $punchOutTime = (!empty($shift?->auto_punch_out) && $shift?->auto_punch_out !== '00:00:00')
+                    ? $shift->auto_punch_out
+                    : (!empty($shift?->punch_out) ? $shift->punch_out : null);
+
+                if (empty($punchOutTime) || $punchOutTime === '00:00:00') {
+                    Log::info("AttendanceAutoPunchOut: Skipped Employee #" . $record->employee_id . " for date " . $record->attendance_date . " - No auto_punch_out/punch_out set in shift.");
                     continue;
                 }
 
-                $punchOutTime = $shift->auto_punch_out;
+                // If it's today's record, only auto-punch out if current time is past punchOutTime
+                if ($record->attendance_date === $today && $nowTime < $punchOutTime) {
+                    continue;
+                }
 
                 Attendance::create([
                     'company_id' => $record->company_id,
                     'employee_id' => $record->employee_id,
-                    'shift_id' => $record->shift_id,
-                    'attendance_date' => $yesterday,
-                    'create_date' => $yesterday . ' ' . $punchOutTime,
+                    'shift_id' => $shift?->id ?? $record->shift_id,
+                    'attendance_date' => $record->attendance_date,
+                    'create_date' => $record->attendance_date . ' ' . $punchOutTime,
                     'punch_in_time' => $punchOutTime,
                     'attendace_type' => 'out',
-                    'remark' => 'System Auto Punch-Out (Day End)',
+                    'remark' => 'System Auto Punch-Out',
                     'status' => 'active',
                     'records_source' => 'system',
                     'created_by' => $record->employee_id,
                 ]);
 
-                Log::info("AttendanceAutoPunchOut: Employee #" . $record->employee_id . " auto-punched out for " . $yesterday . " at " . $punchOutTime);
+                $autoPunchCount++;
+                Log::info("AttendanceAutoPunchOut: Employee #" . $record->employee_id . " auto-punched out for " . $record->attendance_date . " at " . $punchOutTime);
             }
 
-            $this->info("Auto punch-out completed for " . $yesterday);
+            $this->info("Auto punch-out completed. Total records processed: " . $autoPunchCount);
+            return Command::SUCCESS;
 
         } catch (\Exception $e) {
             Log::error('AttendanceAutoPunchOut command failed: ' . $e->getMessage());
             $this->error('AttendanceAutoPunchOut command failed: ' . $e->getMessage());
+            return Command::FAILURE;
         }
     }
 }

@@ -46,8 +46,8 @@ class Kernel extends ConsoleKernel
                 Log::error('Biometric sync scheduled task failed at ' . now());
             });
         
-        // Auto-punch out employees who forgot to punch out yesterday (Disabled per user request)
-        // $schedule->command('attendance:auto-punch-out')->dailyAt('00:00');
+        // Auto-punch out employees based on shift auto punch out time
+        $schedule->command('attendance:auto-punch-out')->everyMinute()->withoutOverlapping();
 
         // $schedule->command('import:india-mart-inquiry')->everyMinute()->withoutOverlapping()->evenInMaintenanceMode();
     }

@@ -57,8 +57,7 @@ class EmployeeController extends Controller
                 'attendance_date' => 'sometimes|date_format:Y-m-d',
                 'punch_in_time' => 'sometimes|date_format:h:i A',
                 'punch_out_time' => 'sometimes|date_format:h:i A',
-                'image' => 'sometimes',
-                'punch_image' => 'sometimes',
+                'imageFile' => 'sometimes',
             ]);
 
             if ($validator->fails()) {
@@ -66,7 +65,7 @@ class EmployeeController extends Controller
             }
 
             // 2. Strict parameter check (no extra keys allowed)
-            $allowedKeys = ['attendace_type', 'attendance_date', 'punch_in_time', 'punch_out_time', 'remark', 'latitude', 'longitude', 'image', 'punch_image'];
+            $allowedKeys = ['attendace_type', 'attendance_date', 'punch_in_time', 'punch_out_time', 'remark', 'latitude', 'longitude', 'imageFile'];
             $requestKeys = array_keys($request->all());
             $extraKeys = array_diff($requestKeys, $allowedKeys);
             if (!empty($extraKeys)) {
@@ -131,8 +130,8 @@ class EmployeeController extends Controller
 
             // Handle punch image upload or base64
             $punchImagePath = null;
-            if ($request->hasFile('image') || $request->hasFile('punch_image')) {
-                $file = $request->file('image') ?? $request->file('punch_image');
+            if ($request->hasFile('imageFile')) {
+                $file = $request->file('imageFile');
                 $filename = 'punch_' . $employee->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                 $destinationPath = public_path('uploads/attendance_images');
                 if (!file_exists($destinationPath)) {
@@ -140,8 +139,8 @@ class EmployeeController extends Controller
                 }
                 $file->move($destinationPath, $filename);
                 $punchImagePath = 'uploads/attendance_images/' . $filename;
-            } elseif ($request->filled('image') || $request->filled('punch_image')) {
-                $imgData = $request->input('image') ?? $request->input('punch_image');
+            } elseif ($request->filled('imageFile')) {
+                $imgData = $request->input('imageFile');
                 if (is_string($imgData) && (strpos($imgData, 'data:image') === 0 || base64_encode(base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $imgData), true)) === preg_replace('#^data:image/\w+;base64,#i', '', $imgData))) {
                     $destinationPath = public_path('uploads/attendance_images');
                     if (!file_exists($destinationPath)) {
@@ -169,7 +168,7 @@ class EmployeeController extends Controller
                 'attendance_date' => $attendanceDate,
                 'create_date' => $now->toDateTimeString(),
                 'punch_in_time' => $punchInTime24, // Store in DB in 24-hour format
-                'punch_image' => $punchImagePath,
+                'imageFile' => $punchImagePath,
                 'attendace_type' => $nextAction,
                 'remark' => $request->remark ?? 'Punched via API',
                 'status' => 'active',
@@ -191,7 +190,7 @@ class EmployeeController extends Controller
                 'attendace_type' => $attendance->attendace_type,
                 'punch_in_time' => null,
                 'punch_out_time' => null,
-                'punch_image' => $attendance->punch_image_url,
+                'imageFile' => $attendance->punch_image_url,
                 'remark' => $attendance->remark,
             ];
 
@@ -241,7 +240,7 @@ class EmployeeController extends Controller
             $history->getCollection()->transform(function ($item) {
                 $punchTime = Carbon::parse($item->punch_in_time)->format('h:i A');
                 $item->formatted_attendance_date = Carbon::parse($item->attendance_date)->format('d-m-Y');
-                $item->punch_image = $item->punch_image_url;
+                $item->imageFile = $item->punch_image_url;
 
                 if ($item->attendace_type == 'in') {
                     $item->punch_in_time = $punchTime;
@@ -290,7 +289,7 @@ class EmployeeController extends Controller
             if ($lastPunch) {
                 $punchTime = Carbon::parse($lastPunch->punch_in_time)->format('h:i A');
                 $lastPunch->formatted_attendance_date = Carbon::parse($lastPunch->attendance_date)->format('d-m-Y');
-                $lastPunch->punch_image = $lastPunch->punch_image_url;
+                $lastPunch->imageFile = $lastPunch->punch_image_url;
 
                 if ($lastPunch->attendace_type == 'in') {
                     $lastPunch->punch_in_time = $punchTime;
@@ -322,38 +321,51 @@ class EmployeeController extends Controller
      */
     private function autoPunchOutPreviousDays($employee, $currentDate)
     {
-        // Disabled per user request (Auto punch out should not happen)
-        return false;
+        $nowTime = Carbon::now()->format('H:i:s');
 
         $lastRecord = Attendance::where('employee_id', $employee->id)
+            ->where('status', 'active')
             ->orderBy('attendance_date', 'desc')
-            ->orderBy('punch_in_time', 'desc')
+            ->orderBy('id', 'desc')
             ->first();
 
-        if ($lastRecord && $lastRecord->attendace_type == 'in' && $lastRecord->attendance_date < $currentDate) {
+        if ($lastRecord && $lastRecord->attendace_type == 'in') {
             $shift = Shift::find($lastRecord->shift_id);
-            
-            // Only auto-punch out if the shift has an explicit auto_punch_out time set
-            if (!$shift || empty($shift->auto_punch_out) || $shift->auto_punch_out === '00:00:00') {
+            if (!$shift) {
+                $shift = Shift::where('company_id', $employee->company_id)->first();
+            }
+
+            $punchOutTime = (!empty($shift?->auto_punch_out) && $shift?->auto_punch_out !== '00:00:00')
+                ? $shift->auto_punch_out
+                : (!empty($shift?->punch_out) ? $shift->punch_out : null);
+
+            if (empty($punchOutTime) || $punchOutTime === '00:00:00') {
                 return false;
             }
 
-            $punchOutTime = $shift->auto_punch_out;
+            if ($lastRecord->attendance_date < $currentDate || ($lastRecord->attendance_date === $currentDate && $nowTime >= $punchOutTime)) {
+                $hasOutPunch = Attendance::where('employee_id', $employee->id)
+                    ->where('attendance_date', $lastRecord->attendance_date)
+                    ->where('attendace_type', 'out')
+                    ->exists();
 
-            Attendance::create([
-                'company_id' => $employee->company_id,
-                'employee_id' => $employee->id,
-                'shift_id' => $lastRecord->shift_id,
-                'attendance_date' => $lastRecord->attendance_date,
-                'create_date' => $lastRecord->attendance_date . ' ' . $punchOutTime,
-                'punch_in_time' => $punchOutTime,
-                'attendace_type' => 'out',
-                'remark' => 'Auto punch-out (Day change cleanup)',
-                'status' => 'active',
-                'records_source' => 'api',
-                'created_by' => $employee->id,
-            ]);
-            return true;
+                if (!$hasOutPunch) {
+                    Attendance::create([
+                        'company_id' => $employee->company_id,
+                        'employee_id' => $employee->id,
+                        'shift_id' => $shift?->id ?? $lastRecord->shift_id,
+                        'attendance_date' => $lastRecord->attendance_date,
+                        'create_date' => $lastRecord->attendance_date . ' ' . $punchOutTime,
+                        'punch_in_time' => $punchOutTime,
+                        'attendace_type' => 'out',
+                        'remark' => 'System Auto Punch-Out',
+                        'status' => 'active',
+                        'records_source' => 'system',
+                        'created_by' => $employee->id,
+                    ]);
+                    return true;
+                }
+            }
         }
         return false;
     }
