@@ -94,10 +94,10 @@
                     </div>
                     <div class="col-md-4 col-sm-12 mb-3">
                         <div class="form-group">
-                            <label class="form-label">Attachment (PDF, Word, Image) <small class="text-muted">(Max:
+                            <label class="form-label">Attachment (PDF, Word, Image) <span class="text-danger">*</span> <small class="text-muted">(Max:
                                     10MB)</small></label>
                             <input type="file" name="image" class="form-control @error('image') is-invalid @enderror"
-                                accept=".jpeg,.jpg,.png,.pdf,.doc,.docx">
+                                accept=".jpeg,.jpg,.png,.pdf,.doc,.docx" {{ (!isset($edit) || empty($edit->image)) ? 'required' : '' }}>
                                 @if (!empty($edit->image))
                                     @php $filePath = public_path($edit->image); @endphp
                                     @if (file_exists($filePath))

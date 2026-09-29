@@ -13,6 +13,9 @@ use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Exports\ProcessExport;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Helpers\Helper;
 
 class ProcessController extends Controller
 {
@@ -487,5 +490,93 @@ class ProcessController extends Controller
             }
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
+    }
+
+    public function print(Request $request)
+    {
+        $modules = $this->modules;
+
+        $authUser = $this->authenticateLoginUserDetails;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id ?? null;
+        $company_id = $modules['company_id'];
+        $loginUserId = $authUser?->id ?? null;
+
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id'])
+                    ? true
+                    : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+
+        if (empty($modules['print_permission']) && empty($modules['view_permission'])) {
+            if ($request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $query = Process::select('*')
+                ->where(function ($q) use ($modules, $loginUserId) {
+                    if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
+                        $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
+                        $q->where('company_id', $companyId);
+
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $q->where('created_by', $loginUserId);
+                        }
+                    }
+                })
+                ->with(['company', 'department', 'subdepartment'])
+                ->orderBy('id', 'DESC');
+
+            if ($request->has('filter_company') && $request->filter_company) {
+                $query->where('company_id', $request->filter_company);
+            }
+            if ($request->has('filter_department') && $request->filter_department) {
+                $query->where('department_id', $request->filter_department);
+            }
+            if ($request->has('filter_subdepartment') && $request->filter_subdepartment) {
+                $query->where('sub_department_id', $request->filter_subdepartment);
+            }
+            if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+            if ($request->has('search') && $request->search) {
+                $query->where('name', 'like', '%' . $request->search . '%');
+            }
+
+            $process = $query->get();
+
+            return view($modules['folder_path'] . '.print', compact('process', 'company_id', 'modules'));
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+
+        if (!$modules['excel_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        return Excel::download(new ProcessExport($request->all(), $this->authenticateLoginUserDetails, $modules), 'Process-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
     }
 }

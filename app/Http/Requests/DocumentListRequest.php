@@ -23,9 +23,11 @@ class DocumentListRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(Request $request): array
+    public function rules(): array
     {
-        $id = $request->route('document_list'); // 'document_list' should match the route parameter name
+        $id = $this->route('document_list') ?? $this->route('id') ?? $this->edit_id;
+        $document = $id ? DocumentList::find($id) : null;
+        $hasExistingImage = $document && !empty($document->image);
 
         return [
             'company_id' => ['required', Rule::exists((new Company())->getTable(), 'id')],
@@ -35,14 +37,16 @@ class DocumentListRequest extends FormRequest
                 'string',
                 'max:255',
                 Rule::unique((new DocumentList())->getTable())
-                    ->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->where('document_type_id', $request->document_type_id)
+                    ->where(function ($query) {
+                        return $query->where('company_id', $this->company_id)
+                            ->where('document_type_id', $this->document_type_id)
                             ->whereNull('deleted_at');
                     })->ignore($id),
             ],
             'status' => ['required', 'in:active,inactive'],
-            'image' => 'nullable|file|mimes:jpeg,png,jpg,pdf,doc,docx,gif|max:10240',
+            'image' => $hasExistingImage
+                ? 'nullable|file|mimes:jpeg,png,jpg,pdf,doc,docx,gif|max:10240'
+                : 'required|file|mimes:jpeg,png,jpg,pdf,doc,docx,gif|max:10240',
         ];
     }
 
@@ -58,6 +62,7 @@ class DocumentListRequest extends FormRequest
             'name.unique' => 'This document name already exists for the selected company and document type.',
             'status.required' => 'The status is required.',
             'status.in' => 'The status must be either active or inactive.',
+            'image.required' => 'The attachment is required.',
         ];
     }
 }

@@ -74,6 +74,7 @@ class DocumentListController extends Controller
                 (object)['data' => "company.company_name", 'name' => 'company_id', 'td_label' => 'Company Name', 'className' =>  ''],
                 (object)['data' => "document_type.name", 'name' => 'name', 'td_label' => 'Document Type Name', 'className' =>  ''],
                 (object)['data' => "name", 'name' => 'name', 'td_label' => 'Name', 'className' =>  ''],
+                (object)['data' => "image", 'name' => 'image', 'td_label' => 'Attachment', 'orderable' => false, 'searchable' => false, 'className' =>  'text-center'],
                 (object)['data' => "status", 'name' => 'status', 'td_label' => 'Status', 'className' =>  'w-5 text-start'],
                 (object)['data' => "action", 'name' => 'action', 'td_label' => 'Action', 'orderable' => false, 'searchable' => false, 'className' =>  'w-10 text-start'],
             ];
@@ -131,6 +132,17 @@ class DocumentListController extends Controller
                         }
                     })
 
+                    ->editColumn('image', function ($row) {
+                        if (!empty($row->image)) {
+                            $url = asset($row->image);
+                            $ext = strtolower(pathinfo($row->image, PATHINFO_EXTENSION));
+                            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                                return '<a href="' . $url . '" target="_blank"><img src="' . $url . '" alt="Attachment" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border: 1px solid #e0e0e0;" /></a>';
+                            }
+                            return '<a href="' . $url . '" target="_blank" class="btn btn-sm btn-label-primary waves-effect"><i class="ti ti-download me-1"></i> File</a>';
+                        }
+                        return '-';
+                    })
 
                     ->editColumn('status', function ($row) use ($modules) {
                         $btn = '';
@@ -170,7 +182,7 @@ class DocumentListController extends Controller
                         }
                         return $btn;
                     })
-                    ->rawColumns(['status', 'action'])
+                    ->rawColumns(['status', 'action', 'image'])
                     ->make(true);
                 return $returnData;
             }
@@ -217,7 +229,7 @@ class DocumentListController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(DocumentListRequest $request)
     {
         $modules = $this->modules;
         $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
@@ -238,23 +250,7 @@ class DocumentListController extends Controller
 
         View::share('modules', $modules);
         // Validate input
-        $validated = $request->validate([
-            'company_id' => ['required', 'exists:companies,id'],
-            'document_type_id' => ['required', 'exists:document_types,id'],
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique((new DocumentList())->getTable())
-                    ->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->where('document_type_id', $request->document_type_id)
-                            ->whereNull('deleted_at');
-                    }),
-            ],
-            'status' => ['required', 'in:active,inactive'],
-            'image' => 'nullable|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
-        ]);
+        $validated = $request->validated();
 
         // Image handling
         $imagePath = null;
@@ -292,15 +288,7 @@ class DocumentListController extends Controller
             }
         }
 
-        // Save to database
-        // $document = new DocumentList();
-        // $document->company_id = $validated['company_id'];
-        // $document->document_type_id = $validated['document_type_id'];
-        // $document->name = $validated['name'];
-        // $document->status = $validated['status'];
-        // $document->image = $imagePath;
-        // $document->save();
-
+        $validated['image'] = $validated['image'] ?? null;
         $validated['created_by'] = $loginUserId;
         DocumentList::create($validated);
 
