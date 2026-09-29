@@ -487,22 +487,17 @@
                                 </div>
                             </div>
 
-                            <!-- Office Location & Google Maps Geofencing -->
+                            <!-- Office Location (Google Maps) -->
                             <div class="comp-card">
                                 <div class="comp-card-header d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h5 class="comp-card-title"><i class="ti ti-map-pin-filled text-danger"></i> Office Location & Geofencing Settings</h5>
-                                        <p class="comp-card-subtitle">Set company office coordinates and attendance radius on Google Maps</p>
-                                    </div>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" id="is_geofencing_enabled" name="is_geofencing_enabled" value="1"
-                                            {{ old('is_geofencing_enabled', isset($edit) ? $edit->is_geofencing_enabled : 1) ? 'checked' : '' }}>
-                                        <label class="form-check-label fw-bold text-dark" for="is_geofencing_enabled">Enable Geofence Attendance</label>
+                                        <h5 class="comp-card-title"><i class="ti ti-map-pin-filled text-danger"></i> Office Location Settings</h5>
+                                        <p class="comp-card-subtitle">Set company office coordinates on Google Maps</p>
                                     </div>
                                 </div>
                                 <div class="comp-card-body">
                                     <div class="row g-3">
-                                        <div class="col-md-4 col-sm-12">
+                                        <div class="col-md-6 col-sm-12">
                                             <label class="comp-label" for="latitude"><i class="ti ti-current-location text-primary"></i> Latitude <span class="text-danger">*</span></label>
                                             <input type="text" id="latitude" name="latitude" class="form-control comp-input @error('latitude') is-invalid @enderror"
                                                 value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" readonly />
@@ -511,24 +506,11 @@
                                             @enderror
                                         </div>
 
-                                        <div class="col-md-4 col-sm-12">
+                                        <div class="col-md-6 col-sm-12">
                                             <label class="comp-label" for="longitude"><i class="ti ti-current-location text-primary"></i> Longitude <span class="text-danger">*</span></label>
                                             <input type="text" id="longitude" name="longitude" class="form-control comp-input @error('longitude') is-invalid @enderror"
                                                 value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" readonly />
                                             @error('longitude')
-                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                            @enderror
-                                        </div>
-
-                                        <div class="col-md-4 col-sm-12">
-                                            <label class="comp-label" for="radius"><i class="ti ti-radar-2 text-primary"></i> Geofence Radius (Meters) <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <input type="number" id="radius" name="radius" class="form-control comp-input @error('radius') is-invalid @enderror"
-                                                    value="{{ old('radius', $edit->radius ?? 100) }}" min="10" max="5000" placeholder="100" />
-                                                <span class="input-group-text bg-light text-muted">Meters</span>
-                                            </div>
-                                            <small class="text-muted">Allowed distance from office for mobile punch-in.</small>
-                                            @error('radius')
                                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                             @enderror
                                         </div>
@@ -550,7 +532,7 @@
 
                                             <div id="company_map"></div>
                                             <small class="text-muted d-block mt-2">
-                                                <i class="ti ti-info-circle me-1"></i> <strong>Tip:</strong> Click anywhere on the map or drag the marker to pin your exact company office location. The blue circle represents the allowed attendance punch radius.
+                                                <i class="ti ti-info-circle me-1"></i> <strong>Tip:</strong> Click anywhere on the map or drag the red marker to pin your exact company office location.
                                             </small>
                                         </div>
                                     </div>
@@ -1219,7 +1201,6 @@
         if ($('#company_map').length) {
             const defaultLat = parseFloat($('#latitude').val()) || 21.1702;
             const defaultLng = parseFloat($('#longitude').val()) || 72.8311;
-            let currentRadius = parseInt($('#radius').val()) || 100;
             const hasLocation = $('#latitude').val() && $('#longitude').val();
 
             const companyMap = L.map('company_map').setView([defaultLat, defaultLng], hasLocation ? 16 : 12);
@@ -1244,20 +1225,12 @@
                 icon: officeIcon
             }).addTo(companyMap);
 
-            let circle = L.circle([defaultLat, defaultLng], {
-                color: '#3b82f6',
-                fillColor: '#93c5fd',
-                fillOpacity: 0.35,
-                radius: currentRadius
-            }).addTo(companyMap);
-
             function updateCompanyLocation(lat, lng) {
                 $('#latitude').val(lat.toFixed(7));
                 $('#longitude').val(lng.toFixed(7));
 
                 marker.setLatLng([lat, lng]);
-                circle.setLatLng([lat, lng]);
-                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}<br>Radius: ${currentRadius}m`).openPopup();
+                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
             }
 
             if (hasLocation) {
@@ -1271,13 +1244,6 @@
 
             companyMap.on('click', function(e) {
                 updateCompanyLocation(e.latlng.lat, e.latlng.lng);
-            });
-
-            $('#radius').on('input change', function() {
-                currentRadius = parseInt($(this).val()) || 100;
-                circle.setRadius(currentRadius);
-                const pos = marker.getLatLng();
-                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${pos.lat.toFixed(6)}<br>Lng: ${pos.lng.toFixed(6)}<br>Radius: ${currentRadius}m`);
             });
 
             $('#btn_company_current_loc').on('click', function() {

@@ -255,7 +255,7 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="latitude">Latitude <span class="text-danger">*</span></label>
                                     <input type="text" id="latitude_edit" name="latitude" class="form-control @error('latitude') is-invalid @enderror"
                                         value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" readonly />
@@ -264,24 +264,11 @@
                                     @enderror
                                 </div>
 
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="longitude">Longitude <span class="text-danger">*</span></label>
                                     <input type="text" id="longitude_edit" name="longitude" class="form-control @error('longitude') is-invalid @enderror"
                                         value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" readonly />
                                     @error('longitude')
-                                        <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
-                                    <label class="form-label" for="radius">Geofence Radius (Meters) <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <input type="number" id="radius_edit" name="radius" class="form-control @error('radius') is-invalid @enderror"
-                                            value="{{ old('radius', $edit->radius ?? 100) }}" min="10" max="5000" placeholder="100" />
-                                        <span class="input-group-text">Meters</span>
-                                    </div>
-                                    <small class="text-muted">Allowed distance from office for mobile punch-in.</small>
-                                    @error('radius')
                                         <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                     @enderror
                                 </div>
@@ -1070,7 +1057,6 @@
         if ($('#company_map_edit').length) {
             const defaultLat = parseFloat($('#latitude_edit').val()) || 21.1702;
             const defaultLng = parseFloat($('#longitude_edit').val()) || 72.8311;
-            let currentRadius = parseInt($('#radius_edit').val()) || 100;
             const hasLocation = $('#latitude_edit').val() && $('#longitude_edit').val();
 
             const companyMapEdit = L.map('company_map_edit').setView([defaultLat, defaultLng], hasLocation ? 16 : 12);
@@ -1094,20 +1080,12 @@
                 icon: officeIcon
             }).addTo(companyMapEdit);
 
-            let circle = L.circle([defaultLat, defaultLng], {
-                color: '#3b82f6',
-                fillColor: '#93c5fd',
-                fillOpacity: 0.35,
-                radius: currentRadius
-            }).addTo(companyMapEdit);
-
             function updateLocationEdit(lat, lng) {
                 $('#latitude_edit').val(lat.toFixed(7));
                 $('#longitude_edit').val(lng.toFixed(7));
 
                 marker.setLatLng([lat, lng]);
-                circle.setLatLng([lat, lng]);
-                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}<br>Radius: ${currentRadius}m`).openPopup();
+                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
             }
 
             if (hasLocation) {
@@ -1121,13 +1099,6 @@
 
             companyMapEdit.on('click', function(e) {
                 updateLocationEdit(e.latlng.lat, e.latlng.lng);
-            });
-
-            $('#radius_edit').on('input change', function() {
-                currentRadius = parseInt($(this).val()) || 100;
-                circle.setRadius(currentRadius);
-                const pos = marker.getLatLng();
-                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${pos.lat.toFixed(6)}<br>Lng: ${pos.lng.toFixed(6)}<br>Radius: ${currentRadius}m`);
             });
 
             $('#btn_current_location_edit').on('click', function() {

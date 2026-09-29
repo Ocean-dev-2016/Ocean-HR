@@ -106,8 +106,6 @@ class CompanyRequest extends FormRequest
             'address' => ['nullable', 'string'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'radius' => ['nullable', 'numeric', 'min:10', 'max:5000'],
-            'is_geofencing_enabled' => ['nullable'],
             'host' => ['nullable', 'regex:/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
             'port' => 'nullable|numeric',
             'username' => ['nullable', 'regex:/^[a-zA-Z0-9]+\.[a-zA-Z0-9]+@[a-zA-Z0-9.-]+\.com$/'],

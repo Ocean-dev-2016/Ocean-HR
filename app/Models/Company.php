@@ -30,8 +30,6 @@ class Company extends Model
         'address',
         'latitude',
         'longitude',
-        'radius',
-        'is_geofencing_enabled',
         'country_id',
         'state_id',
         'city_id',
