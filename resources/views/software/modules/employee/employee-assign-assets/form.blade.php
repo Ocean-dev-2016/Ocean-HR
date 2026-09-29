@@ -113,8 +113,8 @@
 
                             <input type="text" id="date" name="date"
                                 class="form-control plan-form @error('date') is-invalid @enderror"
-                                  value="{{ isset($edit) && $edit?->date ? $edit->date : (request()->isMethod('post') ? old('date') : '') }}"
-                                placeholder="Date" />
+                                value="{{ isset($edit) && $edit?->date ? \Carbon\Carbon::parse($edit->date)->format('d-m-Y') : (old('date') ? old('date') : date('d-m-Y')) }}"
+                                placeholder="DD-MM-YYYY" />
                             @error('date')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                             @enderror
@@ -240,7 +240,7 @@
         flatpickr("#date", {
             defaultDate: null,
             maxDate: "today",
-            dateFormat: "Y-m-d"
+            dateFormat: "d-m-Y"
         });
     </script>
     <script>

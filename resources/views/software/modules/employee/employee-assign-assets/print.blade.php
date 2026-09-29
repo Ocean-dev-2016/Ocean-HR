@@ -3,7 +3,7 @@
 
     <head>
         <meta charset="UTF-8">
-        <title>Document List - Print</title>
+        <title>Employee Assign Assets - Print</title>
         <style>
             @media print {
                 @page {
@@ -60,7 +60,7 @@
             <thead>
                 <tr>
                     <th colspan="10" class="text-center">
-                        <h3>Document List = - List Printed on
+                        <h3>Employee Assign Assets - List Printed on
                             {{ now()->setTimezone('Asia/Kolkata')->format('d M Y h:i:s A') }}
                         </h3>
                     </th>
@@ -93,7 +93,7 @@
                                 </td>
 
                                 <td>{{ $item->assets->name ?? '-' }}</td>
-                                <td>{{ $item->date ? \Carbon\Carbon::parse($item->date)->format('d/m/Y') : '-' }}</td>
+                                <td>{{ $item->date ? \Carbon\Carbon::parse($item->date)->format('d-m-Y') : '-' }}</td>
                                 <td>{{ $item->reference_no ?? '-' }}</td>
                                 <td>{{ $item->descrption ?? '-' }}</td>
                                 <td>{{ ucfirst($item->status ?? '-') }}</td>

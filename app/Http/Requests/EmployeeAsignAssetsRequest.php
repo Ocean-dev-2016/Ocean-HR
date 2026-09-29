@@ -11,9 +11,26 @@ use Illuminate\Foundation\Http\FormRequest;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class EmployeeAsignAssetsRequest extends FormRequest
 {
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('date') && !empty($this->date)) {
+            try {
+                $this->merge([
+                    'date' => Carbon::parse(str_replace('/', '-', $this->date))->format('Y-m-d'),
+                ]);
+            } catch (\Exception $e) {
+                // Keep value if unparseable so validation fails normally
+            }
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

@@ -214,7 +214,7 @@ class EmployeeAssignAssetsController extends Controller
                     })
                     ->editColumn('date', function ($row) {
                         if ($row->date) {
-                            return \Carbon\Carbon::parse($row->date)->format('d/m/Y');
+                            return \Carbon\Carbon::parse($row->date)->format('d-m-Y');
                         }
                         return '-';
                     })

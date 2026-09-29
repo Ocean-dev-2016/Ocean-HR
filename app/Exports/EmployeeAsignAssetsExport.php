@@ -148,7 +148,7 @@ class EmployeeAsignAssetsExport implements FromCollection, WithHeadings, WithMap
             // optional($row->employee)->middle_name ?? '-',
             optional($row->employee)->employee_code . ' - ' . optional($row->employee)->full_name ?? '-',
             optional($row->assets)->name ?? '-',
-            $row->date ? \Carbon\Carbon::parse($row->date)->format('d/m/Y') : '-',
+            $row->date ? \Carbon\Carbon::parse($row->date)->format('d-m-Y') : '-',
             $row->reference_no ?? '-',
             $row->descrption ?? '-',
             ucfirst($row->status ?? '-')
