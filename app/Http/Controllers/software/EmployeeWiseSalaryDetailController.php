@@ -592,101 +592,6 @@ class EmployeeWiseSalaryDetailController extends Controller
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
     }
-    public function print(Request $request)
-    {
-        $modules = $this->modules;
-
-        // Authenticated user details
-        $authUser = $this->authenticateLoginUserDetails;
-        $modules['authLoginUserDetail'] = $authUser;
-        $modules['company_id'] = $authUser?->company_id ?? null;
-        $company_id = $modules['company_id'];
-        $loginUserId = $authUser?->id ?? null;
-
-        try {
-            // Permissions
-            $moduleName = $modules['module_name'];
-            $modules['viewPermission'] = Gate::check('hasPermission', ['view', $moduleName]);
-            $modules['addPermission'] = Gate::check('hasPermission', ['add', $moduleName]);
-            $modules['editPermission'] = Gate::check('hasPermission', ['update', $moduleName]);
-            $modules['deletePermission'] = Gate::check('hasPermission', ['delete', $moduleName]);
-            $modules['personalDataPermission'] = Gate::check('hasPermission', ['personal_data', $moduleName]);
-            $modules['allDataPermission'] = Gate::check('hasPermission', ['all_data', $moduleName]);
-
-            // Unauthorized check
-            if ($request->ajax()) {
-                if (!$modules['viewPermission']) {
-                    return $this->sendError('Unauthorized', [], [], 403);
-                }
-            } elseif (!$modules['viewPermission']) {
-                abort(403, 'Unauthorized');
-            }
-
-            $query = EmployeeWiseSalaryDetail::select('*')
-                ->when(Auth::guard('employees')->check() || !empty($modules['company_id']), function ($q) use ($modules, $loginUserId) {
-                    // If company_id exists in $modules, use that; otherwise use employee's company_id
-                    $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-
-                    $q->where((new EmployeeWiseSalaryDetail())->getTable() . '.company_id', $companyId);
-
-                    // Personal data permission rule
-                    if ($modules['personalDataPermission'] && !$modules['allDataPermission']) {
-                        $q->where((new EmployeeWiseSalaryDetail())->getTable() . '.created_by', $loginUserId);
-                    }
-                })
-                ->with(['company', 'employee'])
-                ->orderBy('id', 'DESC');
-
-
-            if ($request->filled('company')) {
-                $query->where((new EmployeeWiseSalaryDetail())->getTable() . '.company_id', $request->company);
-            }
-
-            // Employee filter
-            if ($request->filled('employee')) {
-                $query->where((new EmployeeWiseSalaryDetail())->getTable() . '.employee_id', $request->employee);
-            }
-
-            // Status filter
-            if ($request->filled('status') && $request->status !== 'all') {
-                $query->where((new EmployeeWiseSalaryDetail())->getTable() . '.status', $request->status);
-            }
-
-            // Asset name search
-            if ($request->filled('search')) {
-                $query->where('company_name', 'like', '%' . $request->search . '%');
-            }
-
-
-
-            $EmployeeWiseSalaryDetails = $query->get();
-
-            return view($modules['folder_path'] . '.print', compact('EmployeeWiseSalaryDetails', 'company_id', 'modules'));
-        } catch (\Exception $e) {
-            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
-        }
-    }
-    public function exportExcel(Request $request)
-    {
-        $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
-        if (count(config('constants.permissions'))) {
-            foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
-            }
-        }
-        if (!$modules['excel_permission']) {
-            if (isset($request) && $request->ajax()) {
-                return $this->sendError('Unauthorized', [], [], 403);
-            }
-            abort(403, 'Unauthorized');
-        }
-
-        return Excel::download(new EmployeeWiseSalaryDetailExport($request->all(), $this->authenticateLoginUserDetails, $modules), 'Employee Wise Salary Details-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
-    }
 
     private function prepareSalaryPayload(array $data, ?int $actorId, bool $isUpdate): array
     {
@@ -815,5 +720,121 @@ class EmployeeWiseSalaryDetailController extends Controller
         }
 
         return $data;
+    }
+
+    public function print(Request $request)
+    {
+        $modules = $this->modules;
+
+        // Authenticated user details
+        $authUser = $this->authenticateLoginUserDetails;
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id ?? null;
+        $company_id = $modules['company_id'];
+        $loginUserId = $authUser?->id ?? null;
+
+        try {
+            $moduleName = $modules['module_name'];
+            $modules['viewPermission'] = Gate::check('hasPermission', ['view', $moduleName]);
+            $modules['personalDataPermission'] = Gate::check('hasPermission', ['personal_data', $moduleName]);
+            $modules['allDataPermission'] = Gate::check('hasPermission', ['all_data', $moduleName]);
+
+            if ($request->ajax()) {
+                if (!$modules['viewPermission']) {
+                    return $this->sendError('Unauthorized', [], [], 403);
+                }
+            } elseif (!$modules['viewPermission']) {
+                abort(403, 'Unauthorized');
+            }
+
+            $query = EmployeeWiseSalaryDetail::with(['company', 'employee'])
+                ->when(Auth::guard('employees')->check() || !empty($company_id), function ($q) use ($modules, $company_id, $loginUserId) {
+                    $cId = $company_id ?? Auth::guard('employees')->user()?->company_id;
+                    if ($cId) {
+                        $q->where('company_id', $cId);
+                    }
+
+                    if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
+                        $q->where('created_by', $loginUserId);
+                    }
+                })
+                ->orderBy('id', 'DESC');
+
+            if (empty($company_id)) {
+                if ($request->filled('company')) {
+                    $query->where('company_id', $request->company);
+                }
+                if ($request->filled('filter_company')) {
+                    $query->where('company_id', $request->filter_company);
+                }
+            }
+
+            if ($request->filled('filter_employee') || $request->filled('employee')) {
+                $query->where('employee_id', $request->filter_employee ?: $request->employee);
+            }
+
+            if ($request->filled('filter_employee_code')) {
+                $query->whereHas('employee', function ($q) use ($request) {
+                    $q->where('employee_code', 'like', '%' . $request->filter_employee_code . '%');
+                });
+            }
+
+            if ($request->filled('filter_salary_classification') || $request->filled('salary_classification')) {
+                $query->where('salary_classification', $request->filter_salary_classification ?: $request->salary_classification);
+            }
+
+            if ($request->filled('filter_pf_type') || $request->filled('pf_type')) {
+                $query->where('pf_type', $request->filter_pf_type ?: $request->pf_type);
+            }
+
+            if ($request->filled('filter_salary_calculation_month_count') || $request->filled('salary_calculation_month_count')) {
+                $query->where('salary_calculation_month_count', $request->filter_salary_calculation_month_count ?: $request->salary_calculation_month_count);
+            }
+
+            if ($request->filled('status') && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+
+            $query->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('salary_classification', 'like', '%' . $search . '%')
+                        ->orWhere('pf_type', 'like', '%' . $search . '%')
+                        ->orWhere('salary_calculation_month_count', 'like', '%' . $search . '%')
+                        ->orWhereHas('employee', function ($eq) use ($search) {
+                            $eq->where('full_name', 'like', '%' . $search . '%')
+                                ->orWhere('employee_code', 'like', '%' . $search . '%');
+                        });
+                });
+            });
+
+            $employeeSalaryDetails = $query->get();
+
+            return view($modules['folder_path'] . '.print', compact('employeeSalaryDetails', 'company_id', 'modules'));
+        } catch (\Exception $e) {
+            return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
+        }
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $modules = $this->modules;
+        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
+        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
+        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
+        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        if (count(config('constants.permissions'))) {
+            foreach (config('constants.permissions') as $key => $value) {
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+            }
+        }
+        if (!$modules['excel_permission']) {
+            if (isset($request) && $request->ajax()) {
+                return $this->sendError('Unauthorized', [], [], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        return Excel::download(new EmployeeWiseSalaryDetailExport($request->all(), $this->authenticateLoginUserDetails, $modules), 'Employee Wise Salary Details-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
     }
 }

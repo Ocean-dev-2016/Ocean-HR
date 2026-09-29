@@ -321,20 +321,24 @@
         $('#export_excel_btn').on('click', function(e) {
             e.preventDefault();
 
-            // Collect filter values
             let search = $('input[name="search"]').val();
             let status = $('#status_filter').val();
-            let company = $('#company_id').val();
+            let filter_employee_code = $('input[name="employee_code"]').val();
+            let company = $('#company_id').val() || $('select[name="company_id"]').val();
             let employee = $('#employee_id').val();
-            let filter_date = $('input[name="employee_date"]').val().replace(' - ', ' to ');
+            let filter_salary_classification = $('#salary_classification').val();
+            let filter_pf_type = $('#pf_type').val();
+            let filter_salary_calculation_month_count = $('#salary_calculation_month_count').val();
 
-            // Build query string matching backend filter names
             let queryParams = $.param({
                 search: search,
                 status: status,
+                filter_employee_code: filter_employee_code,
                 filter_company: company,
                 filter_employee: employee,
-                filter_date: filter_date
+                filter_salary_classification: filter_salary_classification,
+                filter_pf_type: filter_pf_type,
+                filter_salary_calculation_month_count: filter_salary_calculation_month_count
             });
 
             // Navigate to export route with filters applied
@@ -345,20 +349,24 @@
         $('#print_btn').on('click', function(e) {
             e.preventDefault();
 
-            // Collect filter values
             let search = $('input[name="search"]').val();
             let status = $('#status_filter').val();
-            let company = $('select[name="company_id"]').val();
+            let filter_employee_code = $('input[name="employee_code"]').val();
+            let company = $('#company_id').val() || $('select[name="company_id"]').val();
             let employee = $('#employee_id').val();
-            let employee_date = $('input[name="employee_date"]').val().replace(' - ', ' to ');
+            let filter_salary_classification = $('#salary_classification').val();
+            let filter_pf_type = $('#pf_type').val();
+            let filter_salary_calculation_month_count = $('#salary_calculation_month_count').val();
 
-            // Build query string
             let queryParams = $.param({
                 search: search,
                 status: status,
-                company: company,
-                employee: employee,
-                filter_date: employee_date, // matches backend param name
+                filter_employee_code: filter_employee_code,
+                filter_company: company,
+                filter_employee: employee,
+                filter_salary_classification: filter_salary_classification,
+                filter_pf_type: filter_pf_type,
+                filter_salary_calculation_month_count: filter_salary_calculation_month_count
             });
 
             // Open print page in a new tab/window
