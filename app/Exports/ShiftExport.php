@@ -28,7 +28,7 @@ class ShiftExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
 
     public function collection()
     {
-        $query = Shift::with('company');
+        $query = Shift::with(['company', 'monitor_by_detail']);
 
         // Apply search filter
         if (isset($this->filter_params->search) && $this->filter_params->search !== '') {
@@ -80,7 +80,7 @@ class ShiftExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
         $headings =  [
             'Sr',
             'Name',
-            'Shift Punch In Minmum',
+            'Shift Punch In Minimum',
             'Shift Punch Out',
             'Shift Auto Punch Out',
             'In/Out Grace Period',
@@ -110,8 +110,8 @@ class ShiftExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
             $row->in_out_grace_period,
             $row->grace_period,
             $row->employee_max_working_hours,
-            $row->monitor_by,
-            $row->status
+            $row->monitor_by_detail?->full_name ?? ($row->monitor_by ?? '-'),
+            ucfirst($row->status)
         ];
 
         // If user is not limited to a company, insert company name after Sr No

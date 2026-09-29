@@ -560,7 +560,7 @@ class ShiftController extends Controller
                         }
                     }
                 })
-                ->with(['company'])
+                ->with(['company', 'monitor_by_detail'])
                 ->orderBy('id', 'DESC');
 
             // Company filter

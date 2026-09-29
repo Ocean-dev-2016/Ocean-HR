@@ -94,7 +94,7 @@
                         <td>{{ $shifts->in_out_grace_period }}</td>
                         <td>{{ $shifts->grace_period }}</td>
                         <td>{{ $shifts->employee_max_working_hours }}</td>
-                        <td>{{ $shifts->monitor_by }}</td>
+                        <td>{{ $shifts->monitor_by_detail?->full_name ?? ($shifts->monitor_by ?? '-') }}</td>
                         <td>{{ ucfirst($shifts->status) }}</td>
                     </tr>
                 @endforeach
