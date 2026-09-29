@@ -535,10 +535,10 @@ class ShiftController extends Controller
         }
         // Unauthorized check
         if ($request->ajax()) {
-            if (!$modules['viewPermission']) {
+            if (empty($modules['print_permission']) && empty($modules['view_permission'])) {
                 return $this->sendError('Unauthorized', [], [], 403);
             }
-        } elseif (!$modules['viewPermission']) {
+        } elseif (empty($modules['print_permission']) && empty($modules['view_permission'])) {
             abort(403, 'Unauthorized');
         }
 

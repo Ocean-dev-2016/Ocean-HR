@@ -557,15 +557,6 @@ class BranchController extends Controller
             // Permissions
             $moduleName = $modules['module_name'];
 
-            // Unauthorized check
-            if ($request->ajax()) {
-                if (!$modules['viewPermission']) {
-                    return $this->sendError('Unauthorized', [], [], 403);
-                }
-            } elseif (!$modules['viewPermission']) {
-                abort(403, 'Unauthorized');
-            }
-
             $query = Branch::select('*')
                 ->where(function ($q1) use ($modules, $loginUserId) {
                     if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
