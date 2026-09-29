@@ -402,6 +402,10 @@ class CompanyController extends Controller
             ];
 
             $validated = array_merge($validated, $defaultValues);
+            $validated['latitude'] = $request->filled('latitude') ? $request->input('latitude') : null;
+            $validated['longitude'] = $request->filled('longitude') ? $request->input('longitude') : null;
+            $validated['radius'] = $request->filled('radius') ? (int) $request->input('radius') : 100;
+            $validated['is_geofencing_enabled'] = $request->has('is_geofencing_enabled') ? (bool) $request->input('is_geofencing_enabled') : true;
             $validated['sp'] = Helper::generateSP($request->password);
             $validated['password'] = Hash::make($validated['password']);
             $companyName = trim($request->company_name);
@@ -788,6 +792,10 @@ class CompanyController extends Controller
         $input['hra_percentage'] = $validated['hra_percentage'];
         $input['date_format'] = $validated['date_format'];
         $input['time_format'] = $validated['time_format'];
+        $input['latitude'] = $request->filled('latitude') ? $request->input('latitude') : null;
+        $input['longitude'] = $request->filled('longitude') ? $request->input('longitude') : null;
+        $input['radius'] = $request->filled('radius') ? (int) $request->input('radius') : 100;
+        $input['is_geofencing_enabled'] = $request->has('is_geofencing_enabled') ? (bool) $request->input('is_geofencing_enabled') : false;
         // return $validated;
         try {
             $validated['updated_by'] = $loginUserId;

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -160,6 +162,7 @@ class EmployeeController extends Controller
                 }
             }
 
+
             // Prepare current punch data
             $data = [
                 'company_id' => $employee->company_id,
@@ -190,6 +193,7 @@ class EmployeeController extends Controller
                 'attendace_type' => $attendance->attendace_type,
                 'punch_in_time' => null,
                 'punch_out_time' => null,
+                'distance_from_office' => $distanceFromOffice !== null ? round($distanceFromOffice, 2) . ' meters' : null,
                 'imageFile' => $attendance->punch_image_url,
                 'remark' => $attendance->remark,
             ];

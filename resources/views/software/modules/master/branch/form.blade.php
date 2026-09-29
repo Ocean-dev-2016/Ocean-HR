@@ -150,7 +150,7 @@
                             <label class="form-label"> Address </label>
                             <textarea id="branch_address" class="form-control @error('branch_address') is-invalid @enderror" name="branch_address"
                                 placeholder="Enter branch address" rows="3">{{ isset($edit) && $edit?->branch_address ? $edit?->branch_address : old('branch_address') }}</textarea>
-                            @error('canteen_min_time')
+                            @error('branch_address')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                             @enderror
                         </div>

@@ -18,11 +18,19 @@
 
 
 @section('page_leavel_style')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tagsinput/0.8.0/bootstrap-tagsinput.css" />
 
     <style>
+        #company_map {
+            height: 380px;
+            width: 100%;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+            z-index: 1;
+        }
         .select2-container {
             display: block !important;
         }
@@ -474,6 +482,76 @@
                                             @error('address')
                                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                             @enderror
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Office Location & Google Maps Geofencing -->
+                            <div class="comp-card">
+                                <div class="comp-card-header d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="comp-card-title"><i class="ti ti-map-pin-filled text-danger"></i> Office Location & Geofencing Settings</h5>
+                                        <p class="comp-card-subtitle">Set company office coordinates and attendance radius on Google Maps</p>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="is_geofencing_enabled" name="is_geofencing_enabled" value="1"
+                                            {{ old('is_geofencing_enabled', isset($edit) ? $edit->is_geofencing_enabled : 1) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-bold text-dark" for="is_geofencing_enabled">Enable Geofence Attendance</label>
+                                    </div>
+                                </div>
+                                <div class="comp-card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="comp-label" for="latitude"><i class="ti ti-current-location text-primary"></i> Latitude <span class="text-danger">*</span></label>
+                                            <input type="text" id="latitude" name="latitude" class="form-control comp-input @error('latitude') is-invalid @enderror"
+                                                value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" readonly />
+                                            @error('latitude')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="comp-label" for="longitude"><i class="ti ti-current-location text-primary"></i> Longitude <span class="text-danger">*</span></label>
+                                            <input type="text" id="longitude" name="longitude" class="form-control comp-input @error('longitude') is-invalid @enderror"
+                                                value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" readonly />
+                                            @error('longitude')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="comp-label" for="radius"><i class="ti ti-radar-2 text-primary"></i> Geofence Radius (Meters) <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <input type="number" id="radius" name="radius" class="form-control comp-input @error('radius') is-invalid @enderror"
+                                                    value="{{ old('radius', $edit->radius ?? 100) }}" min="10" max="5000" placeholder="100" />
+                                                <span class="input-group-text bg-light text-muted">Meters</span>
+                                            </div>
+                                            <small class="text-muted">Allowed distance from office for mobile punch-in.</small>
+                                            @error('radius')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+
+                                        {{-- Map Search & Map Container --}}
+                                        <div class="col-12 mt-2">
+                                            <div class="row g-2 mb-2">
+                                                <div class="col-md-8 col-sm-12">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="ti ti-search"></i></span>
+                                                        <input type="text" id="company_search_location" class="form-control" placeholder="Search company address or landmark on Google Map...">
+                                                        <button type="button" id="btn_company_search_map" class="btn btn-outline-primary"><i class="ti ti-search me-1"></i>Search</button>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 col-sm-12 text-md-end">
+                                                    <button type="button" id="btn_company_current_loc" class="btn btn-outline-success w-100"><i class="ti ti-crosshair me-1"></i>Use Current Location</button>
+                                                </div>
+                                            </div>
+
+                                            <div id="company_map"></div>
+                                            <small class="text-muted d-block mt-2">
+                                                <i class="ti ti-info-circle me-1"></i> <strong>Tip:</strong> Click anywhere on the map or drag the marker to pin your exact company office location. The blue circle represents the allowed attendance punch radius.
+                                            </small>
                                         </div>
                                     </div>
                                 </div>
@@ -1135,5 +1213,137 @@
             }
         });
     });
+
+    // Company Office Map & Geofencing Script
+    $(document).ready(function() {
+        if ($('#company_map').length) {
+            const defaultLat = parseFloat($('#latitude').val()) || 21.1702;
+            const defaultLng = parseFloat($('#longitude').val()) || 72.8311;
+            let currentRadius = parseInt($('#radius').val()) || 100;
+            const hasLocation = $('#latitude').val() && $('#longitude').val();
+
+            const companyMap = L.map('company_map').setView([defaultLat, defaultLng], hasLocation ? 16 : 12);
+
+            // Google Maps Tile Layer
+            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                attribution: '© Google Maps',
+                maxZoom: 20
+            }).addTo(companyMap);
+
+            const officeIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            let marker = L.marker([defaultLat, defaultLng], {
+                draggable: true,
+                icon: officeIcon
+            }).addTo(companyMap);
+
+            let circle = L.circle([defaultLat, defaultLng], {
+                color: '#3b82f6',
+                fillColor: '#93c5fd',
+                fillOpacity: 0.35,
+                radius: currentRadius
+            }).addTo(companyMap);
+
+            function updateCompanyLocation(lat, lng) {
+                $('#latitude').val(lat.toFixed(7));
+                $('#longitude').val(lng.toFixed(7));
+
+                marker.setLatLng([lat, lng]);
+                circle.setLatLng([lat, lng]);
+                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}<br>Radius: ${currentRadius}m`).openPopup();
+            }
+
+            if (hasLocation) {
+                updateCompanyLocation(defaultLat, defaultLng);
+            }
+
+            marker.on('dragend', function(e) {
+                const pos = marker.getLatLng();
+                updateCompanyLocation(pos.lat, pos.lng);
+            });
+
+            companyMap.on('click', function(e) {
+                updateCompanyLocation(e.latlng.lat, e.latlng.lng);
+            });
+
+            $('#radius').on('input change', function() {
+                currentRadius = parseInt($(this).val()) || 100;
+                circle.setRadius(currentRadius);
+                const pos = marker.getLatLng();
+                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${pos.lat.toFixed(6)}<br>Lng: ${pos.lng.toFixed(6)}<br>Radius: ${currentRadius}m`);
+            });
+
+            $('#btn_company_current_loc').on('click', function() {
+                if (navigator.geolocation) {
+                    const btn = $(this);
+                    btn.html('<i class="ti ti-loader ti-spin me-1"></i>Locating...');
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            btn.html('<i class="ti ti-crosshair me-1"></i>Use Current Location');
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            companyMap.setView([lat, lng], 17);
+                            updateCompanyLocation(lat, lng);
+                        },
+                        function(error) {
+                            btn.html('<i class="ti ti-crosshair me-1"></i>Use Current Location');
+                            alert('Unable to retrieve location: ' + error.message);
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                } else {
+                    alert('Geolocation is not supported by your browser.');
+                }
+            });
+
+            function searchCompanyLocation() {
+                const query = $('#company_search_location').val().trim();
+                if (!query) return;
+
+                const btn = $('#btn_company_search_map');
+                btn.html('<i class="ti ti-loader ti-spin"></i>');
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+                    .then(response => response.json())
+                    .then(data => {
+                        btn.html('<i class="ti ti-search me-1"></i>Search');
+                        if (data && data.length > 0) {
+                            const lat = parseFloat(data[0].lat);
+                            const lng = parseFloat(data[0].lon);
+                            companyMap.setView([lat, lng], 17);
+                            updateCompanyLocation(lat, lng);
+                        } else {
+                            alert('Location not found. Please try a different query or click directly on the map.');
+                        }
+                    })
+                    .catch(err => {
+                        btn.html('<i class="ti ti-search me-1"></i>Search');
+                        console.error('Search error: ', err);
+                    });
+            }
+
+            $('#btn_company_search_map').on('click', searchCompanyLocation);
+            $('#company_search_location').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    searchCompanyLocation();
+                }
+            });
+
+            // Re-render map when tab is opened
+            $('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                setTimeout(() => { companyMap.invalidateSize(); }, 300);
+            });
+            setTimeout(() => { companyMap.invalidateSize(); }, 600);
+        }
+    });
     </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 @endpush
