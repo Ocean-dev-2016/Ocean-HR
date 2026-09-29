@@ -70,7 +70,9 @@
                         <tr>
                             <th>Sr No</th>
                             <th>Employee Code</th>
-                            <th>Company Name</th>
+                            @if (!$company_id)
+                                <th>Company Name</th>
+                            @endif
                             <th>Employee Name</th>
                             <th>Degree</th>
                             <th>Previous Company Name</th>
@@ -84,7 +86,9 @@
                             <tr>
                                 <td>{{ $index + 1 }}</td>
                                 <td>{{ $item->employee->employee_code ?? '-' }}</td>
-                                <td>{{ $item->company->company_name ?? '-' }}</td>
+                                @if (!$company_id)
+                                    <td>{{ $item->company->company_name ?? '-' }}</td>
+                                @endif
                                 <td>{{ $item->employee->full_name ?? '-' }}</td>
                                 <td>{{ $item->degree ?? '-' }}</td>
                                 <td>{{ $item->company_name ?? '-' }}</td>
@@ -94,7 +98,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center">No records found</td>
+                                <td colspan="{{ !$company_id ? 9 : 8 }}" class="text-center">No records found</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -2,11 +2,8 @@
 
 namespace App\Exports;
 
-use App\Models\Department;
 use App\Models\EmployeeEducationExperienceDetail;
-use App\Models\LeaveApplication;
-use App\Models\SubDepartment;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -19,9 +16,7 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
     protected $srNo = 1;
     protected $filter_params;
     protected $user;
-
     protected $modules;
-
 
     public function __construct($filter_params = null, $user = null, $modules = [])
     {
@@ -32,26 +27,43 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
 
     public function collection()
     {
-        $query = EmployeeEducationExperienceDetail::withTrashed()
-            ->with(['company'])
+        $query = EmployeeEducationExperienceDetail::with(['company', 'employee'])
             ->orderBy('id', 'DESC');
 
-        $authUser = $this->user ?? null; // Assuming $this->user is authenticated user
-        $loginUserId = $authUser->id ?? null;
+        if (isset($this->modules['restore_permission']) && $this->modules['restore_permission']) {
+            $query->withTrashed();
+        }
 
-        // Employee guard-based access
-        if ($authUser && $authUser->role === 'employee') { // adjust role check if needed
-            $teamPersonCompanyId = $authUser->company_id;
-            $query->where('company_id', $teamPersonCompanyId);
+        $authUser = $this->user ?? null;
+        $loginUserId = $authUser?->id ?? null;
+        $companyId = $this->modules['company_id'] ?? $authUser?->company_id ?? (Auth::guard('employees')->check() ? Auth::guard('employees')->user()?->company_id : null);
 
-            if (!empty($this->modules['personalDataPermission']) && empty($this->modules['allDataPermission'])) {
+        if (!empty($companyId)) {
+            $query->where('company_id', $companyId);
+
+            if (!empty($this->modules['personal_data_permission']) && empty($this->modules['all_data_permission'])) {
                 $query->where('created_by', $loginUserId);
+            }
+        } elseif (Auth::guard('employees')->check()) {
+            $teamPerson = Auth::guard('employees')->user();
+            $query->where('company_id', $teamPerson->company_id);
+
+            if (!empty($this->modules['personal_data_permission']) && empty($this->modules['all_data_permission'])) {
+                $query->where('created_by', $teamPerson->id);
+            }
+        } else {
+            // Admin without company selected: can filter by company
+            $filterCompany = $this->filter_params->filter_company ?? $this->filter_params->company ?? null;
+            if (!empty($filterCompany)) {
+                $query->where('company_id', $filterCompany);
             }
         }
 
-        // Filters
-        if (!empty($this->filter_params->filter_company)) {
-            $query->where('company_id', 'LIKE', '%' . $this->filter_params->filter_company . '%');
+        // Filter by Employee Code
+        if (!empty($this->filter_params->filter_employee_code)) {
+            $query->whereHas('employee', function ($q) {
+                $q->where('employee_code', 'like', '%' . $this->filter_params->filter_employee_code . '%');
+            });
         }
 
         if (!empty($this->filter_params->filter_employee)) {
@@ -65,31 +77,35 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
         if (!empty($this->filter_params->filter_designation_name)) {
             $query->where('designation_name', $this->filter_params->filter_designation_name);
         }
+
         if (!empty($this->filter_params->filter_document_type)) {
             $query->where('document_type', $this->filter_params->filter_document_type);
         }
 
-        if (isset($this->filter_params->status) && $this->filter_params->status !== 'all') {
+        if (isset($this->filter_params->status) && $this->filter_params->status !== '' && $this->filter_params->status !== 'all') {
             $query->where('status', $this->filter_params->status);
         }
+
         if (!empty($this->filter_params->search)) {
-            $search = $this->filter_params->search;
+            $search = trim($this->filter_params->search);
             $query->where(function ($q) use ($search) {
                 $q->where('degree', 'like', "%{$search}%")
+                    ->orWhere('company_name', 'like', "%{$search}%")
+                    ->orWhere('unit_change', 'like', "%{$search}%")
                     ->orWhere('document_name', 'like', "%{$search}%")
-                    ->orWhere('unit_change', 'like', "%{$search}%");
+                    ->orWhereHas('employee', function ($eq) use ($search) {
+                        $eq->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('employee_code', 'like', "%{$search}%");
+                    });
             });
         }
+
         if (!empty($this->filter_params->filter_created_by)) {
             $query->where('created_by', $this->filter_params->filter_created_by);
-        } elseif ($this->user && $this->user->company_id && empty($this->modules['all_data_permission'])) {
-            if (!empty($this->modules['personal_data_permission'])) {
-                $query->where('created_by', $this->user->id);
-            }
         }
+
         return $query->get();
     }
-
 
     public function headings(): array
     {
@@ -98,15 +114,18 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
             'Employee Code',
         ];
 
-        // Include Company Name if user is not limited to a company
-        if (!$this->user || empty($this->user['company_id'])) {
+        $companyId = $this->modules['company_id'] ?? $this->user?->company_id ?? (Auth::guard('employees')->check() ? Auth::guard('employees')->user()?->company_id : null);
+        if (empty($companyId)) {
             $headings[] = 'Company Name';
         }
 
-        // Add the rest of the columns
         $headings = array_merge($headings, [
             'Employee Name',
             'Degree',
+            'Institute Name',
+            'Month Of Passing Year',
+            'Class Or % Marks',
+            'Previous Company Name',
             'Unit Change',
             'Document Name',
             'Status',
@@ -117,20 +136,24 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
 
     public function map($row): array
     {
+        $companyId = $this->modules['company_id'] ?? $this->user?->company_id ?? (Auth::guard('employees')->check() ? Auth::guard('employees')->user()?->company_id : null);
+
         $rowData = [
             $this->srNo++,
             optional($row->employee)->employee_code ?? '-',
         ];
 
-        // Company Name
-        if (!$this->user || empty($this->user['company_id'])) {
+        if (empty($companyId)) {
             $rowData[] = optional($row->company)->company_name ?? '-';
         }
 
-        // Add remaining fields in same order as headings
         $rowData = array_merge($rowData, [
             optional($row->employee)->full_name ?? '-',
             $row->degree ?? '-',
+            $row->institution_name ?? '-',
+            $row->month_of_passing_year ?? '-',
+            $row->class_or_mark ?? '-',
+            $row->company_name ?? '-',
             $row->unit_change ?? '-',
             $row->document_name ?? '-',
             ucfirst($row->status ?? '-'),
@@ -148,6 +171,6 @@ class EmployeeEducationExperienceDetailExport implements FromCollection, WithHea
 
     public function title(): string
     {
-        return 'Department';
+        return 'Employee Education Experience';
     }
 }

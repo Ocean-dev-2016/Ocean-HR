@@ -76,7 +76,6 @@ class EmployeeEducationExperienceDetailController extends Controller
                 (object)['data' => "company_name", 'name' => 'company_id', 'td_label' => 'Company Name', 'className' =>  ''],
                 (object)['data' => "employee_full_name", 'name' => 'employee_id', 'td_label' => 'Employee Name', 'className' => 'w-10 text-start'],
                 (object)['data' => "degree", 'name' => 'degree', 'td_label' => 'Degree', 'className' => 'w-10 text-start'],
-                (object)['data' => "company_name", 'name' => 'company_name', 'td_label' => 'Company Name', 'className' => 'w-10 text-start'],
                 (object)['data' => "unit_change", 'name' => 'unit_change', 'td_label' => 'Unit Change', 'className' => 'w-10 text-start'],
                 (object)['data' => "document_name", 'name' => 'document_name', 'td_label' => 'Document Name', 'className' => 'w-10 text-start'],
                 (object)['data' => "status", 'name' => 'status', 'td_label' => 'Status', 'className' =>  'w-5 text-start'],
@@ -98,14 +97,14 @@ class EmployeeEducationExperienceDetailController extends Controller
             if ($request->ajax()) {
                 // dd($request->all());
                 $data = EmployeeEducationExperienceDetail::with(['company', 'employee'])
-                    ->where(function ($query) use ($modules, $loginUserId) {
-                        if (Auth::guard('employees')->check()) {
-                            $teamPersonCompanyId = Auth::guard('employees')->user()->company_id;
-                            $query->where('company_id', $teamPersonCompanyId);
+                    ->when(Auth::guard('employees')->check() || !empty($modules['company_id']), function ($query) use ($modules, $loginUserId) {
+                        $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()?->company_id;
+                        if ($companyId) {
+                            $query->where($modules['table_name'] . '.company_id', $companyId);
+                        }
 
-                            if ($modules['personal_data_permission'] && $modules['all_data_permission'] == false) {
-                                $query->where('created_by', $loginUserId);
-                            }
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $query->where($modules['table_name'] . '.created_by', $loginUserId);
                         }
                     })
                     ->orderBy('id', 'DESC');
@@ -118,10 +117,10 @@ class EmployeeEducationExperienceDetailController extends Controller
 
                 $returnData = Datatables::of($data)
                     ->addIndexColumn()
-                    ->filter(function ($query) use ($request) {
+                    ->filter(function ($query) use ($request, $modules) {
 
-                        if ($request->has('filter_company') && $request->filter_company) {
-                            $query->where('company_id', $request->filter_company);
+                        if (empty($modules['company_id']) && $request->has('filter_company') && $request->filter_company) {
+                            $query->where($modules['table_name'] . '.company_id', $request->filter_company);
                         }
 
                         if ($request->has('filter_employee') && $request->filter_employee) {
@@ -280,6 +279,9 @@ class EmployeeEducationExperienceDetailController extends Controller
             // return $this->authenticateLoginUserDetails;
 
             $validated['created_by'] = $loginUserId;
+            if (!empty($modules['company_id'])) {
+                $validated['company_id'] = $modules['company_id'];
+            }
             // return $validated;
             if ($request->hasFile('attachment')) {
                 $company = Company::find($validated['company_id']);
@@ -398,6 +400,9 @@ class EmployeeEducationExperienceDetailController extends Controller
 
         try {
             $validated['updated_by'] = $loginUserId;
+            if (!empty($modules['company_id'])) {
+                $validated['company_id'] = $modules['company_id'];
+            }
 
             $eeedQuery = EmployeeEducationExperienceDetail::query();
             if (!empty($modules['company_id'])) {
@@ -616,30 +621,33 @@ class EmployeeEducationExperienceDetailController extends Controller
                 abort(403, 'Unauthorized');
             }
 
-            $query = EmployeeEducationExperienceDetail::select('*')
-                ->where(function ($q) use ($modules, $loginUserId) {
-                    if (Auth::guard('employees')->check()) {
-                        $teamPersonCompanyId = Auth::guard('employees')->user()->company_id;
-                        $q->where('company_id', $teamPersonCompanyId);
+            $query = EmployeeEducationExperienceDetail::with(['company', 'employee'])
+                ->when(Auth::guard('employees')->check() || !empty($company_id), function ($q) use ($modules, $company_id, $loginUserId) {
+                    $cId = $company_id ?? Auth::guard('employees')->user()?->company_id;
+                    if ($cId) {
+                        $q->where('company_id', $cId);
+                    }
 
-                        if ($modules['personalDataPermission'] && !$modules['allDataPermission']) {
-                            $q->where('created_by', $loginUserId);
-                        }
+                    if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
+                        $q->where('created_by', $loginUserId);
                     }
                 })
-                ->with(['company', 'employee'])
                 ->orderBy('id', 'DESC');
 
-
-            if ($request->filled('company')) {
-                $query->whereHas('company', function ($q) use ($request) {
-                    $q->where('company_id', $request->company);
-                });
+            if (empty($company_id)) {
+                if ($request->filled('company')) {
+                    $query->where('company_id', $request->company);
+                }
+                if ($request->filled('filter_company')) {
+                    $query->where('company_id', $request->filter_company);
+                }
             }
 
-            $query->when($request->has('filter_company') && $request->filter_company, function ($q) use ($request) {
-                $q->where('company_id', $request->filter_company);
-            });
+            if ($request->filled('filter_employee_code')) {
+                $query->whereHas('employee', function ($q) use ($request) {
+                    $q->where('employee_code', 'like', '%' . $request->filter_employee_code . '%');
+                });
+            }
 
             $query->when($request->has('filter_employee') && $request->filter_employee, function ($q) use ($request) {
                 $q->where('employee_id', $request->filter_employee);

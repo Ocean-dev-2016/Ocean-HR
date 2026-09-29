@@ -1102,8 +1102,9 @@ class ContractorEmployeeController extends Controller
 
             // Get filtered results
             $employee = $query->get();
+            $employees = $employee;
 
-            return view($modules['folder_path'] . '.print', compact('employee', 'company_id', 'modules'));
+            return view($modules['folder_path'] . '.print', compact('employee', 'employees', 'company_id', 'modules'));
         } catch (\Exception $e) {
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }

@@ -306,53 +306,52 @@
             e.preventDefault();
 
             let search = $('input[name="search"]').val();
-            let filter_company = $('#filter_company').val();
+            let filter_employee_code = $('input[name="employee_code"]').val();
+            let filter_company = $('#company_id').val() || $('select[name="company_id"]').val();
             let filter_employee = $('#employee_id').val();
             let filter_department_name = $('#department_name').val();
             let filter_designation_name = $('#designation_name').val();
             let filter_document_type = $('#document_type').val();
-
-
+            let status = $('#status_filter').val();
 
             let queryParams = $.param({
                 search: search,
+                filter_employee_code: filter_employee_code,
                 filter_company: filter_company,
                 filter_employee: filter_employee,
                 filter_department_name: filter_department_name,
                 filter_designation_name: filter_designation_name,
                 filter_document_type: filter_document_type,
-
+                status: status
             });
-
 
             // Navigate to export route with filters applied
             let url = "{{ route($route . '.export.excel') }}" + "?" + queryParams;
             window.location.href = url;
         });
 
-
-
         $('#print_btn').on('click', function(e) {
             e.preventDefault();
 
-
             let search = $('input[name="search"]').val();
-            let filter_company = $('#filter_company').val();
+            let filter_employee_code = $('input[name="employee_code"]').val();
+            let filter_company = $('#company_id').val() || $('select[name="company_id"]').val();
             let filter_employee = $('#employee_id').val();
             let filter_department_name = $('#department_name').val();
             let filter_designation_name = $('#designation_name').val();
             let filter_document_type = $('#document_type').val();
+            let status = $('#status_filter').val();
 
             let queryParams = $.param({
                 search: search,
+                filter_employee_code: filter_employee_code,
                 filter_company: filter_company,
                 filter_employee: filter_employee,
                 filter_department_name: filter_department_name,
                 filter_designation_name: filter_designation_name,
                 filter_document_type: filter_document_type,
-                 
+                status: status
             });
-
 
             let url = "{{ route($route . '.print') }}" + "?" + queryParams;
             window.location.href = url;
