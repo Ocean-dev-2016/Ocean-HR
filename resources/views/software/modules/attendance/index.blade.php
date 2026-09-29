@@ -633,6 +633,39 @@
                     $('#punchImageModal').modal('show');
                 }
             });
+
+            // Helper to get active filters query params
+            function getAttendanceFilterParams() {
+                var innerParams = new URLSearchParams(window.location.search);
+                return {
+                    search: $('input[name="search"]').val() || '',
+                    filter_company: $('#company_id').val() || innerParams.get('filter_company') || '',
+                    filter_employee: {!! $hasPersonalOnly ? "'$loginUserId'" : "($('#employee_id').val() || innerParams.get('filter_employee') || '')" !!},
+                    filter_shift: $('#shift_id').val() || innerParams.get('filter_shift') || '',
+                    attendace_type: $('#attendace_type').val() || 'all',
+                    records_source: $('#records_source').val() || 'all',
+                    attendance_status: $('#attendance_status').val() || innerParams.get('attendance_status') || 'all',
+                    filter_date: $('input[name="employee_date"]').val() || innerParams.get('filter_date') || ''
+                };
+            }
+
+            // Export to Excel Button
+            $(document).on('click', '#export_excel_btn', function(e) {
+                e.preventDefault();
+                var params = getAttendanceFilterParams();
+                var queryParams = $.param(params);
+                var url = "{{ route('attendance.export.excel') }}" + "?" + queryParams;
+                window.location.href = url;
+            });
+
+            // Print Button
+            $(document).on('click', '#print_btn', function(e) {
+                e.preventDefault();
+                var params = getAttendanceFilterParams();
+                var queryParams = $.param(params);
+                var url = "{{ route('attendance.print') }}" + "?" + queryParams;
+                window.open(url, '_blank');
+            });
         }
 
         if (document.readyState === 'complete' || document.readyState === 'interactive') {

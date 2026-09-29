@@ -115,27 +115,39 @@ class RequestFormController extends Controller
                 $returnData = Datatables::of($data)
                     ->addIndexColumn()
                     ->filter(function ($query) use ($request) {
-
-                        if ($request->has('filter_company') && $request->filter_company) {
-                            $query->where('company_id', $request->filter_company);
+                        $filterCompany = $request->filter_company ?? $request->company_id ?? null;
+                        if (!empty($filterCompany)) {
+                            $query->where((new RequestForm())->getTable() . '.company_id', $filterCompany);
                         }
-                        if ($request->has('filter_employee') && $request->filter_employee) {
-                            $query->where(function ($q) use ($request) {
-                                $q->where('request_from_employee_name', $request->filter_employee)
-                                    ->orWhere('request_to_employee_name', $request->filter_employee);
+
+                        $filterEmployee = $request->filter_employee ?? $request->employee_id ?? null;
+                        if (!empty($filterEmployee)) {
+                            $query->where(function ($q) use ($filterEmployee) {
+                                $q->where('request_from_employee_name', $filterEmployee)
+                                    ->orWhere('request_to_employee_name', $filterEmployee);
                             });
                         }
 
                         $query->when($request->filled('search'), function ($q) use ($request) {
                             $search = $request->search;
-
                             $q->where(function ($q2) use ($search) {
-                                $q2->where('request_from_employee_name', 'like', '%' . $search . '%')
-                                    ->orWhere('request_to_employee_name', 'like', '%' . $search . '%');
+                                $q2->where('request_description', 'like', '%' . $search . '%')
+                                    ->orWhereHas('requestFromEmployee', function ($sub) use ($search) {
+                                        $sub->where('employee_code', 'like', '%' . $search . '%')
+                                            ->orWhere('first_name', 'like', '%' . $search . '%')
+                                            ->orWhere('last_name', 'like', '%' . $search . '%')
+                                            ->orWhere('full_name', 'like', '%' . $search . '%');
+                                    })
+                                    ->orWhereHas('requestToEmployee', function ($sub) use ($search) {
+                                        $sub->where('employee_code', 'like', '%' . $search . '%')
+                                            ->orWhere('first_name', 'like', '%' . $search . '%')
+                                            ->orWhere('last_name', 'like', '%' . $search . '%')
+                                            ->orWhere('full_name', 'like', '%' . $search . '%');
+                                    });
                             });
                         });
 
-                        if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
+                        if ($request->has('status') && $request->status !== null && $request->status !== 'all' && $request->status !== '') {
                             $query->where((new RequestForm())->getTable() . '.status', $request->status);
                         }
                     })
@@ -608,7 +620,7 @@ class RequestFormController extends Controller
                 abort(403, 'Unauthorized');
             }
 
-            $query = RequestForm::select('*')
+            $query = RequestForm::with(['company', 'requestFromEmployee', 'requestToEmployee'])
                 ->where(function ($q) use ($modules, $loginUserId) {
                     if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
                         $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
@@ -619,31 +631,46 @@ class RequestFormController extends Controller
                         }
                     }
                 })
-                ->with(['company'])
                 ->orderBy('id', 'DESC');
 
             // Company filter
-            if ($request->has('company') && !empty($request->company)) {
-                $query->whereHas('company', function ($subQuery) use ($request) {
-                    $subQuery->where('company_id', 'like', '%' . $request->company . '%');
-                });
+            $filterCompany = $request->company_id ?? $request->company ?? null;
+            if (!empty($filterCompany)) {
+                $query->where('company_id', $filterCompany);
             }
+
             // Employee filter
-            if ($request->has('employee_id') && !empty($request->employee_id)) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('request_from_employee_name', $request->employee_id)
-                        ->orWhere('request_to_employee_name', $request->employee_id);
+            $filterEmployee = $request->employee_id ?? $request->employee ?? null;
+            if (!empty($filterEmployee)) {
+                $query->where(function ($q) use ($filterEmployee) {
+                    $q->where('request_from_employee_name', $filterEmployee)
+                        ->orWhere('request_to_employee_name', $filterEmployee);
                 });
             }
 
             // Status filter
-            if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
+            if ($request->has('status') && $request->status !== null && $request->status !== 'all' && $request->status !== '') {
                 $query->where('status', $request->status);
             }
 
             // Search filter
-            if ($request->has('search') && !empty($request->search)) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q2) use ($search) {
+                    $q2->where('request_description', 'like', '%' . $search . '%')
+                        ->orWhereHas('requestFromEmployee', function ($sub) use ($search) {
+                            $sub->where('employee_code', 'like', '%' . $search . '%')
+                                ->orWhere('first_name', 'like', '%' . $search . '%')
+                                ->orWhere('last_name', 'like', '%' . $search . '%')
+                                ->orWhere('full_name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('requestToEmployee', function ($sub) use ($search) {
+                            $sub->where('employee_code', 'like', '%' . $search . '%')
+                                ->orWhere('first_name', 'like', '%' . $search . '%')
+                                ->orWhere('last_name', 'like', '%' . $search . '%')
+                                ->orWhere('full_name', 'like', '%' . $search . '%');
+                        });
+                });
             }
 
             $requestForms = $query->get();

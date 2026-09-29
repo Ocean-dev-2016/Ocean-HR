@@ -515,7 +515,7 @@ class BonusController extends Controller
     {
         $modules = $this->modules;
 
-        $authUser = $this->authenticateLoginUserDetails;
+        $authUser = $this->authenticateLoginUserDetails ?? Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
         $modules['authLoginUserDetail'] = $authUser;
         $modules['company_id'] = $authUser?->company_id ?? null;
         $company_id = $modules['company_id'];
@@ -525,15 +525,14 @@ class BonusController extends Controller
             foreach (config('constants.permissions') as $key => $value) {
                 $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id'])
                     ? true
-                    : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                    : ($authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false);
             }
         }
         // Unauthorized check
-        if ($request->ajax()) {
-            if (!$modules['viewPermission']) {
+        if (!$modules['view_permission'] && !($modules['print_permission'] ?? false)) {
+            if ($request->ajax()) {
                 return $this->sendError('Unauthorized', [], [], 403);
             }
-        } elseif (!$modules['viewPermission']) {
             abort(403, 'Unauthorized');
         }
 
@@ -549,6 +548,7 @@ class BonusController extends Controller
             )
                 ->leftJoin('companies', 'companies.id', '=', 'bonuses.company_id')
                 ->leftJoin('branches', 'branches.id', '=', 'bonuses.branch')
+                ->with(['employeeRelation'])
                 ->orderBy('bonuses.id', 'DESC')
                 ->where(function ($q1) use ($modules, $loginUserId) {
                     if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
@@ -572,7 +572,7 @@ class BonusController extends Controller
             if ($request->has('branch') && $request->branch) {
                 $query->where((new Bonus())->getTable() . '.branch', $request->branch);
             }
-              if ($request->has('employee_id') && $request->employee_id) {
+            if ($request->has('employee_id') && $request->employee_id) {
                 $query->where((new Bonus())->getTable() . '.employee', $request->employee_id);
             }
             if ($request->has('status') && $request->status !== null && $request->status !== 'all') {
@@ -596,25 +596,30 @@ class BonusController extends Controller
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
     }
+
     public function exportExcel(Request $request)
     {
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $authUser = $this->authenticateLoginUserDetails ?? Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id ?? null;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id ?? null;
+
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id'])
+                    ? true
+                    : ($authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false);
             }
         }
-        if (!$modules['excel_permission']) {
-            if (isset($request) && $request->ajax()) {
+        if (!$modules['excel_permission'] && !$modules['view_permission']) {
+            if ($request->ajax()) {
                 return $this->sendError('Unauthorized', [], [], 403);
             }
             abort(403, 'Unauthorized');
         }
 
-        return Excel::download(new BonusExport($request->all(), $this->authenticateLoginUserDetails, $modules), 'Bonus-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
+        return Excel::download(new BonusExport($request->all(), $authUser, $modules), 'Bonus-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
     }
 }

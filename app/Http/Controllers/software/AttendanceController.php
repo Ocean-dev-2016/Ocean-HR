@@ -583,7 +583,21 @@ class AttendanceController extends Controller
                 }
             }
 
-            // return $validated;
+            // Prevent duplicate punch with same employee, date, time and type
+            $alreadyExists = Attendance::where('employee_id', $empId)
+                ->where('attendance_date', $validated['attendance_date'])
+                ->where('punch_in_time', $validated['punch_in_time'])
+                ->where('attendace_type', $attType)
+                ->exists();
+
+            if ($alreadyExists) {
+                $errorMsg = "Attendance record for this employee on {$validated['attendance_date']} at {$validated['punch_in_time']} already exists.";
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                }
+                return Redirect::back()->withInput()->withErrors($errorMsg);
+            }
+
             Attendance::create($validated);
 
             if ($request->ajax()) {
@@ -921,7 +935,7 @@ class AttendanceController extends Controller
     {
         $modules = $this->modules;
 
-        $authUser = $this->authenticateLoginUserDetails;
+        $authUser = $this->authenticateLoginUserDetails ?? Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
         $modules['authLoginUserDetail'] = $authUser;
         $modules['company_id'] = $authUser?->company_id ?? null;
         $company_id = $modules['company_id'];
@@ -931,40 +945,113 @@ class AttendanceController extends Controller
             foreach (config('constants.permissions') as $key => $value) {
                 $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id'])
                     ? true
-                    : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                    : ($authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false);
             }
         }
-        // Unauthorized check
-        if ($request->ajax()) {
-            if (!$modules['view_permission']) {
+        
+        if (!$modules['view_permission'] && !($modules['print_permission'] ?? false)) {
+            if ($request->ajax()) {
                 return $this->sendError('Unauthorized', [], [], 403);
             }
-        } elseif (!$modules['view_permission']) {
             abort(403, 'Unauthorized');
         }
 
         try {
-            // Permissions
-            $moduleName = $modules['module_name'];
+            $hasPersonalOnly = (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) ||
+                               (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission']));
 
-            $query = Attendance::withTrashed()
-                ->with(['company'])
-                ->orderBy('id', 'DESC');
+            // Parse date range
+            $fromDate = null;
+            $toDate = null;
+            $dateInput = $request->filter_date ?? $request->employee_date ?? null;
+            if (!empty($dateInput)) {
+                $dates = (strpos($dateInput, ' to ') !== false)
+                    ? explode(' to ', $dateInput)
+                    : [$dateInput, $dateInput];
 
-            // Employee guard-based access
-            $query->where(function ($q1) use ($modules, $loginUserId) {
-                if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                    // If company_id exists in $modules, use that; otherwise use employee's company_id
-                    $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-
-                    $q1->where($modules['table_name'] . '.company_id', $companyId);
-
-                    // Personal data permission rule
-                    if (!empty($modules['personal_data_permission']) && ($modules['all_data_permission'] == false)) {
-                        $q1->where($modules['table_name'] . '.employee_id', $loginUserId);
+                try {
+                    $fromDate = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
+                    $toDate = Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
+                } catch (\Exception $e) {
+                    try {
+                        $fromDate = Carbon::parse(trim($dates[0]))->startOfDay();
+                        $toDate = Carbon::parse(trim($dates[1]))->endOfDay();
+                    } catch (\Exception $e2) {
+                        $fromDate = $toDate = null;
                     }
                 }
-            });
+            }
+
+            $companyConstraint = function ($q) use ($company_id, $hasPersonalOnly, $loginUserId) {
+                if (!empty($company_id)) {
+                    $q->where('company_id', $company_id);
+                }
+                if ($hasPersonalOnly && $loginUserId) {
+                    $q->where('employee_id', $loginUserId);
+                }
+            };
+
+            // Handle absent employees
+            if ($request->filled('attendance_status') && $request->attendance_status === 'absent') {
+                if (!$fromDate) {
+                    $fromDate = Carbon::today()->startOfDay();
+                    $toDate = Carbon::today()->endOfDay();
+                }
+
+                $presentQuery = Attendance::whereBetween('attendance_date', [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')])
+                    ->where($companyConstraint);
+                if ($request->filled('filter_company')) {
+                    $presentQuery->where('company_id', $request->filter_company);
+                }
+                $presentEmployeeIds = $presentQuery->pluck('employee_id')->toArray();
+
+                $leaveQuery = LeaveApplication::where('status', 'approved')
+                    ->where(function ($q) use ($fromDate, $toDate) {
+                        $q->where(function ($sub) use ($fromDate, $toDate) {
+                            $sub->whereNotNull('todate_time')
+                                ->whereDate('fromdate_time', '<=', $toDate)
+                                ->whereDate('todate_time', '>=', $fromDate);
+                        })->orWhere(function ($sub) use ($fromDate, $toDate) {
+                            $sub->whereNull('todate_time')
+                                ->whereDate('fromdate_time', '>=', $fromDate)
+                                ->whereDate('fromdate_time', '<=', $toDate);
+                        });
+                    });
+
+                if ($request->filled('filter_company')) {
+                    $leaveQuery->where('company_id', $request->filter_company);
+                }
+                $leaveEmployeeIds = $leaveQuery->pluck('employee_id')->toArray();
+
+                $dataQuery = Employee::with(['company', 'employmentDetail.shiftDetail'])
+                    ->where('status', 'active')
+                    ->whereNotIn('id', array_merge($presentEmployeeIds, $leaveEmployeeIds));
+
+                if (!empty($company_id)) {
+                    $dataQuery->where('company_id', $company_id);
+                }
+                if ($hasPersonalOnly && $loginUserId) {
+                    $dataQuery->where('id', $loginUserId);
+                }
+                if ($request->filled('filter_company')) {
+                    $dataQuery->where('company_id', $request->filter_company);
+                }
+                if ($request->filled('filter_employee')) {
+                    $dataQuery->where('id', $request->filter_employee);
+                }
+
+                $attendance = $dataQuery->get();
+                $isAbsentView = true;
+
+                return view($modules['folder_path'] . '.print', compact('attendance', 'company_id', 'modules', 'isAbsentView', 'fromDate', 'toDate'));
+            }
+
+            // Standard Attendance Query
+            $query = Attendance::withTrashed()
+                ->with(['company', 'employee', 'shift', 'creator'])
+                ->where($companyConstraint)
+                ->orderBy('attendance_date', 'DESC')
+                ->orderBy('id', 'DESC');
 
             if ($request->filled('filter_company')) {
                 $query->where('company_id', $request->filter_company);
@@ -978,63 +1065,106 @@ class AttendanceController extends Controller
             if ($request->filled('attendace_type') && $request->attendace_type !== 'all') {
                 $query->where('attendace_type', $request->attendace_type);
             }
-            if ($request->filled('employee_date')) {
-                $dates = explode(' to ', str_replace('-', '/', $request->employee_date));
+            if ($request->filled('records_source') && $request->records_source !== 'all') {
+                $query->where('records_source', $request->records_source);
+            }
 
-                $tableColumn = (new Attendance())->getTable() . '.attendance_date';
-
-                // Handle range
-                if (count($dates) === 2) {
-                    $from = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay()->format('Y-m-d H:i:s');
-                    $to = Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay()->format('Y-m-d H:i:s');
-
-                    $query->whereBetween($tableColumn, [$from, $to]);
-                }
-                // Handle single date
-                elseif (count($dates) === 1 && !empty($dates[0])) {
-                    $singleDate = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->format('Y-m-d');
-
-                    $query->whereDate($tableColumn, $singleDate);
+            if ($request->filled('attendance_status')) {
+                $status = $request->attendance_status;
+                if ($status === 'late') {
+                    $query->where('attendace_type', 'in')
+                        ->whereExists(function ($q) {
+                            $q->select(DB::raw(1))
+                                ->from('employees')
+                                ->join('employment_details', 'employees.id', '=', 'employment_details.employee_id')
+                                ->join('shifts', 'employment_details.shift', '=', 'shifts.id')
+                                ->whereColumn('attendances.employee_id', '=', 'employees.id')
+                                ->whereRaw("TIME(attendances.punch_in_time) > ADDTIME(shifts.punch_in_minimum, SEC_TO_TIME(IFNULL(shifts.in_out_grace_period, 0) * 60))");
+                        });
+                } elseif ($status === 'early') {
+                    $query->where('attendace_type', 'out')
+                        ->whereExists(function ($q) {
+                            $q->select(DB::raw(1))
+                                ->from('employees')
+                                ->join('employment_details', 'employees.id', '=', 'employment_details.employee_id')
+                                ->join('shifts', 'employment_details.shift', '=', 'shifts.id')
+                                ->whereColumn('attendances.employee_id', '=', 'employees.id')
+                                ->whereRaw("TIME(attendances.punch_in_time) < SUBTIME(shifts.punch_out, SEC_TO_TIME(IFNULL(shifts.in_out_grace_period, 0) * 60))");
+                        });
+                } elseif ($status === 'present') {
+                    $fDate = $fromDate ?? Carbon::today()->startOfDay();
+                    $tDate = $toDate ?? Carbon::today()->endOfDay();
+                    $query->whereIn('attendances.id', function ($q) use ($fDate, $tDate, $company_id, $hasPersonalOnly, $loginUserId) {
+                        $q->select(DB::raw('MIN(id)'))
+                            ->from('attendances')
+                            ->whereBetween('attendance_date', [$fDate->format('Y-m-d'), $tDate->format('Y-m-d')]);
+                        if ($company_id) {
+                            $q->where('company_id', $company_id);
+                        }
+                        if ($hasPersonalOnly && $loginUserId) {
+                            $q->where('employee_id', $loginUserId);
+                        }
+                        $q->groupBy('employee_id');
+                    });
                 }
             }
 
+            if ($fromDate && $toDate) {
+                $tableColumn = (new Attendance())->getTable() . '.attendance_date';
+                $query->whereBetween($tableColumn, [$fromDate->format('Y-m-d'), $toDate->format('Y-m-d')]);
+            }
 
-            // dd("LN-921", $request->all(), $query);
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->where('leave_reason', 'like', "%{$search}%")
-                        ->orWhere('rejection_reason', 'like', "%{$search}%");
+                    $q->where('remark', 'like', "%{$search}%")
+                        ->orWhere('records_source', 'like', "%{$search}%")
+                        ->orWhereHas('employee', function ($eq) use ($search) {
+                            $eq->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%")
+                                ->orWhere('full_name', 'like', "%{$search}%")
+                                ->orWhere('employee_code', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('shift', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        });
                 });
             }
 
             $attendance = $query->get();
+            $isAbsentView = false;
 
-            return view($modules['folder_path'] . '.print', compact('attendance', 'company_id', 'modules'));
+            return view($modules['folder_path'] . '.print', compact('attendance', 'company_id', 'modules', 'isAbsentView', 'fromDate', 'toDate'));
         } catch (\Exception $e) {
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
     }
+
     public function exportExcel(Request $request)
     {
         $modules = $this->modules;
-        $modules['authLoginUserDetail'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails : null;
-        $modules['company_id'] = ($this->authenticateLoginUserDetails) ? $this->authenticateLoginUserDetails?->company_id : null;
-        $modules['parent_type_id'] = ($this->authenticateLoginUserDetails?->parent_type_id) ? $this->authenticateLoginUserDetails?->parent_type_id : null;
-        $loginUserId = ($modules['authLoginUserDetail'] && $modules['authLoginUserDetail']?->id) ? $modules['authLoginUserDetail']?->id : null;
+        $authUser = $this->authenticateLoginUserDetails ?? Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
+        $modules['authLoginUserDetail'] = $authUser;
+        $modules['company_id'] = $authUser?->company_id ?? null;
+        $modules['parent_type_id'] = $authUser?->parent_type_id ?? null;
+        $loginUserId = $authUser?->id ?? null;
+
         if (count(config('constants.permissions'))) {
             foreach (config('constants.permissions') as $key => $value) {
-                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id']) ? true : Gate::check('hasPermission', [$value, $modules['module_name']]);
+                $modules[$value . '_permission'] = (isset($modules['company_id']) && !$modules['company_id'])
+                    ? true
+                    : ($authUser ? Gate::forUser($authUser)->check('hasPermission', [$value, $modules['module_name']]) : false);
             }
         }
-        if (!$modules['excel_permission']) {
-            if (isset($request) && $request->ajax()) {
+
+        if (!$modules['excel_permission'] && !$modules['view_permission']) {
+            if ($request->ajax()) {
                 return $this->sendError('Unauthorized', [], [], 403);
             }
             abort(403, 'Unauthorized');
         }
 
-        return Excel::download(new AttendanceExport($request->all(), $this->authenticateLoginUserDetails, $modules), 'Attendance-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
+        return Excel::download(new AttendanceExport($request->all(), $authUser, $modules), 'Attendance-' . Helper::convert_date("", "Y-m-d H:i:s", "Ymd-His") . '.xlsx');
     }
 
     /**

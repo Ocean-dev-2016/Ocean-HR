@@ -33,7 +33,7 @@ class AttendanceAutoPunchOut extends Command
             $today = Carbon::today()->format('Y-m-d');
             $nowTime = Carbon::now()->format('H:i:s');
 
-            // Find all "in" punches that do NOT have a corresponding "out" punch for that employee on that attendance_date
+            // Find distinct employee & attendance_date pairs with "in" punches that do NOT have an "out" punch
             $pendingInPunches = Attendance::where('attendace_type', 'in')
                 ->where('attendance_date', '<=', $today)
                 ->whereNotExists(function ($query) {
@@ -43,6 +43,8 @@ class AttendanceAutoPunchOut extends Command
                         ->whereColumn('out_att.attendance_date', 'attendances.attendance_date')
                         ->where('out_att.attendace_type', 'out');
                 })
+                ->select('employee_id', 'attendance_date', \Illuminate\Support\Facades\DB::raw('MAX(company_id) as company_id'), \Illuminate\Support\Facades\DB::raw('MAX(shift_id) as shift_id'))
+                ->groupBy('employee_id', 'attendance_date')
                 ->get();
 
             Log::info("AttendanceAutoPunchOut: Found " . $pendingInPunches->count() . " potential pending punch-outs.");
@@ -50,6 +52,16 @@ class AttendanceAutoPunchOut extends Command
             $autoPunchCount = 0;
 
             foreach ($pendingInPunches as $record) {
+                // Double check if out punch already created in this run
+                $alreadyHasOut = Attendance::where('employee_id', $record->employee_id)
+                    ->where('attendance_date', $record->attendance_date)
+                    ->where('attendace_type', 'out')
+                    ->exists();
+
+                if ($alreadyHasOut) {
+                    continue;
+                }
+
                 $shift = Shift::find($record->shift_id);
                 if (!$shift) {
                     $shift = Shift::where('company_id', $record->company_id)->first();

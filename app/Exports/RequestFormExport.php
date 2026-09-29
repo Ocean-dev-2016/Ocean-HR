@@ -2,27 +2,25 @@
 
 namespace App\Exports;
 
-use App\Models\Department;
-use App\Models\LeaveApplication;
-use App\Models\Loan;
+use App\Models\Company;
+use App\Models\Employee;
 use App\Models\RequestForm;
-use App\Models\SubDepartment;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class RequestFormExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
     protected $srNo = 1;
     protected $filter_params;
     protected $user;
-
     protected $modules;
-
 
     public function __construct($filter_params = null, $user = null, $modules = [])
     {
@@ -33,63 +31,80 @@ class RequestFormExport implements FromCollection, WithHeadings, WithMapping, Sh
 
     public function collection()
     {
-        $query = RequestForm::withTrashed()
-            ->with(['company', 'requestFromEmployee', 'requestToEmployee'])
+        $query = RequestForm::with(['company', 'requestFromEmployee', 'requestToEmployee'])
             ->orderBy('id', 'DESC');
 
-        $authUser = $this->user ?? null; // Assuming $this->user is authenticated user
-        $loginUserId = $authUser->id ?? null;
+        $authUser = $this->user ?? Auth::guard('admin_software')->user() ?? Auth::guard('employees')->user();
+        $loginUserId = $authUser?->id ?? null;
+        $companyId = $this->modules['company_id'] ?? $authUser?->company_id ?? null;
 
-        // Employee guard-based access
-        if ($authUser && $authUser->role === 'employee') { // adjust role check if needed
-            $teamPersonCompanyId = $authUser->company_id;
-            $query->where('company_id', $teamPersonCompanyId);
-
-            if (!empty($this->modules['personalDataPermission']) && empty($this->modules['allDataPermission'])) {
-                $query->where('created_by', $loginUserId);
-            }
+        // Company scope for logged-in company / employee
+        if (!empty($companyId)) {
+            $query->where('company_id', $companyId);
         }
 
-        // Filters
-        if (!empty($this->filter_params->company_id)) {
-            $query->where('company_id', 'LIKE', '%' . $this->filter_params->company_id . '%');
+        // Personal data permission check
+        $hasPersonalOnly = (!empty($this->modules['personal_data_permission']) && empty($this->modules['all_data_permission'])) ||
+                           (!empty($this->modules['personalDataPermission']) && empty($this->modules['allDataPermission']));
+        if ($hasPersonalOnly && $loginUserId) {
+            $query->where('created_by', $loginUserId);
         }
 
-        if (!empty($this->filter_params->employee_id)) {
-            $employeeName = $this->filter_params->employee_id;
-            $query->where(function ($q) use ($employeeName) {
-                $q->where('request_from_employee_name', $employeeName)
-                    ->orWhere('request_to_employee_name', $employeeName);
+        // Filter by Company
+        $filterCompany = $this->filter_params->company_id ?? $this->filter_params->company ?? $this->filter_params->filter_company ?? null;
+        if (!empty($filterCompany)) {
+            $query->where('company_id', $filterCompany);
+        }
+
+        // Filter by Employee
+        $filterEmployee = $this->filter_params->employee_id ?? $this->filter_params->employee ?? $this->filter_params->filter_employee ?? null;
+        if (!empty($filterEmployee)) {
+            $query->where(function ($q) use ($filterEmployee) {
+                $q->where('request_from_employee_name', $filterEmployee)
+                    ->orWhere('request_to_employee_name', $filterEmployee);
             });
         }
 
-
-        if (isset($this->filter_params->status) && $this->filter_params->status !== 'all') {
+        // Filter by Status
+        if (isset($this->filter_params->status) && $this->filter_params->status !== '' && $this->filter_params->status !== 'all') {
             $query->where('status', $this->filter_params->status);
         }
 
-       
+        // Filter by Search text
+        if (!empty($this->filter_params->search)) {
+            $search = $this->filter_params->search;
+            $query->where(function ($q2) use ($search) {
+                $q2->where('request_description', 'like', '%' . $search . '%')
+                    ->orWhereHas('requestFromEmployee', function ($sub) use ($search) {
+                        $sub->where('employee_code', 'like', '%' . $search . '%')
+                            ->orWhere('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%')
+                            ->orWhere('full_name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('requestToEmployee', function ($sub) use ($search) {
+                        $sub->where('employee_code', 'like', '%' . $search . '%')
+                            ->orWhere('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%')
+                            ->orWhere('full_name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
         return $query->get();
     }
 
-
     public function headings(): array
     {
-        $headings = [
-            'Sr No',
+        $headings = ['Sr No'];
 
-        ];
-
-        // Include Company Name if user is not limited to a company
-        if (!$this->user || empty($this->user['company_id'])) {
+        $companyId = $this->modules['company_id'] ?? $this->user?->company_id ?? null;
+        if (empty($companyId)) {
             $headings[] = 'Company Name';
         }
 
-        // Add the rest of the columns
         $headings = array_merge($headings, [
             'Request From',
             'Request To',
-
             'Description',
             'Status',
         ]);
@@ -99,38 +114,69 @@ class RequestFormExport implements FromCollection, WithHeadings, WithMapping, Sh
 
     public function map($row): array
     {
-        $rowData = [
-            $this->srNo++,
+        $companyId = $this->modules['company_id'] ?? $this->user?->company_id ?? null;
+        $rowData = [$this->srNo++];
 
-        ];
-
-        // Company Name
-        if (!$this->user || empty($this->user['company_id'])) {
-            $rowData[] = optional($row->company)->company_name ?? '-';
+        if (empty($companyId)) {
+            $rowData[] = $row->company?->company_name ?? '-';
         }
 
-        // Add the rest of the data in same order as headings
-        $rowData = array_merge($rowData, [
-            optional($row->requestFromEmployee)->employee_code . ' - ' . optional($row->requestFromEmployee)->full_name ?? '-',
-            optional($row->requestToEmployee)->employee_code . ' - ' . optional($row->requestToEmployee)->full_name ?? '-',
+        $fromEmp = $row->requestFromEmployee
+            ? ($row->requestFromEmployee->employee_code . ' / ' . ($row->requestFromEmployee->full_name ?? ($row->requestFromEmployee->first_name . ' ' . $row->requestFromEmployee->last_name)))
+            : '-';
 
-            $row->request_description ?? '-',
-            ucfirst($row->status ?? '-'),
-        ]);
+        $toEmp = $row->requestToEmployee
+            ? ($row->requestToEmployee->employee_code . ' / ' . ($row->requestToEmployee->full_name ?? ($row->requestToEmployee->first_name . ' ' . $row->requestToEmployee->last_name)))
+            : '-';
+
+        $rowData[] = $fromEmp;
+        $rowData[] = $toEmp;
+        $rowData[] = $row->request_description ?? '-';
+        $rowData[] = ucfirst($row->status ?? 'Active');
 
         return $rowData;
     }
 
-
     public function styles(Worksheet $sheet)
     {
-        return [
-            1 => ['font' => ['bold' => true], 'alignment' => ['horizontal' => 'center']],
-        ];
+        $highestRow = $sheet->getHighestRow();
+        $highestColumn = $sheet->getHighestColumn();
+        $fullRange = "A1:{$highestColumn}{$highestRow}";
+
+        // Header Styling
+        $sheet->getStyle("A1:{$highestColumn}1")->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 11,
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+        // Borders for the entire table
+        $sheet->getStyle($fullRange)->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'D0D5DD'],
+                ],
+            ],
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+        // Center align Sr No and Status columns
+        $sheet->getStyle("A2:A{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("{$highestColumn}2:{$highestColumn}{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        return [];
     }
 
     public function title(): string
     {
-        return 'Department';
+        return 'Request Form';
     }
 }

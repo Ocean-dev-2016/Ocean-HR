@@ -1542,6 +1542,34 @@ class DashboardController extends Controller
                 $nextType = $request->punch_type;
             }
 
+            if ($nextType === 'in' && $lastPunch && $lastPunch->attendace_type === 'in') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already punched in.'
+                ], 422);
+            }
+
+            if ($nextType === 'out' && (!$lastPunch || $lastPunch->attendace_type === 'out')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot punch out without a valid punch in.'
+                ], 422);
+            }
+
+            // Prevent duplicate records for the exact same second/timestamp
+            $duplicateExists = Attendance::where('employee_id', $employee->id)
+                ->where('attendance_date', $attendanceDate)
+                ->where('punch_in_time', $punchTime24)
+                ->where('attendace_type', $nextType)
+                ->exists();
+
+            if ($duplicateExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A punch record already exists for this exact time.'
+                ], 422);
+            }
+
             // Get Shift
             $shift_id = $employee->employmentDetail?->shift ?? 0;
             $shift = $shift_id ? Shift::find($shift_id) : Shift::where('company_id', $employee->company_id)->first();

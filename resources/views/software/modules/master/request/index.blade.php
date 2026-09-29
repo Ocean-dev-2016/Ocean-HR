@@ -215,31 +215,32 @@
             let search = $('input[name="search"]').val();
             let status = $('#status_filter').val();
             let company_id = $('#company_id').val();
-            let employee_id =$('#employee_id').val();
+            let employee_id = $('#employee_id').val();
 
             let queryParams = $.param({
                 search: search,
                 status: status,
                 company_id: company_id,
-                employee_id :employee_id
-
+                employee_id: employee_id
             });
 
             let url = "{{ route($route . '.export.excel') }}" + "?" + queryParams;
             window.location.href = url;
         });
+
         $('#print_btn').on('click', function(e) {
             e.preventDefault();
 
             let search = $('input[name="search"]').val();
             let status = $('#status_filter').val();
-            let company = $('#company_id').val();
-            let employee_id =$('#employee_id').val();
+            let company_id = $('#company_id').val();
+            let employee_id = $('#employee_id').val();
+
             let queryParams = $.param({
                 search: search,
                 status: status,
-                company: company,
-                employee_id :employee_id
+                company_id: company_id,
+                employee_id: employee_id
             });
 
             let url = "{{ route($route . '.print') }}" + "?" + queryParams;
