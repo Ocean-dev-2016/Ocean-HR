@@ -218,6 +218,7 @@
 @if (!empty($adminDashboardData))
 @php
     $ad = $adminDashboardData;
+    $pState = $employeeStats['punch_state'] ?? ($ad['punch_state'] ?? 'out');
     $money = function ($n) {
         $n = (float) $n;
         if (abs($n) >= 10000000) return '₹' . number_format($n / 10000000, 2) . ' Cr';
@@ -235,7 +236,7 @@
     <div class="od-hero od-gap">
         <div class="p-3 p-md-4 position-relative">
             <div class="row g-3 align-items-center">
-                <div class="col-12 col-xl-5">
+                <div class="col-12 col-xl-6">
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
                         <span class="badge rounded-pill px-2 py-1 fw-bold" style="background:rgba(242,140,40,.95);color:#fff;font-size:.68rem;">Owner Command Center</span>
                         @if (!is_null($ad['plan_days_left']))
@@ -254,8 +255,66 @@
                         <span><i class="ti ti-calendar me-1"></i>{{ $ad['current_date'] }}</span>
                         <span id="admin-live-clock"><i class="ti ti-clock me-1"></i>{{ $ad['current_time'] }}</span>
                     </div>
+
+                    {{-- Admin Quick Interactive Punch Capsule --}}
+                    <div class="d-inline-flex align-items-center p-2.5 px-3 rounded-4 mt-3"
+                         style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); backdrop-filter: blur(12px); box-shadow: 0 4px 18px rgba(0,0,0,0.18);">
+                        <div class="punch-circle-container" id="punch-container" style="width: 76px; height: 76px; min-width: 76px; margin: 0; position: relative; display: flex; align-items: center; justify-content: center;">
+                            <svg class="punch-rotating-svg" viewBox="0 0 100 100" style="width: 76px; height: 76px;">
+                                <circle cx="50" cy="50" r="44" class="punch-track" style="stroke: rgba(255, 255, 255, 0.2);"></circle>
+                                <circle id="punch-rotating-line" class="punch-rotating-line" cx="50" cy="50" r="44"
+                                    stroke="{{ $pState === 'in' ? '#ef4444' : '#10b981' }}"></circle>
+                            </svg>
+
+                            <button type="button" id="dashboard-punch-btn"
+                                class="punch-circle-btn {{ $pState === 'in' ? 'punch-btn-out' : 'punch-btn-in' }}"
+                                data-punch-state="{{ $pState }}"
+                                style="width: 64px; height: 64px;">
+                                <span class="punch-pulse-ring"></span>
+                                <span class="punch-halo-outer" style="width: 64px; height: 64px;"></span>
+                                <span class="punch-halo-inner" style="width: 54px; height: 54px;"></span>
+                                <span class="punch-core" style="width: 48px; height: 48px;">
+                                    <span class="punch-icon-wrap" id="punch-icon-wrap">
+                                        @if($pState === 'in')
+                                            <svg class="punch-tap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                                <polyline points="16 17 21 12 16 7"></polyline>
+                                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                                            </svg>
+                                        @else
+                                            <svg class="punch-tap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                                <polyline points="10 17 15 12 10 7"></polyline>
+                                                <line x1="15" y1="12" x2="3" y2="12"></line>
+                                            </svg>
+                                        @endif
+                                    </span>
+                                    <span class="punch-subtext" id="punch-btn-sublabel" style="font-size: 0.56rem; font-weight: 800; margin-top: 1px;">
+                                        {{ $pState === 'in' ? 'Punch Out' : 'Punch In' }}
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+
+                        {{-- Vertical Divider --}}
+                        <div style="width: 1px; height: 44px; background: rgba(255, 255, 255, 0.25); margin: 0 14px;"></div>
+
+                        {{-- Status Information Text --}}
+                        <div class="d-flex flex-column justify-content-center text-white">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="fw-bold me-2" style="font-size: 0.95rem; opacity: 0.95;">My Attendance:</span>
+                                <span id="punch-status-badge" class="badge rounded-pill fw-extrabold px-2.5 py-1"
+                                    style="font-size: 0.82rem; background: {{ $pState === 'in' ? '#dcfce7' : '#fee2e2' }}; color: {{ $pState === 'in' ? '#15803d' : '#b91c1c' }}; letter-spacing: 0.5px;">
+                                    {{ strtoupper($pState) }}
+                                </span>
+                            </div>
+                            <span id="punch-status-desc" class="fw-medium text-white" style="font-size: 0.8rem; opacity: 0.88;">
+                                {{ $pState === 'in' ? 'Hold 2 sec to punch out' : 'Hold 2 sec to punch in' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-12 col-xl-7">
+                <div class="col-12 col-xl-6">
                     <div class="od-pulse">
                         <div class="od-pulse-item">
                             <div class="lbl">Workforce</div>

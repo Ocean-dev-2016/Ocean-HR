@@ -664,6 +664,12 @@ class DashboardController extends Controller
                 } elseif (Auth::guard('admin_software')->check()) {
                     $adminUser = Auth::guard('admin_software')->user();
                     $currentEmployee = Employee::where('email', $adminUser->email)->orWhere('username', $adminUser->username)->first();
+                    if (!$currentEmployee) {
+                        $selectedCompanyId = session('selected_company_id') ?? ($adminUser->company_id ?? ($modules['company_id'] ?? null));
+                        if ($selectedCompanyId) {
+                            $currentEmployee = Employee::where('company_id', $selectedCompanyId)->first();
+                        }
+                    }
                     if (!$currentEmployee && $request->filled('employee_id')) {
                         $currentEmployee = Employee::find($request->employee_id);
                     }
@@ -1427,6 +1433,7 @@ class DashboardController extends Controller
                         'desig_max' => $desigMax,
                         'not_punched' => $notPunchedCount,
                         'inactive_employees' => $inactiveEmployees,
+                        'punch_state' => $employeeStats['punch_state'] ?? 'out',
                     ];
                 }
 
@@ -1566,7 +1573,7 @@ class DashboardController extends Controller
                 'attendace_type' => $nextType,
                 'remark' => 'Dashboard Web Quick Punch',
                 'status' => 'active',
-                'records_source' => 'web_dashboard',
+                'records_source' => 'manually',
                 'device_serial' => $request->header('User-Agent'),
                 'device_ip' => $request->ip(),
                 'created_by' => $employee->id,

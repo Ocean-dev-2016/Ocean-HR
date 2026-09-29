@@ -406,10 +406,7 @@ class AttendanceController extends Controller
                             return '-';
                         }
                         $btn = '';
-                        $isManual = false;
-                        if ($row?->records_source == 'manually') {
-                            $isManual = true;
-                        }
+                        $isManual = in_array($row?->records_source, ['manually', 'manual', 'web_dashboard']);
 
                         if (!$row?->deleted_at) {
                             if ($modules['update_permission']) {
