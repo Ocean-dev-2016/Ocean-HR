@@ -641,8 +641,13 @@ class EmployeeController extends Controller
             }
 
             $validated['created_by'] = $loginUserId;
-            $validated['password'] = Hash::make($request?->password);
-            $validated['sp'] = Helper::generateSP($request?->password);
+            if (empty($validated['username'])) {
+                $validated['username'] = $validated['employee_code'] ?? ($request->contact_number ?: (Str::slug($request->full_name) . rand(100, 999)));
+            }
+
+            $plainPassword = $request->filled('password') ? $request->password : ('User@' . rand(1000, 9999));
+            $validated['password'] = Hash::make($plainPassword);
+            $validated['sp'] = Helper::generateSP($plainPassword);
             // dd($request->all(), $validated);
             $employee = Employee::create($validated);
 

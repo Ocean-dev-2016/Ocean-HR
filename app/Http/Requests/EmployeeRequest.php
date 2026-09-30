@@ -62,6 +62,8 @@ class EmployeeRequest extends FormRequest
         $company = Company::find($request->company_id);
         $isManualEmployeeCode = $company && $company->employee_code_auto_generation === 'manual';
 
+        $isEmployeeLoginAllowed = !$company || $company->allow_employee_login != 0;
+
         $rules = [
             'company_id' => ['required', Rule::exists((new Company())->getTable(), 'id')],
             'branch_id' => ['nullable', Rule::exists((new Branch())->getTable(), 'id')],
@@ -120,7 +122,7 @@ class EmployeeRequest extends FormRequest
             ],
             'gender' => ['required', 'in:' . implode(",", array_keys(config('constants.genders')))],
             'username' => [
-                'required',
+                $isEmployeeLoginAllowed ? 'required' : 'nullable',
                 'string',
                 'max:255',
                 Rule::unique((new Employee())->getTable(), 'username')
@@ -128,7 +130,8 @@ class EmployeeRequest extends FormRequest
                     ->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at')),
             ],
             'password' => [
-                $id ? 'nullable' : 'required',
+                ($id || !$isEmployeeLoginAllowed) ? 'nullable' : 'required',
+                'nullable',
                 'string',
                 'min:6',
                 'max:255',

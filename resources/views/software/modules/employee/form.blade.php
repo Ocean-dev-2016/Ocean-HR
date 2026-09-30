@@ -10,6 +10,9 @@
     $currentGuard = isset($modules['currentGuard']) ? $modules['currentGuard'] : null;
     $parent_type_id = isset($modules['parent_type_id']) ? $modules['parent_type_id'] : null;
     $isMainAdmin = ($currentGuard == 'admin_software') || empty($parent_type_id) || $parent_type_id === 0 || $parent_type_id === '0';
+    $resolvedCompanyId = $company_id ?: (isset($edit->company_id) ? $edit->company_id : null);
+    $companySetting = $resolvedCompanyId ? \App\Models\Company::find($resolvedCompanyId) : null;
+    $isEmployeeLoginAllowed = !$companySetting || $companySetting->allow_employee_login != 0;
     $defualtCountryId = 101;
     $colums = 'col-md-3 col-sm-12 mb-2';
 @endphp
@@ -281,7 +284,7 @@
                     {{-- User Name --}}
                     <div class="col-md-3 col-sm-12 mb-2">
                         <div class="form-group">
-                            <label class="form-label">Username <span class="text-danger">*</span></label>
+                            <label class="form-label">Username @if($isEmployeeLoginAllowed) <span class="text-danger">*</span> @else <small class="text-muted">(Optional)</small> @endif</label>
                             <input id="username" type="text"
                                 class="form-control @error('username') is-invalid @enderror" name="username"
                                 value="{{ old('username', $edit->username ?? '') }}" autocomplete="name"
@@ -295,8 +298,7 @@
                     {{-- Password --}}
                     <div class="col-md-3 col-sm-12 mb-2">
                         <div class="form-group">
-                            <label class="form-label">Password @if (!isset($edit)) <span class="text-danger">*</span>
-                                @endif </label>
+                            <label class="form-label">Password @if ($isEmployeeLoginAllowed && !isset($edit)) <span class="text-danger">*</span> @elseif(!$isEmployeeLoginAllowed) <small class="text-muted">(Optional)</small> @endif </label>
                             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
                                 <input type="password" id="password"
                                     class="form-control @error('password') is-invalid @enderror " name="password"

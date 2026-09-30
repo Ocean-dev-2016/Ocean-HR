@@ -19,6 +19,7 @@ use App\Models\MasterState;
 use App\Models\MasterCity;
 use App\Models\Role;
 use App\Models\TeamRole;
+use App\Models\Company;
 use App\Models\EmployeeType;
 use App\Models\Shift;
 use Carbon\Carbon;
@@ -26,6 +27,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -89,8 +91,22 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             if (!$firstName) $validationErrors[] = 'First Name is missing';
             if (!$middleName) $validationErrors[] = 'Middle Name is missing';
             if (!$fatherName) $validationErrors[] = 'Father Name is missing';
-            if (!$username) $validationErrors[] = 'Username is missing';
-            if (!$password) $validationErrors[] = 'Password is missing';
+            // Check company's allow_employee_login setting
+            $company = Company::find($this->companyId);
+            $isEmployeeLoginAllowed = !$company || $company->allow_employee_login != 0;
+
+            if ($isEmployeeLoginAllowed) {
+                if (!$username) $validationErrors[] = 'Username is missing';
+                if (!$password) $validationErrors[] = 'Password is missing';
+            } else {
+                if (!$username) {
+                    $username = $employeeCode ?: (Str::slug($firstName . ' ' . $middleName) . rand(100, 999));
+                }
+                if (!$password) {
+                    $password = 'User@' . rand(1000, 9999);
+                }
+            }
+
             if (!$gender) {
                 $validationErrors[] = 'Gender is missing';
             } elseif (!in_array(strtolower($gender), array_map('strtolower', array_keys(config('constants.genders'))))) {
