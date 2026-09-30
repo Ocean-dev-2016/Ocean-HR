@@ -24,22 +24,21 @@
     @endif
 
     @php
-        $metaBranchType = isset($branch_type) && !empty($branch_type) ? $branch_type : null;
-        if (empty($metaBranchType)) {
-            // Try to get company_id from various sources
-            $metaCompanyId = trim($__env->yieldContent('company_id'))
-                ?: ($modules['company_id'] ?? $authenticateUserDetails?->company_id ?? null);
+        $metaCompanyId = trim($__env->yieldContent('company_id'))
+            ?: ($modules['company_id'] ?? $authenticateUserDetails?->company_id ?? null);
 
-            if ($metaCompanyId) {
-                $metaCompany = \App\Models\Company::find($metaCompanyId);
-                $metaBranchType = $metaCompany?->branch_type;
-            }
+        $metaCompany = null;
+        if ($metaCompanyId) {
+            $metaCompany = \App\Models\Company::find($metaCompanyId);
         }
+
+        $metaBranchType = isset($branch_type) && !empty($branch_type) ? $branch_type : $metaCompany?->branch_type;
+        $appFavicon = ($metaCompany && $metaCompany->company_favicon_url) ? $metaCompany->company_favicon_url : asset('software/img/ring.png');
     @endphp
     <meta name="branch_type" value="{{ $metaBranchType ?? '' }}" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ asset('software/img/ring.png') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ $appFavicon }}" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

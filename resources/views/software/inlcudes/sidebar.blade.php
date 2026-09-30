@@ -19,8 +19,11 @@
     $sidebarMainLogo = asset('software/img/logo.png');
     $sidebarSmallLogo = asset('software/img/ring.png');
 
-    if (isset($modules) && isset($modules['company_id'])) {
-        $company_id = $modules['company_id'];
+    $company_id = isset($modules['company_id'])
+        ? $modules['company_id']
+        : ($authenticateUserDetails?->company_id ?? null);
+
+    if ($company_id) {
         $company = app\Helpers\Helper::getCompanyDetailById($company_id);
         if ($company && $company?->id) {
             $sidebarMainLogo = $company?->company_logo_url ?? $sidebarMainLogo;
