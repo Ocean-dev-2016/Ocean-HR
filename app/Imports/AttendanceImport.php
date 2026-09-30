@@ -80,18 +80,13 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                 $deviceIp = $this->getValue($row, ['device_ip', 'device_ip_address']);
                 $status = strtoupper(trim($this->getValue($row, ['status']) ?? ''));
                 
-                if ($index == 1) {
-                    dd("LN-85", $row, $biometricUserId, $index, $rowNumber, $employeeCode, $employeeName);
-                }
-                
                 // Validation - At least one employee identifier must be provided
                 if (!$biometricUserId && !$employeeCode && !$employeeName) {
                     $this->failedCount++;
                     $this->errors[$rowNumber] = 'Employee identifier (biometric_user_id, employee_code, or employee_name) is missing';
-                    dd("L-91", $row, $validationErrors, $this->errors);
                     continue;
                 }
-                dd("L-89", $row, $validationErrors, $biometricUserId, $employeeCode, $employeeName, $attendanceDate, $punchInTime, $punchOutTime, $attendanceType, $shiftId, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $status);
+
                 if (!$attendanceDate) {
                     $validationErrors[] = 'Invalid or missing Attendance Date';
                 }
