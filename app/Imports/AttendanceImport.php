@@ -147,7 +147,6 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                     Log::error("Attendance Import Error at Row {$rowNumber}: " . $e->getMessage());
                 }
             }
-            dd("LN-151", $this->totalRows, $this->successCount, $this->failedCount, $this->duplicateCount, $this->errors);
             // Commit transaction after processing all rows
             DB::commit();
         } catch (\Exception $e) {
