@@ -117,28 +117,29 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
-                // Find shift
-                $shift = $this->findShift($shiftId, $validationErrors);
+                // Find shift (with fallback to employee's shift or company default)
+                $shift = $this->findShift($shiftId, $employee, $validationErrors);
+                $finalShiftId = $shift?->id ?? ($employee->employmentDetail?->shift ?? (Shift::where('company_id', $this->companyId)->value('id') ?? 0));
 
                 // Process attendance records
                 try {
                     // If both punch_in and punch_out exist, create two records
                     if ($punchInTime && $punchOutTime) {
                         // Create 'in' record
-                        $this->createAttendanceRecord($employee->id, $shift?->id, $attendanceDate, $punchInTime, 'in', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, 'in', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
                         
                         // Create 'out' record
-                        $this->createAttendanceRecord($employee->id, $shift?->id, $attendanceDate, $punchOutTime, 'out', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, 'out', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
                     } 
                     // If only punch_in exists
                     elseif ($punchInTime) {
                         $finalType = $attendanceType ?: 'in';
-                        $this->createAttendanceRecord($employee->id, $shift?->id, $attendanceDate, $punchInTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
                     }
                     // If only punch_out exists
                     elseif ($punchOutTime) {
                         $finalType = $attendanceType ?: 'out';
-                        $this->createAttendanceRecord($employee->id, $shift?->id, $attendanceDate, $punchOutTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
                     }
                     $this->successCount++;
                 } catch (\Exception $e) {
@@ -244,34 +245,41 @@ class AttendanceImport implements ToCollection, WithHeadingRow
     }
 
     /**
-     * Find shift by ID or name
+     * Find shift by ID or name with fallback to employee shift / company default
      */
-    private function findShift($shiftId, &$validationErrors)
+    private function findShift($shiftId, $employee, &$validationErrors)
     {
-        if (!$shiftId) {
-            return null;
-        }
+        if ($shiftId) {
+            // If numeric, try as ID first
+            if (is_numeric($shiftId)) {
+                $shift = Shift::where('company_id', $this->companyId)
+                    ->where('id', $shiftId)
+                    ->first();
+                if ($shift) {
+                    return $shift;
+                }
+            }
 
-        // If numeric, try as ID first
-        if (is_numeric($shiftId)) {
+            // Try as name
             $shift = Shift::where('company_id', $this->companyId)
-                ->where('id', $shiftId)
+                ->whereRaw("LOWER(name) = ?", [strtolower(trim($shiftId))])
                 ->first();
+
             if ($shift) {
                 return $shift;
             }
         }
 
-        // Try as name
-        $shift = Shift::where('company_id', $this->companyId)
-            ->whereRaw("LOWER(name) = ?", [strtolower(trim($shiftId))])
-            ->first();
-
-        if (!$shift) {
-            $validationErrors[] = "Shift '{$shiftId}' not found";
+        // Fallback to employee's assigned shift in employmentDetail
+        if ($employee && $employee->employmentDetail?->shift) {
+            $shift = Shift::where('company_id', $this->companyId)->where('id', $employee->employmentDetail->shift)->first();
+            if ($shift) {
+                return $shift;
+            }
         }
 
-        return $shift;
+        // Fallback to first shift in company
+        return Shift::where('company_id', $this->companyId)->first();
     }
 
     /**
