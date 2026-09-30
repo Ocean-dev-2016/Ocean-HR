@@ -263,6 +263,15 @@
                             @enderror
                         </div>
                     </div>
+                    <div class="col-md-4 col-sm-12 mb-2">
+                        <div class="form-group">
+                            <label class="form-label">Allow Employee Login</label>
+                            <select name="allow_employee_login" id="allow_employee_login" class="form-control select2">
+                                <option value="1" {{ old('allow_employee_login', 1) == 1 ? 'selected' : '' }}>Allowed (Yes)</option>
+                                <option value="0" {{ old('allow_employee_login', 1) == 0 ? 'selected' : '' }}>Disabled / Blocked (No)</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <div class="col-md-12 mb-2">
                         <div class="mb-3 bg-light p-3 rounded">

@@ -609,6 +609,12 @@ class SoftwareAuthController extends Controller
                             $handleRememberCookies();
                             Auth::guard('employees')->login($teamPerson, $remember);
 
+                            $isCompanyAdmin = ($teamPerson->parent_id == 0 || $teamPerson->role?->parent_id == 0);
+                            if (!$isCompanyAdmin && isset($company->allow_employee_login) && (int)$company->allow_employee_login === 0) {
+                                Auth::guard('employees')->logout();
+                                return Redirect::back()->withErrors(['username' => 'Employee login is disabled for this company. Please contact company administrator.'])->withInput();
+                            }
+
                             $latestPlan = CompanySubscriptionPlan::where('company_id', $teamPerson->company_id)->where('plan_id', $company->plan_id)->orderBy('id', 'desc')->first();
                             session()->put('show_plan_expiry_modal', true);
                             if (!empty($latestPlan?->subscription_status) && $latestPlan?->subscription_status == 'expired') {

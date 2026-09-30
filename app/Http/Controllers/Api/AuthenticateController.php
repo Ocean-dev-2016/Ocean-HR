@@ -146,6 +146,12 @@ class AuthenticateController extends Controller
                     return $this->sendError("Invalid credentials.", [], [], 401);
                 }
 
+                $company = Company::where('app_key', $request->app_key)->first();
+                $isCompanyAdmin = ($teamPerson->parent_id == 0 || $teamPerson->role?->parent_id == 0);
+                if (!$isCompanyAdmin && $company && isset($company->allow_employee_login) && (int)$company->allow_employee_login === 0) {
+                    return $this->sendError('Employee login is disabled for your company. Please contact company administrator.', [], [], 403);
+                }
+
                 /*if (env("APP_URL") == "https://ocean-crm.oceaninfotechcrm.com/") {
                     // Revoke all previous tokens for this user
                     Token::where('user_id', $teamPerson->id)

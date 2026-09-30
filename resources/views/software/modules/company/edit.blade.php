@@ -218,8 +218,16 @@
                                             <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                         @enderror
                                     </div>
+                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                    <div class="form-group">
+                                        <label class="form-label">Allow Employee Login</label>
+                                        <select name="allow_employee_login" id="allow_employee_login" class="form-control select2">
+                                            <option value="1" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 1 ? 'selected' : '' }}>Allowed (Yes)</option>
+                                            <option value="0" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 0 ? 'selected' : '' }}>Disabled / Blocked (No)</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="col-md-8 col-sm-12 {{ $maring_bottom }}"></div>
+                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}"></div>
 
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="bank_details">Bank Details</label>

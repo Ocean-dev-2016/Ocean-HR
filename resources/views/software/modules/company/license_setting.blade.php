@@ -181,6 +181,20 @@
                                 @enderror
                             </div>
 
+                            <div class="col-md-3 col-sm-12 {{ $maring_bottom }}">
+                                <label class="form-label" for="allow_employee_login">Allow Employee Login</label>
+                                <select id="allow_employee_login" name="allow_employee_login" class="form-select @error('allow_employee_login') is-invalid @enderror">
+                                    <option value="1" {{ old('allow_employee_login', $company?->allow_employee_login ?? 1) == 1 ? 'selected' : '' }}>Allowed (Yes)</option>
+                                    <option value="0" {{ old('allow_employee_login', $company?->allow_employee_login ?? 1) == 0 ? 'selected' : '' }}>Disabled / Blocked (No)</option>
+                                </select>
+                                <small class="text-muted">If disabled, regular employees cannot login.</small>
+                                @error('allow_employee_login')
+                                    <span class="invalid-feedback">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+
 
                             {{-- Application  Right --}}
 

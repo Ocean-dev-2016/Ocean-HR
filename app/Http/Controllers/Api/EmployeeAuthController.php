@@ -66,6 +66,12 @@ class EmployeeAuthController extends Controller
                 return $this->sendError('Your account is inactive. Please contact admin.', [], [], 403);
             }
 
+            // 5.1 Check if company allows employee login
+            $isCompanyAdmin = ($employee->parent_id == 0 || $employee->role?->parent_id == 0);
+            if (!$isCompanyAdmin && isset($company->allow_employee_login) && (int)$company->allow_employee_login === 0) {
+                return $this->sendError('Employee login is disabled for your company. Please contact company administrator.', [], [], 403);
+            }
+
             // 6. Revoke existing tokens for multi-device login restriction (Kick other devices)
             $employee->tokens()->update(['revoked' => true]);
 

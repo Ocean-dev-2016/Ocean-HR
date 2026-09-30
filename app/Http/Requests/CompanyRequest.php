@@ -104,6 +104,7 @@ class CompanyRequest extends FormRequest
             'date_format' => ['nullable', Rule::in($dateFormats)],
             'time_format' => ['nullable', Rule::in($timeFormats)],
             'address' => ['nullable', 'string'],
+            'allow_employee_login' => ['nullable', 'in:0,1'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'host' => ['nullable', 'regex:/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],

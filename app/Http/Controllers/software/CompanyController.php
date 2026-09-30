@@ -1612,6 +1612,7 @@ class CompanyController extends Controller
                     'max_employee_user_count' => ['required', 'integer', 'min:0'],
                     'app_right' => ['nullable', 'string'],
                     'panel_right' => ['required', 'string'],
+                    'allow_employee_login' => ['nullable', 'in:0,1'],
                 ], [
                     'plan_to.after_or_equal' => 'The plan to date must be after or equal to the plan from date.',
                     'panel_url.url' => 'The panel URL must be a valid URL.',

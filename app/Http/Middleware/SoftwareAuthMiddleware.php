@@ -36,6 +36,17 @@ class SoftwareAuthMiddleware
                     }
                     return Redirect::route('software.login')->with('error', 'Company account not found or has been removed.');
                 }
+                if (isset($company->allow_employee_login) && (int)$company->allow_employee_login === 0) {
+                    $isCompanyAdmin = ($user->parent_id == 0 || $user->role?->parent_id == 0);
+                    if (!$isCompanyAdmin) {
+                        Auth::guard('employees')->logout();
+                        if ($request->hasSession()) {
+                            $request->session()->invalidate();
+                        }
+                        return Redirect::route('software.login')->withErrors(['username' => 'Employee login is disabled for your company.']);
+                    }
+                }
+
                 if ($company && $company->plan_id) {
                     $latestPlan = CompanySubscriptionPlan::where('company_id', $company->id)
                         ->where('plan_id', $company->plan_id)
