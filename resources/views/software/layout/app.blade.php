@@ -24,16 +24,24 @@
     @endif
 
     @php
-        $metaCompanyId = trim($__env->yieldContent('company_id'))
-            ?: ($modules['company_id'] ?? $authenticateUserDetails?->company_id ?? null);
-
+        $appFavicon = asset('software/img/ring.png');
         $metaCompany = null;
-        if ($metaCompanyId) {
-            $metaCompany = \App\Models\Company::find($metaCompanyId);
+
+        if (Auth::guard('admin_software')->check()) {
+            $appFavicon = asset('software/img/ring.png');
+        } else {
+            $metaCompanyId = trim($__env->yieldContent('company_id'))
+                ?: ($modules['company_id'] ?? $authenticateUserDetails?->company_id ?? null);
+
+            if ($metaCompanyId) {
+                $metaCompany = \App\Models\Company::find($metaCompanyId);
+                if ($metaCompany && !empty($metaCompany->company_favicon_url)) {
+                    $appFavicon = $metaCompany->company_favicon_url;
+                }
+            }
         }
 
         $metaBranchType = isset($branch_type) && !empty($branch_type) ? $branch_type : $metaCompany?->branch_type;
-        $appFavicon = ($metaCompany && $metaCompany->company_favicon_url) ? $metaCompany->company_favicon_url : asset('software/img/ring.png');
     @endphp
     <meta name="branch_type" value="{{ $metaBranchType ?? '' }}" />
 

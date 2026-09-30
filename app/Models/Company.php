@@ -138,8 +138,9 @@ class Company extends Model
     {
         // company_logo_url
         if ($this->company_logo) {
-            if (file_exists(public_path($this->company_logo))) {
-                return asset($this->company_logo);
+            $path = ltrim($this->company_logo, '/\\');
+            if (file_exists(public_path($path))) {
+                return asset($path);
             }
         }
 
@@ -150,8 +151,9 @@ class Company extends Model
     {
         // company_favicon_url
         if ($this->company_favicon) {
-            if (file_exists(public_path($this->company_favicon))) {
-                return asset($this->company_favicon);
+            $path = ltrim($this->company_favicon, '/\\');
+            if (file_exists(public_path($path))) {
+                return asset($path);
             }
         }
 

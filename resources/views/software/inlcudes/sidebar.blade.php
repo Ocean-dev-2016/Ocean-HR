@@ -19,15 +19,17 @@
     $sidebarMainLogo = asset('software/img/logo.png');
     $sidebarSmallLogo = asset('software/img/ring.png');
 
-    $company_id = isset($modules['company_id'])
-        ? $modules['company_id']
-        : ($authenticateUserDetails?->company_id ?? null);
+    if (!Auth::guard('admin_software')->check()) {
+        $company_id = isset($modules['company_id'])
+            ? $modules['company_id']
+            : ($authenticateUserDetails?->company_id ?? null);
 
-    if ($company_id) {
-        $company = app\Helpers\Helper::getCompanyDetailById($company_id);
-        if ($company && $company?->id) {
-            $sidebarMainLogo = $company?->company_logo_url ?? $sidebarMainLogo;
-            $sidebarSmallLogo = $company?->company_favicon_url ?? $sidebarSmallLogo;
+        if ($company_id) {
+            $company = app\Helpers\Helper::getCompanyDetailById($company_id);
+            if ($company && $company?->id) {
+                $sidebarMainLogo = $company?->company_logo_url ?: $sidebarMainLogo;
+                $sidebarSmallLogo = $company?->company_favicon_url ?: $sidebarSmallLogo;
+            }
         }
     }
 @endphp

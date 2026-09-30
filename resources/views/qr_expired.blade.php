@@ -1,3 +1,18 @@
+@php
+    $dashboard_main_menu = ['software', 'roles', 'permissions'];
+    $company_id = null;
+    $sidebarMainLogo = asset('software/img/logo.png');
+    $sidebarSmallLogo = asset('software/img/ring.png');
+
+    $company_id = $modules['company_id'] ?? ($authenticateUserDetails?->company_id ?? trim($__env->yieldContent('company_id')) ?: null);
+    if ($company_id) {
+        $company = app\Helpers\Helper::getCompanyDetailById($company_id);
+        if ($company && $company?->id) {
+            $sidebarMainLogo = $company?->company_logo_url ?: $sidebarMainLogo;
+            $sidebarSmallLogo = $company?->company_favicon_url ?: $sidebarSmallLogo;
+        }
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 
@@ -16,7 +31,7 @@
     @else
         <meta name="company_id" value="{{ $authenticateUserDetails?->company_id ?? '' }}" />
     @endif
-    <link rel="icon" type="image/x-icon" href="{{ asset('software/img/ring.png') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ $sidebarSmallLogo }}" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -54,21 +69,6 @@
 </head>
 
 <body>
-    @php
-        $dashboard_main_menu = ['software', 'roles', 'permissions'];
-        $company_id = null;
-        $sidebarMainLogo = asset('software/img/logo.png');
-        $sidebarSmallLogo = asset('software/img/ring.png');
-
-        if (isset($modules) && isset($modules['company_id'])) {
-            $company_id = $modules['company_id'];
-            $company = app\Helpers\Helper::getCompanyDetailById($company_id);
-            if ($company && $company?->id) {
-                $sidebarMainLogo = $company?->company_logo_url ?? $sidebarMainLogo;
-                $sidebarSmallLogo = $company?->company_favicon_url ?? $sidebarSmallLogo;
-            }
-        }
-    @endphp
     <div class="bg-white rounded-xl shadow-2xl p-8 m-4 max-w-md w-full text-center">
         <div class="mb-5">
             <img src="{{ $sidebarMainLogo }}" alt="" />
