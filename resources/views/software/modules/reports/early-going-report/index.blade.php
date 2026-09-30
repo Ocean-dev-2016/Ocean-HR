@@ -50,10 +50,11 @@
                     <div class="col-md-2 mb-2">
                         <select id="department_id" name="department_id" class="form-select select2">
                             <option value="">All Departments</option>
-                            @foreach(\App\Models\Department::all() as $dept)
-                                <option value="{{ $dept->id }}" data-company-id="{{ $dept->company_id }}">{{ $dept->name }}
-                                </option>
-                            @endforeach
+                            @if ($company_id)
+                                @foreach(\App\Models\Department::where('company_id', $company_id)->where('status', 'active')->orderBy('name', 'asc')->get() as $dept)
+                                    <option value="{{ $dept->id }}" data-company-id="{{ $dept->company_id }}">{{ $dept->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="col-md-2 mb-2">
@@ -124,21 +125,29 @@
         $(document).ready(function () {
             $('.select2').select2();
 
-            var originalDepartments = $('#department_id').html();
+            function loadDepartments(companyId) {
+                $('#department_id').html('<option value="">All Departments</option>').trigger('change.select2');
+                if (!companyId) return;
+                $.ajax({
+                    url: "{{ url('api/get-department') }}",
+                    type: "POST",
+                    data: { _token: "{{ csrf_token() }}", company_id: companyId },
+                    success: function (response) {
+                        var options = '<option value="">All Departments</option>';
+                        if (response.status && response.data) {
+                            $.each(response.data, function (i, dept) {
+                                options += '<option value="' + dept.id + '">' + dept.department_name + '</option>';
+                            });
+                        }
+                        $('#department_id').html(options).trigger('change.select2');
+                    }
+                });
+            }
 
             $('#company_id').change(function () {
                 var companyId = $(this).val();
 
-                // Filter departments
-                $('#department_id').html(originalDepartments);
-                if (companyId) {
-                    $('#department_id option').each(function () {
-                        if ($(this).val() !== '' && $(this).data('company-id') != companyId) {
-                            $(this).remove();
-                        }
-                    });
-                }
-                $('#department_id').val('').trigger('change.select2');
+                loadDepartments(companyId);
 
                 if (companyId) {
                     $.ajax({

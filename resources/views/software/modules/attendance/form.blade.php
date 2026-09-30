@@ -153,6 +153,7 @@
                                 @endforeach
                                 @endif
                             </select>
+                            <div id="punch_status_hint"></div>
                             @error('attendace_type')
                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                             @enderror
@@ -260,6 +261,75 @@
             
             $('#shift_id').attr('data-selectedshiftid', shiftId);
             $('#shift_id').val(shiftId).trigger('change');
+        });
+
+        // Check if the employee is already Punched In for the chosen date and suggest Punch Out
+        function checkEmployeePunchStatus() {
+            @if(isset($edit))
+                return; // Keep existing value in Edit mode
+            @endif
+
+            const employeeId = $('#employee_id').val();
+            const attendanceDate = $('#attendance_date').val();
+
+            if (!employeeId || !attendanceDate) {
+                $('#punch_status_hint').html('');
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('attendance.employee-punch-status') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    employee_id: employeeId,
+                    attendance_date: attendanceDate
+                },
+                success: function(res) {
+                    if (res.success) {
+                        if (res.punch_state === 'in') {
+                            // Already punched in -> suggest Out
+                            $('#attendace_type').val('out').trigger('change.select2');
+                            $('#punch_status_hint').html(`
+                                <div class="alert alert-info py-1 px-2 mb-0 mt-1 d-flex align-items-center" style="font-size: 11.5px;">
+                                    <i class="ti ti-info-circle me-1"></i>
+                                    <span>Today's Punch In already exists (at <strong>${res.last_punch.time_formatted}</strong>). Ready for <strong>Punch Out</strong>.</span>
+                                </div>
+                            `);
+                        } else {
+                            // Either not punched in or last punch was out -> suggest In
+                            $('#attendace_type').val('in').trigger('change.select2');
+                            if (res.last_punch) {
+                                $('#punch_status_hint').html(`
+                                    <div class="alert alert-success py-1 px-2 mb-0 mt-1 d-flex align-items-center" style="font-size: 11.5px;">
+                                        <i class="ti ti-check me-1"></i>
+                                        <span>Last Punched Out at <strong>${res.last_punch.time_formatted}</strong>. Ready for next <strong>Punch In</strong>.</span>
+                                    </div>
+                                `);
+                            } else {
+                                $('#punch_status_hint').html(`
+                                    <div class="text-muted small mt-1" style="font-size: 11.5px;">
+                                        <i class="ti ti-clock me-1"></i>No punch yet today. Defaulting to <strong>Punch In</strong>.
+                                    </div>
+                                `);
+                            }
+                        }
+                    }
+                },
+                error: function(err) {
+                    console.error('Punch status check error:', err);
+                }
+            });
+        }
+
+        $(document).on('change', '#employee_id, #attendance_date', function() {
+            checkEmployeePunchStatus();
+        });
+
+        $(document).ready(function() {
+            setTimeout(function() {
+                checkEmployeePunchStatus();
+            }, 500);
         });
     </script>
 

@@ -498,6 +498,7 @@ Route::group(['middleware' => [SoftwareAuthMiddleware::class]], function () {
     Route::get('attendance/export/excel', [AttendanceController::class, 'exportExcel'])->name('attendance.export.excel');
     Route::get('attendance/export/print', [AttendanceController::class, 'print'])->name('attendance.print');
     Route::post('attendance/sync-biometric', [AttendanceController::class, 'syncBiometric'])->name('attendance.sync-biometric');
+    Route::post('attendance/employee-punch-status', [AttendanceController::class, 'getEmployeePunchStatus'])->name('attendance.employee-punch-status');
 
     //Attendance - Report
     Route::get('attendance-report/muster', [AttendanceReportController::class, 'musterIndex'])->name('attendance-report.muster');

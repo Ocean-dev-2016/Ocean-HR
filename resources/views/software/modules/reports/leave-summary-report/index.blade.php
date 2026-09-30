@@ -132,18 +132,22 @@
                         <label class="form-label">Department</label>
                         <select id="department_id" name="department_id" class="form-select select2">
                             <option value="">All Departments</option>
-                            @foreach(\App\Models\Department::all() as $dept)
-                                <option value="{{ $dept->id }}" data-company-id="{{ $dept->company_id }}">{{ $dept->name }}</option>
-                            @endforeach
+                            @if ($company_id)
+                                @foreach(\App\Models\Department::where('company_id', $company_id)->where('status', 'active')->orderBy('name', 'asc')->get() as $dept)
+                                    <option value="{{ $dept->id }}" data-company-id="{{ $dept->company_id }}">{{ $dept->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="{{ $desigCol }} mb-2">
                         <label class="form-label">Designation</label>
                         <select id="designation_id" name="designation_id" class="form-select select2">
                             <option value="">All Designations</option>
-                            @foreach(\App\Models\Designation::all() as $desig)
-                                <option value="{{ $desig->id }}" data-company-id="{{ $desig->company_id }}">{{ $desig->name }}</option>
-                            @endforeach
+                            @if ($company_id)
+                                @foreach(\App\Models\Designation::where('company_id', $company_id)->where('status', 'active')->orderBy('name', 'asc')->get() as $desig)
+                                    <option value="{{ $desig->id }}" data-company-id="{{ $desig->company_id }}">{{ $desig->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="{{ $buttonCol }} mb-2 d-flex gap-2">
@@ -184,21 +188,31 @@
     $(document).ready(function() {
         $('.select2').select2();
 
+        function loadDepartments(companyId) {
+            $('#department_id').html('<option value="">All Departments</option>').trigger('change.select2');
+            if (!companyId) return;
+            $.ajax({
+                url: "{{ url('api/get-department') }}",
+                type: "POST",
+                data: { _token: "{{ csrf_token() }}", company_id: companyId },
+                success: function (response) {
+                    var options = '<option value="">All Departments</option>';
+                    if (response.status && response.data) {
+                        $.each(response.data, function (i, dept) {
+                            options += '<option value="' + dept.id + '">' + dept.department_name + '</option>';
+                        });
+                    }
+                    $('#department_id').html(options).trigger('change.select2');
+                }
+            });
+        }
+
         // Load employees when company changes
         $('#company_id').change(function() {
             var companyId = $(this).val();
 
             if ($('#department_id').length) {
-                $('#department_id option').each(function() {
-                    if ($(this).val() == '') {
-                        $(this).show();
-                    } else if (!companyId || $(this).data('company-id') == companyId) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-                $('#department_id').val('').trigger('change.select2');
+                loadDepartments(companyId);
             }
 
             if ($('#designation_id').length) {

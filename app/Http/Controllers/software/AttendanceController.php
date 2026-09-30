@@ -598,6 +598,29 @@ class AttendanceController extends Controller
                 return Redirect::back()->withInput()->withErrors($errorMsg);
             }
 
+            // Check previous punch state for this date
+            $lastPunch = Attendance::where('employee_id', $empId)
+                ->where('attendance_date', $validated['attendance_date'])
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($attType === 'in' && $lastPunch && $lastPunch->attendace_type === 'in') {
+                $lastPunchTime = Carbon::parse($lastPunch->punch_in_time)->format('h:i A');
+                $errorMsg = "Employee already has an active Punch In on {$validated['attendance_date']} (at {$lastPunchTime}). Please select 'Out' for Punch Out.";
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                }
+                return Redirect::back()->withInput()->withErrors($errorMsg);
+            }
+
+            if ($attType === 'out' && (!$lastPunch || $lastPunch->attendace_type === 'out')) {
+                $errorMsg = "Cannot record Punch Out without an active Punch In on {$validated['attendance_date']}.";
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMsg], 422);
+                }
+                return Redirect::back()->withInput()->withErrors($errorMsg);
+            }
+
             Attendance::create($validated);
 
             if ($request->ajax()) {
@@ -620,6 +643,41 @@ class AttendanceController extends Controller
     public function show(string $id)
     {
         //
+    }
+
+    public function getEmployeePunchStatus(Request $request)
+    {
+        try {
+            $employeeId = $request->employee_id;
+            $date = $request->attendance_date ?? Carbon::today()->format('Y-m-d');
+
+            if (!$employeeId) {
+                return response()->json(['success' => false, 'message' => 'Employee ID is required.'], 400);
+            }
+
+            $lastPunch = Attendance::where('employee_id', $employeeId)
+                ->where('attendance_date', $date)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $punchState = ($lastPunch && $lastPunch->attendace_type === 'in') ? 'in' : 'out';
+            $suggestedType = ($punchState === 'in') ? 'out' : 'in';
+            $lastPunchTime = $lastPunch && $lastPunch->punch_in_time ? Carbon::parse($lastPunch->punch_in_time)->format('h:i A') : '';
+
+            return response()->json([
+                'success' => true,
+                'punch_state' => $punchState,
+                'suggested_type' => $suggestedType,
+                'last_punch' => $lastPunch ? [
+                    'id' => $lastPunch->id,
+                    'type' => $lastPunch->attendace_type,
+                    'time' => $lastPunch->punch_in_time,
+                    'time_formatted' => $lastPunchTime,
+                ] : null
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
