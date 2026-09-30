@@ -221,10 +221,13 @@
                                 <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
                                     <div class="form-group">
                                         <label class="form-label">Allow Employee Login</label>
-                                        <select name="allow_employee_login" id="allow_employee_login" class="form-control select2">
+                                        <select name="allow_employee_login" id="allow_employee_login" class="form-control select2 @error('allow_employee_login') is-invalid @enderror">
                                             <option value="1" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 1 ? 'selected' : '' }}>Allowed (Yes)</option>
                                             <option value="0" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 0 ? 'selected' : '' }}>Disabled / Blocked (No)</option>
                                         </select>
+                                        @error('allow_employee_login')
+                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                        @enderror
                                     </div>
                                 </div>
                                 <div class="col-md-4 col-sm-12 {{ $maring_bottom }}"></div>
