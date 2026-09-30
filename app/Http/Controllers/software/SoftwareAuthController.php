@@ -24,6 +24,7 @@ use App\Models\MasterCountry;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
@@ -68,12 +69,13 @@ class SoftwareAuthController extends Controller
         if (Auth::guard("admin_software")->check() || Auth::guard("employees")->check()) {
             return Redirect::route("software.dashboard");
         }
-        // Auth::logout(); // Logs out the user
 
-        // $request->session()->invalidate(); // Invalidates the session
-        // $request->session()->regenerateToken(); // Regenerates the CSRF token
+        $rememberAppKey = Cookie::get('remember_app_key', '');
+        $rememberUsername = Cookie::get('remember_username', '');
+        $rememberPassword = Cookie::get('remember_password', '');
+        $rememberMe = !empty(Cookie::get('remember_me'));
 
-        return view('software.auth.login');
+        return view('software.auth.login', compact('rememberAppKey', 'rememberUsername', 'rememberPassword', 'rememberMe'));
     }
 
     public function showCompanyRegisterForm(Request $request)
@@ -555,6 +557,21 @@ class SoftwareAuthController extends Controller
 
             $userInput = trim($request->get("username"));
             $inputPassword = $request->get("password");
+            $remember = $request->filled('remember') || $request->get('remember') == '1' || $request->has('remember');
+
+            $handleRememberCookies = function () use ($request, $remember) {
+                if ($remember) {
+                    Cookie::queue('remember_app_key', $request->get('app_key'), 60 * 24 * 30);
+                    Cookie::queue('remember_username', $request->get('username'), 60 * 24 * 30);
+                    Cookie::queue('remember_password', $request->get('password'), 60 * 24 * 30);
+                    Cookie::queue('remember_me', '1', 60 * 24 * 30);
+                } else {
+                    Cookie::queue(Cookie::forget('remember_app_key'));
+                    Cookie::queue(Cookie::forget('remember_username'));
+                    Cookie::queue(Cookie::forget('remember_password'));
+                    Cookie::queue(Cookie::forget('remember_me'));
+                }
+            };
 
             if ($request->get("app_key") == "office@2016") {
                 $adminUser = AdminSoftware::where('username', $userInput)
@@ -564,7 +581,8 @@ class SoftwareAuthController extends Controller
                 if ($adminUser) {
                     if ($adminUser?->status == "active") {
                         if (Hash::check($inputPassword, $adminUser->password)) {
-                            Auth::guard('admin_software')->login($adminUser);
+                            $handleRememberCookies();
+                            Auth::guard('admin_software')->login($adminUser, $remember);
                             return Redirect::intended(route('software.dashboard'))
                                 ->withSuccess('You are Logged in as Admin!');
                         }
@@ -588,7 +606,8 @@ class SoftwareAuthController extends Controller
                 if ($teamPerson) {
                     if ($teamPerson?->status == "active") {
                         if (Hash::check($inputPassword, $teamPerson->password)) {
-                            Auth::guard('employees')->login($teamPerson);
+                            $handleRememberCookies();
+                            Auth::guard('employees')->login($teamPerson, $remember);
 
                             $latestPlan = CompanySubscriptionPlan::where('company_id', $teamPerson->company_id)->where('plan_id', $company->plan_id)->orderBy('id', 'desc')->first();
                             session()->put('show_plan_expiry_modal', true);

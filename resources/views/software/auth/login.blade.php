@@ -84,12 +84,12 @@
                         <div class="mb-3">
                             <label for="app_key" class="form-label">App Key</label>
                             <input type="text" class="form-control" id="app_key" name="app_key"
-                                placeholder="Enter your app Key" autofocus value="{{ old('app_key') }}" />
+                                placeholder="Enter your app Key" autofocus value="{{ old('app_key', $rememberAppKey ?? '') }}" />
                         </div>
                         <div class="mb-3">
                             <label for="email" class="form-label">Username or Email or Phone</label>
                             <input type="text" class="form-control" id="email" name="username"
-                                placeholder="Enter your email or username" value="{{ old('username') }}" />
+                                placeholder="Enter your email or username" value="{{ old('username', $rememberUsername ?? '') }}" />
                         </div>
                         <div class="mb-3 form-password-toggle">
                             <div class="d-flex justify-content-between">
@@ -98,13 +98,14 @@
                             <div class="input-group input-group-merge">
                                 <input type="password" id="password" class="form-control" name="password"
                                     placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                                    value="{{ old('password', $rememberPassword ?? '') }}"
                                     aria-describedby="password" />
                                 <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="remember-me" />
+                                <input class="form-check-input" type="checkbox" id="remember-me" name="remember" value="1" {{ (old('remember') || !empty($rememberMe)) ? 'checked' : '' }} />
                                 <label class="form-check-label" for="remember-me"> Remember Me </label>
                             </div>
                         </div>

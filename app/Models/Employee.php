@@ -69,6 +69,11 @@ class Employee extends Authenticatable
         'deleted_by',
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected $appends = ['employee_photo_url', 'proper_name', 'has_profile_image'];
 
     public function getHasProfileImageAttribute()
