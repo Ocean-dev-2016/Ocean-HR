@@ -426,6 +426,16 @@ class EmployeeController extends Controller
         View::share('modules', $modules);
 
         try {
+            if (!empty($modules['company_id'])) {
+                $company = Company::find($modules['company_id']);
+                if ($company && $company->max_employee_user_count > 0) {
+                    $activeCount = Employee::where('company_id', $modules['company_id'])->where('status', 'active')->count();
+                    if ($activeCount >= $company->max_employee_user_count) {
+                        return Redirect::route($modules['route'] . '.index')->withErrors('Maximum employee limit (' . $company->max_employee_user_count . ') has been reached for this company. Please upgrade your plan to add more employees.');
+                    }
+                }
+            }
+
             $team_roles = TeamRole::where('status', 'active');
             if ($modules['company_id']) {
                 $team_roles->where('company_id', $modules['company_id']);
@@ -528,6 +538,16 @@ class EmployeeController extends Controller
         View::share('modules', $modules);
 
         try {
+            if (!empty($modules['company_id'])) {
+                $company = Company::find($modules['company_id']);
+                if ($company && $company->max_employee_user_count > 0) {
+                    $activeCount = Employee::where('company_id', $modules['company_id'])->where('status', 'active')->count();
+                    if ($activeCount >= $company->max_employee_user_count) {
+                        return Redirect::route('software.onboarding.index')->withErrors('Maximum employee limit (' . $company->max_employee_user_count . ') has been reached for this company. Please upgrade your plan to add more employees.');
+                    }
+                }
+            }
+
             $team_roles = TeamRole::where('status', 'active');
             if ($modules['company_id']) {
                 $team_roles->where('company_id', $modules['company_id']);
@@ -623,9 +643,15 @@ class EmployeeController extends Controller
                 $newRequest['branch_id'] = $request?->branch_id;
             }
 
-            // Determine company and its employee code setting
+            // Determine company and its employee limit
             $companyIdForEmployee = $newRequest['company_id'] ?? null;
             $company = $companyIdForEmployee ? Company::find($companyIdForEmployee) : null;
+            if ($company && $company->max_employee_user_count > 0) {
+                $activeCount = Employee::where('company_id', $companyIdForEmployee)->where('status', 'active')->count();
+                if ($activeCount >= $company->max_employee_user_count) {
+                    return Redirect::back()->withInput()->withErrors('Maximum employee limit (' . $company->max_employee_user_count . ') has been reached for this company. Please upgrade your plan.');
+                }
+            }
 
             // Only auto-generate employee code if company is NOT set to manual
             if (!$company || $company->employee_code_auto_generation !== 'manual') {
@@ -1296,6 +1322,12 @@ class EmployeeController extends Controller
             }
 
             $company = Company::findOrFail($request->company_id);
+            if ($company->max_employee_user_count > 0) {
+                $activeCount = Employee::where('company_id', $company->id)->where('status', 'active')->count();
+                if ($activeCount >= $company->max_employee_user_count) {
+                    return redirect()->back()->withErrors(['import_file' => 'Maximum employee limit (' . $company->max_employee_user_count . ') has already been reached for this company. Please upgrade your plan.'])->withInput();
+                }
+            }
             $company_name = $company->company_name;
             $company_slug = Str::slug($company_name);
 

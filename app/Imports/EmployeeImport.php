@@ -95,6 +95,14 @@ class EmployeeImport implements ToCollection, WithHeadingRow
             $company = Company::find($this->companyId);
             $isEmployeeLoginAllowed = !$company || $company->allow_employee_login != 0;
 
+            // Check company's max employee count limit
+            if ($company && $company->max_employee_user_count > 0) {
+                $currentActiveCount = Employee::where('company_id', $this->companyId)->where('status', 'active')->count() + $this->successCount;
+                if ($currentActiveCount >= $company->max_employee_user_count) {
+                    $validationErrors[] = "Maximum employee limit ({$company->max_employee_user_count}) reached for this company. Cannot import more employees.";
+                }
+            }
+
             if ($isEmployeeLoginAllowed) {
                 if (!$username) $validationErrors[] = 'Username is missing';
                 if (!$password) $validationErrors[] = 'Password is missing';

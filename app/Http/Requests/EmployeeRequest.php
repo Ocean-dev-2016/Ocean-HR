@@ -183,4 +183,26 @@ class EmployeeRequest extends FormRequest
             'ifsc_code.size' => 'The IFSC Code must be exactly 11 characters.',
         ];
     }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $routeParam = $this->route('employee') ?? $this->route('employees');
+            $id = is_object($routeParam) ? $routeParam->id : ($routeParam ?? $this->edit_id ?? 0);
+
+            // Only check when creating a new employee
+            if (empty($id)) {
+                $companyId = $this->company_id;
+                if ($companyId) {
+                    $company = Company::find($companyId);
+                    if ($company && $company->max_employee_user_count > 0) {
+                        $activeCount = Employee::where('company_id', $companyId)->where('status', 'active')->count();
+                        if ($activeCount >= $company->max_employee_user_count) {
+                            $validator->errors()->add('company_id', 'Maximum employee limit of ' . $company->max_employee_user_count . ' has been reached for this company. Please upgrade your plan to add more employees.');
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
