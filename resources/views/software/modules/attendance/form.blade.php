@@ -237,12 +237,23 @@
     </script>
 
     <script>
+        let hasInitialShift = {{ !empty($defaultShiftId) ? 'true' : 'false' }};
+        let initialEmployeeLoaded = false;
+
         // When employee is changed, auto-select default shift using data from get-employee API
         $(document).on('change', '#employee_id', function() {
+            // Prevent initial load trigger from wiping out or overriding existing selected shift
+            if (hasInitialShift && !initialEmployeeLoaded) {
+                initialEmployeeLoaded = true;
+                return;
+            }
+            initialEmployeeLoaded = true;
+
             const $selected = $(this).find('option:selected');
             const shiftId = $selected.data('shift-id');
 
             if (!shiftId) {
+                $('#shift_id').attr('data-selectedshiftid', '');
                 $('#shift_id').val('').trigger('change');
                 return;
             }

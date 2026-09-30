@@ -65,13 +65,8 @@ class MasterCityController extends Controller
                 // dd($request->all());
                 $data = MasterCity::select('*')
                     ->where(function ($query) use ($modules, $loginUserId) {
-                        if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                            $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-                            $query->where('company_id', $companyId);
-
-                            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
-                                $query->where('created_by', $loginUserId);
-                            }
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $query->where('created_by', $loginUserId);
                         }
                     })
                     ->orderBy('id', 'DESC');
@@ -248,9 +243,6 @@ class MasterCityController extends Controller
             View::share('modules', $modules);
 
             $masterCityQuery = MasterCity::query();
-            if (!empty($modules['company_id'])) {
-                $masterCityQuery->where('company_id', $modules['company_id']);
-            }
             $edit = $masterCityQuery->findOrFail($id);
             View::share('edit', $edit);
 
@@ -286,9 +278,6 @@ class MasterCityController extends Controller
             $validated['updated_by'] = $loginUserId;
             // return $validated;
             $masterCityQuery = MasterCity::query();
-            if (!empty($modules['company_id'])) {
-                $masterCityQuery->where('company_id', $modules['company_id']);
-            }
             $updateData = $masterCityQuery->findOrFail($id);
             if ($updateData) {
                 unset($validated['id']);
@@ -324,9 +313,6 @@ class MasterCityController extends Controller
             abort(403, 'Unauthorized');
         }
         $masterCityQuery = MasterCity::query();
-        if (!empty($modules['company_id'])) {
-            $masterCityQuery->where('company_id', $modules['company_id']);
-        }
         $dataDelete = $masterCityQuery->findOrFail($id);
         $isAjax = ($request->ajax()) ? true : false;
         try {
@@ -374,9 +360,6 @@ class MasterCityController extends Controller
         try {
 
             $masterCityQuery = MasterCity::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterCityQuery->where('company_id', $modules['company_id']);
-            }
             $state = $masterCityQuery->findOrFail($id);
             $state->restore();
 
@@ -421,9 +404,6 @@ class MasterCityController extends Controller
 
         try {
             $masterCityQuery = MasterCity::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterCityQuery->where('company_id', $modules['company_id']);
-            }
             $city = $masterCityQuery->findOrFail($request?->id);
             if ($city) {
                 $city->status = $request->update_status;
@@ -479,13 +459,8 @@ class MasterCityController extends Controller
 
             $query = MasterCity::with(['country', 'state'])->withTrashed()
                 ->where(function ($query) use ($modules, $loginUserId) {
-                    if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                        $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-                        $query->where('company_id', $companyId);
-
-                        if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
-                            $query->where('created_by', $loginUserId);
-                        }
+                    if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
+                        $query->where('created_by', $loginUserId);
                     }
                 });
 

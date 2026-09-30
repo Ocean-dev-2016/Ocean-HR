@@ -67,13 +67,8 @@ class MasterCountryController extends Controller
                 }
                 $data = MasterCountry::select('*')
                     ->where(function ($query) use ($modules, $loginUserId) {
-                        if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                            $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-                            $query->where('company_id', $companyId);
-
-                            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
-                                $query->where('created_by', $loginUserId);
-                            }
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $query->where('created_by', $loginUserId);
                         }
                     })
                     ->orderBy('id', 'DESC');
@@ -253,9 +248,6 @@ class MasterCountryController extends Controller
             View::share('modules', $modules);
 
             $masterCountryQuery = MasterCountry::query();
-            if (!empty($modules['company_id'])) {
-                $masterCountryQuery->where('company_id', $modules['company_id']);
-            }
             $edit = $masterCountryQuery->findOrFail($id);
             View::share('edit', $edit);
 
@@ -292,9 +284,6 @@ class MasterCountryController extends Controller
             $validated['updated_by'] = $loginUserId;
             // return $validated;
             $masterCountryQuery = MasterCountry::query();
-            if (!empty($modules['company_id'])) {
-                $masterCountryQuery->where('company_id', $modules['company_id']);
-            }
             $updateData = $masterCountryQuery->findOrFail($id);
             if ($updateData) {
                 unset($validated['id']);
@@ -327,9 +316,6 @@ class MasterCountryController extends Controller
             abort(403, 'Unauthorized');
         }
         $masterCountryQuery = MasterCountry::query();
-        if (!empty($modules['company_id'])) {
-            $masterCountryQuery->where('company_id', $modules['company_id']);
-        }
         $dataDelete = $masterCountryQuery->findOrFail($id);
          $isAjax = ($request->ajax()) ? true : false;
         try {
@@ -380,9 +366,6 @@ class MasterCountryController extends Controller
         try {
 
             $masterCountryQuery = MasterCountry::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterCountryQuery->where('company_id', $modules['company_id']);
-            }
             $country = $masterCountryQuery->findOrFail($id);
             $country->restore();
 
@@ -429,9 +412,6 @@ class MasterCountryController extends Controller
 
         try {
             $masterCountryQuery = MasterCountry::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterCountryQuery->where('company_id', $modules['company_id']);
-            }
             $country = $masterCountryQuery->findOrFail($request?->id);
             if ($country) {
                 $country->status = $request->update_status;
@@ -484,18 +464,10 @@ class MasterCountryController extends Controller
         try {
             View::share('modules', $modules);
             $query = MasterCountry::query();
-            if (!empty($modules['company_id'])) {
-                $query->where('company_id', $modules['company_id']);
-            }
             
             $query->where(function ($q) use ($modules, $loginUserId) {
-                if (Auth::guard('employees')->check()) {
-                    $teamPersonCompanyId = Auth::guard('employees')->user()->company_id;
-                    $q->where('company_id', $teamPersonCompanyId);
-
-                    if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
-                        $q->where('created_by', $loginUserId);
-                    }
+                if (!empty($modules['personalDataPermission']) && empty($modules['allDataPermission'])) {
+                    $q->where('created_by', $loginUserId);
                 }
             });
 

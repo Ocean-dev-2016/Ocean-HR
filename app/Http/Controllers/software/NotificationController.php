@@ -99,10 +99,9 @@ class NotificationController extends Controller
                             if ($modules['personal_data_permission'] && $modules['all_data_permission'] == false) {
                                 $query->where('created_by', $loginUserId);
                             }
-                        }
-                        
-                        if (!empty($modules['company_id'])) {
-                             $query->where('company_id', $modules['company_id']);
+                        } else {
+                            $query->where('user_id', $loginUserId);
+                            $query->where('user_type', "Admin");
                         }
                     })
                     ->orderBy('id', 'DESC');
@@ -236,13 +235,7 @@ class NotificationController extends Controller
         try {
             $notificationData = Notification::where('notify_read', 0);
 
-            //if ($modules['currentGuard'] == 'employees') {
                 $notificationData = $notificationData->where('user_id', $loginUserId)->where('user_type', $type)->where('notify_read', 0)->orderBy('id', 'desc')->limit(5);
-                
-                if (!empty($modules['company_id'])) {
-                    $notificationData->where('company_id', $modules['company_id']);
-                }
-            //}
 
             $notificationData = $notificationData->get()->map(function ($notification) {
                     $subMenu = SubMenu::where('name', $notification->module_name)->first();

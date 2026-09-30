@@ -68,13 +68,8 @@ class MasterStateController extends Controller
             if ($request->ajax()) {
                 $data = MasterState::select('*')
                     ->where(function ($query) use ($modules, $loginUserId) {
-                        if (Auth::guard('employees')->check() || !empty($modules['company_id'])) {
-                            $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-                            $query->where('company_id', $companyId);
-
-                            if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
-                                $query->where('created_by', $loginUserId);
-                            }
+                        if (!empty($modules['personal_data_permission']) && empty($modules['all_data_permission'])) {
+                            $query->where('created_by', $loginUserId);
                         }
                     })
                     ->orderBy('id', 'DESC');
@@ -253,9 +248,6 @@ class MasterStateController extends Controller
             View::share('modules', $modules);
 
             $masterStateQuery = MasterState::query();
-            if (!empty($modules['company_id'])) {
-                $masterStateQuery->where('company_id', $modules['company_id']);
-            }
             $edit = $masterStateQuery->findOrFail($id);
             View::share('edit', $edit);
 
@@ -295,9 +287,6 @@ class MasterStateController extends Controller
             $validated['updated_by'] = $loginUserId;
 
             $masterStateQuery = MasterState::query();
-            if (!empty($modules['company_id'])) {
-                $masterStateQuery->where('company_id', $modules['company_id']);
-            }
             $updateData = $masterStateQuery->findOrFail($id);
             if ($updateData) {
                 unset($validated['id']);
@@ -334,9 +323,6 @@ class MasterStateController extends Controller
         }
         $isAjax = $request->ajax();
         $masterStateQuery = MasterState::query();
-        if (!empty($modules['company_id'])) {
-            $masterStateQuery->where('company_id', $modules['company_id']);
-        }
         $dataDelete = $masterStateQuery->findOrFail($id);
 
         try {
@@ -383,9 +369,6 @@ class MasterStateController extends Controller
         try {
 
             $masterStateQuery = MasterState::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterStateQuery->where('company_id', $modules['company_id']);
-            }
             $state = $masterStateQuery->findOrFail($id);
             $state->restore();
 
@@ -427,9 +410,6 @@ class MasterStateController extends Controller
 
         try {
             $masterStateQuery = MasterState::withTrashed();
-            if (!empty($modules['company_id'])) {
-                $masterStateQuery->where('company_id', $modules['company_id']);
-            }
             $state = $masterStateQuery->findOrFail($request?->id);
             if ($state) {
                 $state->status = $request->update_status;
@@ -499,15 +479,7 @@ class MasterStateController extends Controller
             // Build query with relations and trashed data
             $query = MasterState::with(['country']);
 
-            if (!empty($modules['company_id'])) {
-                $query->where('company_id', $modules['company_id']);
-            }
-
-            // If you want to restrict data by user, keep this:
             if (Auth::guard('employees')->check()) {
-                $companyId = $modules['company_id'] ?? Auth::guard('employees')->user()->company_id;
-                $query->where('company_id', $companyId);
-                
                 if ($modules['personalDataPermission'] && !$modules['allDataPermission']) {
                     $query->where('created_by', $loginUserId);
                 }
