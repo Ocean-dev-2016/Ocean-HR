@@ -193,9 +193,9 @@
                                 </div>
 
 
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <div class="form-group">
-                                        <label class="form-label">Select Branch <span class="text-danger">*</span></label>
+                                        <label class="form-label" for="branch_type">Select Branch <span class="text-danger">*</span></label>
                                         <select name="branch_type" id="branch_type"
                                             class="form-control @error('branch_type') is-invalid @enderror select2">
                                             <option value="" disabled selected>Select Branch</option>
@@ -210,9 +210,11 @@
                                             <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                         @enderror
                                     </div>
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                </div>
+
+                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <div class="form-group">
-                                        <label class="form-label">Allow Employee Login</label>
+                                        <label class="form-label" for="allow_employee_login">Allow Employee Login</label>
                                         <select name="allow_employee_login" id="allow_employee_login" class="form-control select2 @error('allow_employee_login') is-invalid @enderror">
                                             <option value="1" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 1 ? 'selected' : '' }}>Allowed (Yes)</option>
                                             <option value="0" {{ old('allow_employee_login', $edit->allow_employee_login ?? 1) == 0 ? 'selected' : '' }}>Disabled / Blocked (No)</option>
@@ -222,12 +224,11 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}"></div>
 
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="bank_details">Bank Details</label>
                                     <textarea name="bank_details" id="bank_details"
-                                        class="ckeditor_common_cls form-control @error('bank_details') is-invalid @enderror" placeholder="Bank Details">{{ $edit->bank_details }}</textarea>
+                                        class="ckeditor_common_cls form-control @error('bank_details') is-invalid @enderror" placeholder="Bank Details" rows="4">{{ $edit->bank_details }}</textarea>
                                     @error('bank_details')
                                         <span class="invalid-feedback">
                                             <strong>{{ $message }}</strong>
@@ -238,7 +239,7 @@
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="address">Address</label>
                                     <textarea name="address" id="address"
-                                        class="ckeditor_common_cls form-control @error('address') is-invalid @enderror" placeholder="Address">{{ $edit->address }}</textarea>
+                                        class="ckeditor_common_cls form-control @error('address') is-invalid @enderror" placeholder="Address" rows="4">{{ $edit->address }}</textarea>
                                     @error('address')
                                         <span class="invalid-feedback">
                                             <strong>{{ $message }}</strong>
@@ -247,7 +248,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
-                                    <label class="form-label" for="latitude">Latitude <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="latitude_edit">Latitude <span class="text-danger">*</span></label>
                                     <input type="text" id="latitude_edit" name="latitude" class="form-control @error('latitude') is-invalid @enderror"
                                         value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" />
                                     @error('latitude')
@@ -256,7 +257,7 @@
                                 </div>
 
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
-                                    <label class="form-label" for="longitude">Longitude <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="longitude_edit">Longitude <span class="text-danger">*</span></label>
                                     <input type="text" id="longitude_edit" name="longitude" class="form-control @error('longitude') is-invalid @enderror"
                                         value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" />
                                     @error('longitude')
