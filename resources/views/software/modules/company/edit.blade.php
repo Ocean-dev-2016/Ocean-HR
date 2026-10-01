@@ -12,19 +12,11 @@
 
 
 @section('page_leavel_style')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/bs-stepper/bs-stepper.css') }}" />
     <link rel="stylesheet" href="{{ asset('software/vendor/libs/flatpickr/flatpickr.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-tagsinput/0.8.0/bootstrap-tagsinput.css" />
 
     <style>
-        #company_map_edit {
-            height: 380px;
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid #d9dee3;
-            z-index: 1;
-        }
         .select2-container {
             display: block !important;
         }
@@ -254,22 +246,10 @@
                                     @enderror
                                 </div>
 
-                                {{-- Office Location & Geofencing Settings --}}
-                                <div class="col-12 mt-3 mb-2">
-                                    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light border">
-                                        <h5 class="mb-0 text-primary"><i class="ti ti-map-pin-filled me-2"></i>Office Location & Geofencing Settings</h5>
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" id="is_geofencing_enabled" name="is_geofencing_enabled" value="1"
-                                                {{ old('is_geofencing_enabled', isset($edit) ? $edit->is_geofencing_enabled : 1) ? 'checked' : '' }}>
-                                            <label class="form-check-label fw-bold" for="is_geofencing_enabled">Enable Geofence Attendance</label>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="latitude">Latitude <span class="text-danger">*</span></label>
                                     <input type="text" id="latitude_edit" name="latitude" class="form-control @error('latitude') is-invalid @enderror"
-                                        value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" readonly />
+                                        value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" />
                                     @error('latitude')
                                         <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                     @enderror
@@ -278,31 +258,10 @@
                                 <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="longitude">Longitude <span class="text-danger">*</span></label>
                                     <input type="text" id="longitude_edit" name="longitude" class="form-control @error('longitude') is-invalid @enderror"
-                                        value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" readonly />
+                                        value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" />
                                     @error('longitude')
                                         <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                     @enderror
-                                </div>
-
-                                {{-- Map Search & Map Container --}}
-                                <div class="col-12 mb-3">
-                                    <div class="row g-2 mb-2">
-                                        <div class="col-md-8 col-sm-12">
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="ti ti-search"></i></span>
-                                                <input type="text" id="search_location_edit" class="form-control" placeholder="Search office address or landmark on Google Map...">
-                                                <button type="button" id="btn_search_map_edit" class="btn btn-outline-primary"><i class="ti ti-search me-1"></i>Search</button>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 col-sm-12 text-md-end">
-                                            <button type="button" id="btn_current_location_edit" class="btn btn-outline-success w-100"><i class="ti ti-crosshair me-1"></i>Use Current Location</button>
-                                        </div>
-                                    </div>
-
-                                    <div id="company_map_edit"></div>
-                                    <small class="text-muted d-block mt-1">
-                                        <i class="ti ti-info-circle me-1"></i> <strong>Tip:</strong> Click anywhere on the map or drag the marker to pin your exact company office location.
-                                    </small>
                                 </div>
 
 
@@ -1063,106 +1022,7 @@
                     input.tagsinput('add', value);
                     input.val('');
                 }
-
-        // Company Map Edit Script
-        if ($('#company_map_edit').length) {
-            const defaultLat = parseFloat($('#latitude_edit').val()) || 21.1702;
-            const defaultLng = parseFloat($('#longitude_edit').val()) || 72.8311;
-            const hasLocation = $('#latitude_edit').val() && $('#longitude_edit').val();
-
-            const companyMapEdit = L.map('company_map_edit').setView([defaultLat, defaultLng], hasLocation ? 16 : 12);
-
-            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-                attribution: '© Google Maps',
-                maxZoom: 20
-            }).addTo(companyMapEdit);
-
-            const officeIcon = L.icon({
-                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            });
-
-            let marker = L.marker([defaultLat, defaultLng], {
-                draggable: true,
-                icon: officeIcon
-            }).addTo(companyMapEdit);
-
-            function updateLocationEdit(lat, lng) {
-                $('#latitude_edit').val(lat.toFixed(7));
-                $('#longitude_edit').val(lng.toFixed(7));
-
-                marker.setLatLng([lat, lng]);
-                marker.bindPopup(`<b>Company Office Location</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
             }
-
-            if (hasLocation) {
-                updateLocationEdit(defaultLat, defaultLng);
-            }
-
-            marker.on('dragend', function(e) {
-                const pos = marker.getLatLng();
-                updateLocationEdit(pos.lat, pos.lng);
-            });
-
-            companyMapEdit.on('click', function(e) {
-                updateLocationEdit(e.latlng.lat, e.latlng.lng);
-            });
-
-            $('#btn_current_location_edit').on('click', function() {
-                if (navigator.geolocation) {
-                    const btn = $(this);
-                    btn.html('<i class="ti ti-loader ti-spin me-1"></i>Locating...');
-                    navigator.geolocation.getCurrentPosition(
-                        function(position) {
-                            btn.html('<i class="ti ti-crosshair me-1"></i>Use Current Location');
-                            const lat = position.coords.latitude;
-                            const lng = position.coords.longitude;
-                            companyMapEdit.setView([lat, lng], 17);
-                            updateLocationEdit(lat, lng);
-                        },
-                        function(error) {
-                            btn.html('<i class="ti ti-crosshair me-1"></i>Use Current Location');
-                            alert('Unable to retrieve location: ' + error.message);
-                        },
-                        { enableHighAccuracy: true, timeout: 10000 }
-                    );
-                } else {
-                    alert('Geolocation is not supported by your browser.');
-                }
-            });
-
-            $('#btn_search_map_edit').on('click', function() {
-                const query = $('#search_location_edit').val().trim();
-                if (!query) return;
-
-                const btn = $(this);
-                btn.html('<i class="ti ti-loader ti-spin"></i>');
-
-                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-                    .then(response => response.json())
-                    .then(data => {
-                        btn.html('<i class="ti ti-search me-1"></i>Search');
-                        if (data && data.length > 0) {
-                            const lat = parseFloat(data[0].lat);
-                            const lng = parseFloat(data[0].lon);
-                            companyMapEdit.setView([lat, lng], 17);
-                            updateLocationEdit(lat, lng);
-                        } else {
-                            alert('Location not found. Please try another query or click on the map.');
-                        }
-                    })
-                    .catch(err => {
-                        btn.html('<i class="ti ti-search me-1"></i>Search');
-                        console.error('Search error:', err);
-                    });
-            });
-
-            setTimeout(() => { companyMapEdit.invalidateSize(); }, 600);
-        }
+        });
     </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 @endpush

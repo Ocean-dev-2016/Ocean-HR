@@ -193,7 +193,7 @@ class EmployeeController extends Controller
                 'attendace_type' => $attendance->attendace_type,
                 'punch_in_time' => null,
                 'punch_out_time' => null,
-                'distance_from_office' => $distanceFromOffice !== null ? round($distanceFromOffice, 2) . ' meters' : null,
+                'distance_from_office' => (isset($distanceFromOffice) && $distanceFromOffice !== null) ? round($distanceFromOffice, 2) . ' meters' : null,
                 'imageFile' => $attendance->punch_image_url,
                 'remark' => $attendance->remark,
             ];
