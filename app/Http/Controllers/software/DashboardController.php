@@ -677,7 +677,7 @@ class DashboardController extends Controller
 
                 // Check if current user is Company Main Admin
                 $isCompanyAdmin = false;
-                $currentCompanyId = $modules['company_id'] ?? ($currentEmployee?->company_id ?? 0);
+                $currentCompanyId = $modules['company_id'] ?? session('selected_company_id') ?? ($currentEmployee?->company_id ?? ($this->authenticateLoginUserDetails?->company_id ?? 0));
                 if (Auth::guard('admin_software')->check()) {
                     $isCompanyAdmin = true;
                 } elseif ($currentEmployee) {
@@ -957,8 +957,10 @@ class DashboardController extends Controller
                     $regularEmployeesCount = max(0, $totalCompanyEmployees - $contractorsCount);
 
                     $newThisMonth = DB::table('employment_details')
-                        ->where('company_id', $currentCompanyId)
-                        ->whereBetween('date_of_joining', [$monthStart, $monthEnd])
+                        ->join('employees', 'employees.id', '=', 'employment_details.employee_id')
+                        ->where('employees.company_id', $currentCompanyId)
+                        ->where('employees.status', 'active')
+                        ->whereBetween('employment_details.date_of_joining', [$monthStart, $monthEnd])
                         ->count();
 
                     $exitsThisMonth = Employee::where('company_id', $currentCompanyId)
@@ -967,6 +969,9 @@ class DashboardController extends Controller
                         ->count();
 
                     $presentEmployeeIds = Attendance::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('attendance_date', $todayDate)
                         ->where('attendace_type', 'in')
                         ->distinct('employee_id')
@@ -975,6 +980,9 @@ class DashboardController extends Controller
                     $presentTodayCount = count($presentEmployeeIds);
 
                     $onLeaveEmployeeIds = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'approved')
                         ->where(function ($q) use ($todayDate) {
                             $q->where(function ($sub) use ($todayDate) {
@@ -1000,26 +1008,50 @@ class DashboardController extends Controller
                     $earlyGoCount = (int) ($attendanceStats['early_go'] ?? 0);
 
                     $pendingLeavesCount = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pending')->count();
                     $pendingExpensesCount = \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->whereHas('employees', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pending')->count();
                     $pendingLoansCount = \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pending')->count();
                     $pendingApprovalsTotal = $pendingLeavesCount + $pendingExpensesCount + $pendingLoansCount;
 
                     $pendingExpenseAmount = (float) \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->whereHas('employees', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pending')->sum('req_amount');
                     $monthExpensePassed = (float) \App\Models\Expense::where('company_id', $currentCompanyId)
+                        ->whereHas('employees', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pass')
                         ->whereBetween('date', [$monthStart, $monthEnd])
                         ->sum('pass_amount');
 
                     $activeLoansCount = \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'approved')->count();
                     $activeLoanBalance = (float) \App\Models\Loan::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'approved')->sum('balance_amount');
 
                     $monthPayroll = (float) \App\Models\Salary::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('month', (int) $now->format('n'))
                         ->where('year', (int) $now->format('Y'))
                         ->sum('net_bank_pay');
@@ -1060,6 +1092,9 @@ class DashboardController extends Controller
                         $d = $now->copy()->subDays($i);
                         $dStr = $d->format('Y-m-d');
                         $pCount = Attendance::where('company_id', $currentCompanyId)
+                            ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                                $sq->where('company_id', $currentCompanyId);
+                            })
                             ->where('attendance_date', $dStr)
                             ->where('attendace_type', 'in')
                             ->distinct('employee_id')
@@ -1075,6 +1110,9 @@ class DashboardController extends Controller
                     // Live attendance (real only)
                     $liveAttendanceList = [];
                     $todayAttendanceQuery = Attendance::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('attendance_date', $todayDate)
                         ->where('attendace_type', 'in')
                         ->with('employee.employmentDetail.department')
@@ -1098,37 +1136,38 @@ class DashboardController extends Controller
                         ];
                     }
 
-                    // Upcoming / recent leaves
+                    // Upcoming leaves (strictly filtered for current company and next/future days)
                     $upcomingLeavesList = [];
                     $recentLeavesQuery = LeaveApplication::where('company_id', $currentCompanyId)
-                        ->whereIn('status', ['approved', 'pending'])
-                        ->where(function ($q) use ($todayDate, $weekAhead) {
-                            $q->whereDate('fromdate_time', '>=', $todayDate)
-                                ->whereDate('fromdate_time', '<=', $weekAhead);
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
                         })
+                        ->whereIn('status', ['approved', 'pending'])
+                        ->whereDate('fromdate_time', '>', $todayDate)
                         ->with(['employee.employmentDetail.department', 'leave_type'])
                         ->orderBy('fromdate_time', 'asc')
                         ->take(6)
                         ->get();
-
-                    if ($recentLeavesQuery->isEmpty()) {
-                        $recentLeavesQuery = LeaveApplication::where('company_id', $currentCompanyId)
-                            ->with(['employee.employmentDetail.department', 'leave_type'])
-                            ->orderBy('id', 'desc')
-                            ->take(6)
-                            ->get();
-                    }
 
                     foreach ($recentLeavesQuery as $lv) {
                         $emp = $lv->employee;
                         if (!$emp) continue;
                         $eName = $emp->proper_name ?: ($emp->full_name ?: $emp->first_name);
                         $hasProfile = !empty($emp->profile_image) && file_exists(public_path($emp->profile_image));
+                        $formattedDate = '—';
+                        if ($lv->fromdate_time) {
+                            $fromC = Carbon::parse($lv->fromdate_time);
+                            if (!empty($lv->todate_time) && Carbon::parse($lv->todate_time)->format('Y-m-d') !== $fromC->format('Y-m-d')) {
+                                $formattedDate = $fromC->format('d M') . ' - ' . Carbon::parse($lv->todate_time)->format('d M Y');
+                            } else {
+                                $formattedDate = $fromC->format('d M Y');
+                            }
+                        }
                         $upcomingLeavesList[] = [
                             'name' => $eName,
                             'department' => $emp->employmentDetail?->department?->name ?? '—',
                             'leave_type' => $lv->leave_type?->full_name ?? ($lv->leave_type?->sort_name ?? 'Leave'),
-                            'date' => $lv->fromdate_time ? Carbon::parse($lv->fromdate_time)->format('d M Y') : '—',
+                            'date' => $formattedDate,
                             'status' => $lv->status ?? 'pending',
                             'avatar' => $emp->employee_photo_url,
                             'has_avatar' => $hasProfile,
@@ -1138,6 +1177,9 @@ class DashboardController extends Controller
                     // Pending leave items for action center
                     $pendingLeaveItems = [];
                     $pendingLeaveRows = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'pending')
                         ->with(['employee', 'leave_type'])
                         ->orderBy('id', 'desc')
@@ -1156,6 +1198,7 @@ class DashboardController extends Controller
                             'has_avatar' => $hasProfile,
                         ];
                     }
+
 
                     // Birthdays & work anniversaries (next 7 days)
                     $anniversariesList = [];
@@ -1326,6 +1369,9 @@ class DashboardController extends Controller
 
                     // Month leave applications approved
                     $monthLeavesApproved = LeaveApplication::where('company_id', $currentCompanyId)
+                        ->whereHas('employee', function ($sq) use ($currentCompanyId) {
+                            $sq->where('company_id', $currentCompanyId);
+                        })
                         ->where('status', 'approved')
                         ->whereBetween('fromdate_time', [$monthStart . ' 00:00:00', $monthEnd . ' 23:59:59'])
                         ->count();
@@ -1684,7 +1730,7 @@ class DashboardController extends Controller
                 return false;
             }
 
-            if ($lastRecord->attendance_date < $currentDate || ($lastRecord->attendance_date === $currentDate && $nowTime >= $punchOutTime)) {
+            if ($lastRecord->attendance_date < $currentDate) {
                 $hasOutPunch = Attendance::where('employee_id', $employee->id)
                     ->where('attendance_date', $lastRecord->attendance_date)
                     ->where('attendace_type', 'out')

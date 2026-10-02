@@ -347,7 +347,7 @@ class EmployeeController extends Controller
                 return false;
             }
 
-            if ($lastRecord->attendance_date < $currentDate || ($lastRecord->attendance_date === $currentDate && $nowTime >= $punchOutTime)) {
+            if ($lastRecord->attendance_date < $currentDate) {
                 $hasOutPunch = Attendance::where('employee_id', $employee->id)
                     ->where('attendance_date', $lastRecord->attendance_date)
                     ->where('attendace_type', 'out')
