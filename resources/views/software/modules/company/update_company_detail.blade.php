@@ -476,7 +476,7 @@
                                             @enderror
                                         </div>
 
-                                        <div class="col-md-6 col-sm-12">
+                                        <div class="col-md-4 col-sm-12">
                                             <label class="comp-label" for="latitude"><i class="ti ti-current-location text-primary"></i> Latitude</label>
                                             <input type="text" id="latitude" name="latitude" class="form-control comp-input @error('latitude') is-invalid @enderror"
                                                 value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" {{ !$isAdminUser ? 'readonly' : '' }} />
@@ -485,11 +485,20 @@
                                             @enderror
                                         </div>
 
-                                        <div class="col-md-6 col-sm-12">
+                                        <div class="col-md-4 col-sm-12">
                                             <label class="comp-label" for="longitude"><i class="ti ti-current-location text-primary"></i> Longitude</label>
                                             <input type="text" id="longitude" name="longitude" class="form-control comp-input @error('longitude') is-invalid @enderror"
                                                 value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" {{ !$isAdminUser ? 'readonly' : '' }} />
                                             @error('longitude')
+                                                <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="col-md-4 col-sm-12">
+                                            <label class="comp-label" for="radius"><i class="ti ti-radar text-primary"></i> Radius (in Meters)</label>
+                                            <input type="number" step="any" id="radius" name="radius" class="form-control comp-input @error('radius') is-invalid @enderror"
+                                                value="{{ old('radius', $edit->radius ?? 100) }}" placeholder="e.g. 100" {{ !$isAdminUser ? 'readonly' : '' }} />
+                                            @error('radius')
                                                 <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                             @enderror
                                         </div>

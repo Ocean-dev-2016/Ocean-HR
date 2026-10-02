@@ -367,6 +367,7 @@ class CompanyController extends Controller
         $validated['date_format'] = $request->input('date_format') ?: Helper::getDefaultDateFormat();
         $validated['time_format'] = $request->input('time_format') ?: Helper::getDefaultTimeFormat();
         $validated['employee_code_auto_generation'] = $request->input('employee_code_auto_generation') ?: 'auto';
+        $validated['import_attendance_format'] = $request->input('import_attendance_format') ?: 'standard';
         $input = $request->all();
 
         DB::beginTransaction();
@@ -404,6 +405,7 @@ class CompanyController extends Controller
             $validated = array_merge($validated, $defaultValues);
             $validated['latitude'] = $request->filled('latitude') ? $request->input('latitude') : null;
             $validated['longitude'] = $request->filled('longitude') ? $request->input('longitude') : null;
+            $validated['radius'] = $request->filled('radius') ? $request->input('radius') : 100;
             $validated['sp'] = Helper::generateSP($request->password);
             $validated['password'] = Hash::make($validated['password']);
             $companyName = trim($request->company_name);
@@ -790,8 +792,10 @@ class CompanyController extends Controller
         $input['hra_percentage'] = $validated['hra_percentage'];
         $input['date_format'] = $validated['date_format'];
         $input['time_format'] = $validated['time_format'];
+        $input['import_attendance_format'] = $request->input('import_attendance_format') ?: 'standard';
         $input['latitude'] = $request->filled('latitude') ? $request->input('latitude') : null;
         $input['longitude'] = $request->filled('longitude') ? $request->input('longitude') : null;
+        $input['radius'] = $request->filled('radius') ? $request->input('radius') : 100;
         // return $validated;
         try {
             $validated['updated_by'] = $loginUserId;

@@ -277,6 +277,23 @@
                             @enderror
                         </div>
                     </div>
+                    <div class="col-md-4 col-sm-12 mb-2">
+                        <div class="form-group">
+                            <label class="form-label">Import Attendance Format</label>
+                            <select name="import_attendance_format" id="import_attendance_format" class="form-control select2 @error('import_attendance_format') is-invalid @enderror">
+                                @foreach (config('constants.import_attendance_format') as $import_format_key => $value)
+                                    <option value="{{ $import_format_key }}" {{ old('import_attendance_format', 'standard') == $import_format_key ? 'selected' : '' }}>
+                                        {{ $value }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('import_attendance_format')
+                                <span class="invalid-feedback">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+                    </div>
 
                     <div class="col-md-12 mb-2">
                         <div class="mb-3 bg-light p-3 rounded">

@@ -1251,9 +1251,17 @@ class AttendanceController extends Controller
 
         View::share('modules', $modules);
 
-        $import_file = asset('sample-file/ocean-hrms-attendance-import-sample.xlsx');
+        $company = null;
+        if (!empty($modules['company_id'])) {
+            $company = Company::find($modules['company_id']);
+        }
+        $company_import_format = $company?->import_attendance_format ?? 'standard';
 
-        return view($modules['folder_path'] . '.import', compact('import_file'));
+        $import_file = asset('sample-file/ocean-hrms-attendance-import-sample.xlsx');
+        $import_file_custom = asset('sample-file/endoc-biotech-attendance-custom-sample.xlsx');
+        $import_file_endoc = $import_file_custom;
+
+        return view($modules['folder_path'] . '.import', compact('import_file', 'import_file_custom', 'import_file_endoc', 'company_import_format'));
     }
 
     /**
@@ -1273,6 +1281,7 @@ class AttendanceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'company_id' => ['required', Rule::exists((new Company())->getTable(), 'id')],
+            'attendance_date' => 'nullable|date',
             'import_file' => 'required|mimes:xls,xlsx,pdf|max:10240', // 10MB max
         ]);
 
@@ -1358,10 +1367,45 @@ class AttendanceController extends Controller
                     if (!file_exists($fullFilePath)) {
                         throw new \Exception("File not found at: {$fullFilePath}");
                     }
-                    Excel::import(
-                        new AttendanceImport($request->company_id, $loginUserId, $attendanceImportFileId, $authLoginUserDetail),
-                        $fullFilePath
-                    );
+
+                    if (file_exists(app_path('Imports/EndocAttendanceImport.php'))) {
+                        require_once app_path('Imports/EndocAttendanceImport.php');
+                    }
+                    if (file_exists(app_path('Imports/AttendanceImport.php'))) {
+                        require_once app_path('Imports/AttendanceImport.php');
+                    }
+
+                    // Detect format: machine card format vs standard row-by-row tabular format
+                    $isCardFormat = false;
+                    if (in_array(strtolower($extension), ['xls', 'xlsx'])) {
+                        try {
+                            $sampleRows = Excel::toArray(new \stdClass(), $fullFilePath);
+                            if (!empty($sampleRows) && isset($sampleRows[0])) {
+                                $sheetData = $sampleRows[0];
+                                for ($r = 0; $r < min(15, count($sheetData)); $r++) {
+                                    $rowStr = strtolower(implode(' ', array_filter(array_map('strval', $sheetData[$r]))));
+                                    if (str_contains($rowStr, 'attendance employee') || str_contains($rowStr, 'attendance info') || str_contains($rowStr, 'first on')) {
+                                        $isCardFormat = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // fallback
+                        }
+                    }
+
+                    if ($isCardFormat && class_exists('\App\Imports\EndocAttendanceImport')) {
+                        Excel::import(
+                            new \App\Imports\EndocAttendanceImport($request->company_id, $loginUserId, $attendanceImportFileId, $authLoginUserDetail, $request->input('attendance_date')),
+                            $fullFilePath
+                        );
+                    } else {
+                        Excel::import(
+                            new AttendanceImport($request->company_id, $loginUserId, $attendanceImportFileId, $authLoginUserDetail),
+                            $fullFilePath
+                        );
+                    }
                 }
 
                 $attendanceImportFile = AttendanceImportFile::find($attendanceImportFileId);

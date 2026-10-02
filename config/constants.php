@@ -89,6 +89,10 @@ return [
         'auto' => "Auto",
         'manual' => "Manual",
     ],
+    'import_attendance_format' => [
+        'standard' => 'Standard',
+        'custom' => 'Custom',
+    ],
     'months' => [
         '' => 'All Months',
         1 => 'January',

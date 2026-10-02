@@ -41,36 +41,60 @@ class AttendanceImport implements ToCollection, WithHeadingRow
         try {
             DB::beginTransaction();
             foreach ($rows as $index => $row) {
-                
+
                 $rowNumber = $index + 2;
                 if ($row->filter()->isEmpty()) continue;
 
                 $this->totalRows++;
                 $validationErrors = [];
-                
+
                 // Extract employee identifier (support multiple column names)
                 $biometricUserId = $this->getValue($row, ['biometric_user_id', 'biometric_userid', 'card_no', 'cardno', 'Card No', 'Card Number', 'CARD NO', 'CardNo', 'Employee Code:-', 'Employee Code']);
                 $employeeCode = $this->getValue($row, [
-                    'employee_code', 'emp_code', 'employee code', 's.no employee code', 
-                    'Employee Code', 'EMP CODE', 'Emp Code', 'empcode', 'EMPLOYEE CODE',
-                    'Emp. Code', 'Emp Code', 'Code', 'Employee ID', 'Emp ID', 'EmployeeID'
+                    'employee_code',
+                    'emp_code',
+                    'employee code',
+                    's.no employee code',
+                    'Employee Code',
+                    'EMP CODE',
+                    'Emp Code',
+                    'empcode',
+                    'EMPLOYEE CODE',
+                    'Emp. Code',
+                    'Emp Code',
+                    'Code',
+                    'Employee ID',
+                    'Emp ID',
+                    'EmployeeID'
                 ]);
                 $employeeName = $this->getValue($row, [
-                    'employee_name', 'employee name', 'name', 'full_name', 
-                    'Employee Name', 'EMP NAME', 'Emp Name', 'empname', 'EMPLOYEE NAME',
-                    'Full Name', 'FullName', 'Name', 'Employee', 'Emp Name', 'Emp. Name'
+                    'employee_name',
+                    'employee name',
+                    'name',
+                    'full_name',
+                    'Employee Name',
+                    'EMP NAME',
+                    'Emp Name',
+                    'empname',
+                    'EMPLOYEE NAME',
+                    'Full Name',
+                    'FullName',
+                    'Name',
+                    'Employee',
+                    'Emp Name',
+                    'Emp. Name'
                 ]);
-                
+
                 // Extract attendance date (support multiple formats)
                 $attendanceDate = $this->parseDate($this->getValue($row, ['attendance_date', 'date', 'attendance_dt', 'attendance date', 'Attendance Date-', 'Attendance Date']));
-                
+
                 // Extract times
                 $punchInTime = $this->parseTime($this->getValue($row, ['punch_in_time', 'punch_time', 'time', 'punch_in', 'a. intime', 'intime']));
                 $punchOutTime = $this->parseTime($this->getValue($row, ['punch_out_time', 'punch_out', 'a.outtime', 'outtime', 'a. outtime']));
-                
+
                 // Extract attendance type
                 $attendanceType = strtolower(trim($this->getValue($row, ['attendace_type', 'attendance_type', 'type', 'punch_type']) ?? ''));
-                
+
                 // Extract optional fields
                 $shiftId = $this->getValue($row, ['shift_id', 'shift']);
                 $remark = $this->getValue($row, ['remark', 'remarks', 'notes']);
@@ -79,27 +103,31 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                 $deviceSerial = $this->getValue($row, ['device_serial', 'device_serial_number']);
                 $deviceIp = $this->getValue($row, ['device_ip', 'device_ip_address']);
                 $status = strtoupper(trim($this->getValue($row, ['status']) ?? ''));
-                
-                // Validation - At least one employee identifier must be provided
-                if (!$biometricUserId && !$employeeCode && !$employeeName) {
+
+                // Validation - biometric_user_id OR employee_code is compulsory
+                if (!$biometricUserId && !$employeeCode) {
                     $this->failedCount++;
-                    $this->errors[$rowNumber] = 'Employee identifier (biometric_user_id, employee_code, or employee_name) is missing';
+                    $this->errors[$rowNumber] = 'Employee Code or Biometric User ID is compulsory';
                     continue;
                 }
 
+                // Validation - attendance_date is compulsory
                 if (!$attendanceDate) {
-                    $validationErrors[] = 'Invalid or missing Attendance Date';
+                    $this->failedCount++;
+                    $this->errors[$rowNumber] = 'Attendance Date is compulsory';
+                    continue;
                 }
 
-                // If status is 'A' (Absent), skip this row
+                // If status is 'A' (Absent), skip this row and count as duplicate/skipped
                 if ($status === 'A' || $status === 'ABSENT') {
                     $this->duplicateCount++;
                     continue;
                 }
 
-                // If no punch times, skip
+                // If both punch times are empty (e.g. absent / week-off), skip and count as duplicate/skipped
                 if (!$punchInTime && !$punchOutTime) {
-                    $validationErrors[] = 'Both punch_in_time and punch_out_time are missing';
+                    $this->duplicateCount++;
+                    continue;
                 }
 
                 if (!empty($validationErrors)) {
@@ -110,10 +138,10 @@ class AttendanceImport implements ToCollection, WithHeadingRow
 
                 // Find employee (priority: biometric_user_id > employee_code > employee_name)
                 $employee = $this->findEmployee($biometricUserId, $employeeCode, $employeeName, $validationErrors);
-                
+
                 if (!$employee) {
                     $this->failedCount++;
-                    $this->errors[$rowNumber] = implode(', ', $validationErrors);
+                    $this->errors[$rowNumber] = !empty($validationErrors) ? implode(', ', $validationErrors) : 'Employee not found';
                     continue;
                 }
 
@@ -123,25 +151,49 @@ class AttendanceImport implements ToCollection, WithHeadingRow
 
                 // Process attendance records
                 try {
+                    $newPunchesCount = 0;
+
                     // If both punch_in and punch_out exist, create two records
                     if ($punchInTime && $punchOutTime) {
-                        // Create 'in' record
-                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, 'in', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
-                        
-                        // Create 'out' record
-                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, 'out', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
-                    } 
-                    // If only punch_in exists
+                        if ($this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, 'in', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)) {
+                            $newPunchesCount++;
+                        }
+
+                        if ($this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, 'out', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)) {
+                            $newPunchesCount++;
+                        }
+                    }
+                    // If only punch_in exists -> auto create punch out record
                     elseif ($punchInTime) {
-                        $finalType = $attendanceType ?: 'in';
-                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        if ($this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchInTime, 'in', $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)) {
+                            $newPunchesCount++;
+                        }
+
+                        // Auto punch out time from shift or fallback 18:00:00
+                        $autoPunchOutTime = (!empty($shift?->auto_punch_out) && $shift?->auto_punch_out !== '00:00:00')
+                            ? $shift->auto_punch_out
+                            : (!empty($shift?->punch_out) && $shift?->punch_out !== '00:00:00' ? $shift->punch_out : '18:00:00');
+
+                        if ($autoPunchOutTime) {
+                            if ($this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $autoPunchOutTime, 'out', $remark ?: 'Auto Punch Out', $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)) {
+                                $newPunchesCount++;
+                            }
+                        }
                     }
                     // If only punch_out exists
                     elseif ($punchOutTime) {
                         $finalType = $attendanceType ?: 'out';
-                        $this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber);
+                        if ($this->createAttendanceRecord($employee->id, $finalShiftId, $attendanceDate, $punchOutTime, $finalType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)) {
+                            $newPunchesCount++;
+                        }
                     }
-                    $this->successCount++;
+
+                    if ($newPunchesCount > 0) {
+                        $this->successCount++;
+                    } else {
+                        // All punch records for this row were duplicates (already imported)
+                        $this->duplicateCount++;
+                    }
                 } catch (\Exception $e) {
                     $this->failedCount++;
                     $this->errors[$rowNumber] = $e->getMessage();
@@ -228,10 +280,10 @@ class AttendanceImport implements ToCollection, WithHeadingRow
         // Priority 3: employee_name (search in full_name, first_name, middle_name)
         if ($employeeName) {
             $employee = Employee::where('company_id', $this->companyId)
-                ->where(function($q) use ($employeeName) {
+                ->where(function ($q) use ($employeeName) {
                     $q->where('full_name', 'LIKE', "%{$employeeName}%")
-                      ->orWhere('first_name', 'LIKE', "%{$employeeName}%")
-                      ->orWhere(DB::raw("CONCAT(first_name, ' ', middle_name)"), 'LIKE', "%{$employeeName}%");
+                        ->orWhere('first_name', 'LIKE', "%{$employeeName}%")
+                        ->orWhere(DB::raw("CONCAT(first_name, ' ', middle_name)"), 'LIKE', "%{$employeeName}%");
                 })
                 ->first();
             if ($employee) {
@@ -283,7 +335,8 @@ class AttendanceImport implements ToCollection, WithHeadingRow
     }
 
     /**
-     * Create attendance record with duplicate check
+     * Create attendance record with duplicate check.
+     * Returns true if created, false if duplicate.
      */
     private function createAttendanceRecord($employeeId, $shiftId, $attendanceDate, $punchTime, $attendanceType, $remark, $punchId, $txnId, $deviceSerial, $deviceIp, $rowNumber)
     {
@@ -296,9 +349,8 @@ class AttendanceImport implements ToCollection, WithHeadingRow
             ->first();
 
         if ($duplicate) {
-            $this->duplicateCount++;
             Log::info("Duplicate attendance skipped at row {$rowNumber}: Employee {$employeeId}, Date {$attendanceDate}, Time {$punchTime}, Type {$attendanceType}");
-            return;
+            return false;
         }
 
         // Create attendance record
@@ -323,6 +375,8 @@ class AttendanceImport implements ToCollection, WithHeadingRow
             'device_ip' => $deviceIp,
             'created_by' => $this->userId,
         ]);
+
+        return true;
     }
 
     /**
@@ -331,15 +385,15 @@ class AttendanceImport implements ToCollection, WithHeadingRow
     private function parseDate($value)
     {
         if (!$value) return null;
-        
+
         try {
             // If it's Excel date value (numeric)
             if (is_numeric($value)) {
                 return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value))->format('Y-m-d');
             }
-            
+
             // Try different date formats
-            $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'd-M-Y', 'd-M-y', 'Y/m/d'];
+            $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'd-M-Y', 'd-M-y', 'Y/m/d', 'm/d/Y', 'm-d-Y', 'j-n-Y', 'j/n/Y', 'n/j/Y', 'n-j-Y'];
             foreach ($formats as $format) {
                 try {
                     return Carbon::createFromFormat($format, trim($value))->format('Y-m-d');
@@ -347,7 +401,7 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                     continue;
                 }
             }
-            
+
             // Try Carbon parse as fallback
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
@@ -364,16 +418,16 @@ class AttendanceImport implements ToCollection, WithHeadingRow
         if (!$value || $value === '00:00' || $value === '00:00:00') {
             return null;
         }
-        
+
         try {
             // If it's Excel time value (numeric between 0 and 1)
             if (is_numeric($value) && $value >= 0 && $value < 1) {
                 $time = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
                 return $time->format('H:i:s');
             }
-            
-            // Try different time formats
-            $formats = ['H:i:s', 'H:i', 'h:i:s A', 'h:i A'];
+
+            // Try different time formats (both 24hr and 12hr with/without leading zero)
+            $formats = ['H:i:s', 'H:i', 'G:i:s', 'G:i', 'h:i:s A', 'h:i A', 'g:i:s A', 'g:i A', 'h:i:sa', 'h:ia', 'g:i:sa', 'g:ia'];
             foreach ($formats as $format) {
                 try {
                     $time = Carbon::createFromFormat($format, trim($value));
@@ -382,7 +436,7 @@ class AttendanceImport implements ToCollection, WithHeadingRow
                     continue;
                 }
             }
-            
+
             // Try Carbon parse as fallback
             return Carbon::parse($value)->format('H:i:s');
         } catch (\Exception $e) {
@@ -391,4 +445,3 @@ class AttendanceImport implements ToCollection, WithHeadingRow
         }
     }
 }
-

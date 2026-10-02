@@ -93,12 +93,46 @@ class ProcessAttendanceImport implements ShouldQueue
      */
     private function processExcel()
     {
-        $fullPath = Storage::disk('public')->path($this->filePath);
-        
-        Excel::import(
-            new AttendanceImport($this->companyId, $this->userId, $this->importFileId, $this->authLoginUserDetail),
-            $fullPath
-        );
+        $fullPath = public_path($this->filePath);
+        if (!file_exists($fullPath)) {
+            $fullPath = Storage::disk('public')->path($this->filePath);
+        }
+
+        if (file_exists(app_path('Imports/EndocAttendanceImport.php'))) {
+            require_once app_path('Imports/EndocAttendanceImport.php');
+        }
+        if (file_exists(app_path('Imports/AttendanceImport.php'))) {
+            require_once app_path('Imports/AttendanceImport.php');
+        }
+
+        $isCardFormat = false;
+        try {
+            $sampleRows = Excel::toArray(new \stdClass(), $fullPath);
+            if (!empty($sampleRows) && isset($sampleRows[0])) {
+                $sheetData = $sampleRows[0];
+                for ($r = 0; $r < min(15, count($sheetData)); $r++) {
+                    $rowStr = strtolower(implode(' ', array_filter(array_map('strval', $sheetData[$r]))));
+                    if (str_contains($rowStr, 'attendance employee') || str_contains($rowStr, 'attendance info') || str_contains($rowStr, 'first on')) {
+                        $isCardFormat = true;
+                        break;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // fallback
+        }
+
+        if ($isCardFormat && class_exists('\App\Imports\EndocAttendanceImport')) {
+            Excel::import(
+                new \App\Imports\EndocAttendanceImport($this->companyId, $this->userId, $this->importFileId, $this->authLoginUserDetail),
+                $fullPath
+            );
+        } else {
+            Excel::import(
+                new AttendanceImport($this->companyId, $this->userId, $this->importFileId, $this->authLoginUserDetail),
+                $fullPath
+            );
+        }
     }
 
     /**

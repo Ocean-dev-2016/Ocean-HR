@@ -38,6 +38,7 @@ class OfficeLocationController extends Controller
             $data = [
                 'latitude' => $company->latitude ? (float) $company->latitude : null,
                 'longitude' => $company->longitude ? (float) $company->longitude : null,
+                'radius' => $company->radius !== null ? (float) $company->radius : 100.0,
             ];
 
             return response()->json([

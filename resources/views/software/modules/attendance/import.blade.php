@@ -90,12 +90,13 @@
                     </div>
 
                     {{-- Sample File Download --}}
-                    <div class="col-md-4 d-flex align-items-end mb-3" id="sampleFileDiv" style="{{ $company_id ? '' : 'display: none;' }}">
+                    <div class="col-md-4 d-flex align-items-end mb-3" id="sampleFileDiv"
+                        style="{{ $company_id ? '' : 'display: none;' }}">
                         <div class="w-100">
                             <small class="text-muted d-block mt-1">
                                 <i class="ti ti-file-spreadsheet"></i> .xlsx format with all column headers
                             </small>
-                            <a href="{{ $import_file ?? asset('sample-file/ocean-hrms-attendance-import-sample.xlsx') }}"
+                            <a href="{{ ($company_import_format ?? 'standard') === 'custom' ? ($import_file_custom ?? asset('sample-file/endoc-biotech-attendance-custom-sample.xlsx')) : ($import_file ?? asset('sample-file/ocean-hrms-attendance-import-sample.xlsx')) }}"
                                 class="btn btn-outline-primary w-100" download>
                                 <i class="ti ti-download"></i> Download Sample Excel Template
                             </a>
@@ -147,7 +148,7 @@
                             <span class="badge bg-danger">{{ $summary['total_failed'] }}</span>
                         </div>
                         <div class="col-md-3">
-                            <strong>Duplicates Skipped:</strong>
+                            <strong>{{ ($company_import_format ?? 'standard') === 'custom' ? 'Duplicates/Skipped:' : 'Duplicates Skipped:' }}</strong>
                             <span class="badge bg-warning">{{ $summary['total_duplicates'] }}</span>
                         </div>
                     </div>
@@ -157,7 +158,7 @@
             @if (session('attendanceImportFileMessages'))
                 <div class="alert alert-danger mt-3">
                     <h6 class="alert-heading"><i class="ti ti-alert-circle"></i> Import Errors</h6>
-                    <p class="mb-2">The following rows could not be imported. Please fix the errors and try again:</p>
+                    <p class="mb-2">The following rows could not be imported. Please check your Excel file and try again:</p>
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered">
                             <thead>
@@ -188,14 +189,14 @@
                                 <i class="ti ti-file-check"></i> Required Columns (Excel)
                             </h6>
                             <ul class="mb-0">
-                                <li><code>employee_code</code> OR <code>biometric_user_id</code> OR <code>employee_name</code></li>
-                                <li><code>attendance_date</code> - Format: YYYY-MM-DD or DD/MM/YYYY</li>
-                                <li><code>punch_in_time</code> - Format: HH:MM:SS or HH:MM</li>
-                                <li><code>attendace_type</code> - Values: 'in' or 'out' (optional, auto-detected)</li>
+                                <li><code>employee_code</code> OR <code>biometric_user_id</code> <span class="text-danger">*</span></li>
+                                <li><code>attendance_date</code> <span class="text-danger">*</span> - Format: DD-MM-YYYY or YYYY-MM-DD</li>
+                                <li><code>punch_in_time</code> <span class="text-danger">*</span> - Format: HH:MM or HH:MM:SS</li>
+                                <li><code>punch_out_time</code> - Format: HH:MM or HH:MM:SS (optional)</li>
                             </ul>
                             <hr>
                             <small class="text-muted">
-                                <strong>PDF Format:</strong> Supports "Daily Basic Attendance Report" format
+                                <strong>Supported Formats:</strong> Excel (.xls, .xlsx) and Biometric logs
                             </small>
                         </div>
                     </div>
@@ -256,7 +257,8 @@
                                 html += '</div>';
                                 
                                 if (response.data.total_duplicates > 0) {
-                                    html += '<div class="mt-2"><strong>Duplicates Skipped:</strong> <span class="badge bg-warning">' + response.data.total_duplicates + '</span></div>';
+                                    var dupLabel = '{{ ($company_import_format ?? "standard") === "custom" ? "Duplicates/Skipped:" : "Duplicates Skipped:" }}';
+                                    html += '<div class="mt-2"><strong>' + dupLabel + '</strong> <span class="badge bg-warning">' + response.data.total_duplicates + '</span></div>';
                                 }
                                 
                                 $('#queueStatusContent').html(html);

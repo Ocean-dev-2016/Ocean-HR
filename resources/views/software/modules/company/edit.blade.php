@@ -247,7 +247,7 @@
                                     @enderror
                                 </div>
 
-                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
+                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="latitude_edit">Latitude <span class="text-danger">*</span></label>
                                     <input type="text" id="latitude_edit" name="latitude" class="form-control @error('latitude') is-invalid @enderror"
                                         value="{{ old('latitude', $edit->latitude ?? '') }}" placeholder="e.g. 21.1702" />
@@ -256,11 +256,20 @@
                                     @enderror
                                 </div>
 
-                                <div class="col-md-6 col-sm-12 {{ $maring_bottom }}">
+                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
                                     <label class="form-label" for="longitude_edit">Longitude <span class="text-danger">*</span></label>
                                     <input type="text" id="longitude_edit" name="longitude" class="form-control @error('longitude') is-invalid @enderror"
                                         value="{{ old('longitude', $edit->longitude ?? '') }}" placeholder="e.g. 72.8311" />
                                     @error('longitude')
+                                        <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-4 col-sm-12 {{ $maring_bottom }}">
+                                    <label class="form-label" for="radius_edit">Radius (in Meters)</label>
+                                    <input type="number" step="any" id="radius_edit" name="radius" class="form-control @error('radius') is-invalid @enderror"
+                                        value="{{ old('radius', $edit->radius ?? 100) }}" placeholder="e.g. 100" />
+                                    @error('radius')
                                         <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                     @enderror
                                 </div>
@@ -529,6 +538,27 @@
                                             @endforeach
                                         </select>
                                         @error('employee_code_auto_generation')
+                                            <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3 col-sm-12 {{ $maring_bottom }}">
+                                    <div class="form-group">
+                                        <label class="form-label">Import Attendance Format<span
+                                                class="text-danger">*</span></label>
+                                        <select name="import_attendance_format" id="import_attendance_format"
+                                            class="form-control @error('import_attendance_format') is-invalid @enderror select2">
+                                            <option value="" disabled selected>Select Import Attendance Format
+                                            </option>
+                                            @foreach (config('constants.import_attendance_format') as $import_format_key => $value)
+                                                <option value="{{ $import_format_key }}"
+                                                    {{ old('import_attendance_format', $edit->import_attendance_format ?? 'standard') == $import_format_key ? 'selected' : '' }}>
+                                                    {{ $value }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('import_attendance_format')
                                             <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
                                         @enderror
                                     </div>
