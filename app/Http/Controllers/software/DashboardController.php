@@ -1621,8 +1621,13 @@ class DashboardController extends Controller
             $shift = $shift_id ? Shift::find($shift_id) : Shift::where('company_id', $employee->company_id)->first();
             $shift_id = $shift ? $shift->id : 0;
 
-            // Validate Late Punch on Punch-In
-            if ($nextType === 'in' && $shift && !empty($shift->punch_in_minimum)) {
+            // Validate Late Punch on first Punch-In of the day
+            $hasPriorPunchInToday = Attendance::where('employee_id', $employee->id)
+                ->where('attendance_date', $attendanceDate)
+                ->where('attendace_type', 'in')
+                ->exists();
+
+            if ($nextType === 'in' && !$hasPriorPunchInToday && $shift && !empty($shift->punch_in_minimum)) {
                 $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
                 $shiftStart = Carbon::parse($shift->punch_in_minimum);
                 $cutoffTime = (clone $shiftStart)->addMinutes($graceMin);
@@ -1730,7 +1735,14 @@ class DashboardController extends Controller
                 return false;
             }
 
+            $shouldAutoPunchOut = false;
             if ($lastRecord->attendance_date < $currentDate) {
+                $shouldAutoPunchOut = true;
+            } elseif ($lastRecord->attendance_date === $currentDate && $nowTime >= $punchOutTime) {
+                $shouldAutoPunchOut = true;
+            }
+
+            if ($shouldAutoPunchOut) {
                 $hasOutPunch = Attendance::where('employee_id', $employee->id)
                     ->where('attendance_date', $lastRecord->attendance_date)
                     ->where('attendace_type', 'out')

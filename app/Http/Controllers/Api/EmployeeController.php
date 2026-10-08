@@ -113,8 +113,13 @@ class EmployeeController extends Controller
                 $shift_id = $defaultShift ? $defaultShift->id : 0;
             }
 
-            // Check shift grace period hard block for Punch-In
-            if ($nextAction == 'in') {
+            // Check shift grace period hard block for first Punch-In of the day
+            $hasPriorPunchInToday = Attendance::where('employee_id', $employee->id)
+                ->where('attendance_date', $attendanceDate)
+                ->where('attendace_type', 'in')
+                ->exists();
+
+            if ($nextAction == 'in' && !$hasPriorPunchInToday) {
                 $shift = $shift_id ? Shift::find($shift_id) : null;
                 if ($shift && !empty($shift->punch_in_minimum)) {
                     $graceMin = (int)($shift->in_out_grace_period ?? $shift->grace_period ?? 0);
