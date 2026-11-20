@@ -425,15 +425,21 @@ class LeaveApplicationController extends Controller
                     ->editColumn('singleday_multipleday', fn($row) => $row->singleday_multipleday ?? '-')
                     ->editColumn('fromdate_time', fn($row) => $row->fromdate_time ? Carbon::parse($row->fromdate_time)->format('d-m-Y H:i') : '-')
                     ->editColumn('todate_time', fn($row) => $row->todate_time ? Carbon::parse($row->todate_time)->format('d-m-Y H:i') : '-')
-                    ->editColumn('status', function ($row) {
+                    ->editColumn('status', function ($row) use ($modules) {
+                        $companyIdForStatus = $row->company_id ?? $modules['company_id'] ?? null;
+                        $useSimpleStatus = $this->usesSimpleLeaveStatus($companyIdForStatus);
+
                         if ($row->status === 'approved') {
                             $html = '<span class="badge bg-success" style="min-width: 90px;">Approved</span>';
-                            if ($row->hrApprover) {
-                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hrApprover->proper_name) . '</strong> <span class="text-muted">(HR)</span></small>';
-                            } elseif ($row->hodApprover) {
-                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hodApprover->proper_name) . '</strong> <span class="text-muted">(Dept Head)</span></small>';
-                            } elseif ($row->supervisorApprover) {
-                                $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->supervisorApprover->proper_name) . '</strong> <span class="text-muted">(Supervisor)</span></small>';
+                            // No supervisor/dept head: show only Approved badge (no Admin/HR name below)
+                            if (!$useSimpleStatus) {
+                                if ($row->hrApprover) {
+                                    $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hrApprover->proper_name) . '</strong> <span class="text-muted">(HR)</span></small>';
+                                } elseif ($row->hodApprover) {
+                                    $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->hodApprover->proper_name) . '</strong> <span class="text-muted">(Dept Head)</span></small>';
+                                } elseif ($row->supervisorApprover) {
+                                    $html .= '<small class="d-block text-muted mt-1" style="font-size: 11px;"><i class="ti ti-check text-success"></i> <strong>' . e($row->supervisorApprover->proper_name) . '</strong> <span class="text-muted">(Supervisor)</span></small>';
+                                }
                             }
                             return $html;
                         }
@@ -450,8 +456,7 @@ class LeaveApplicationController extends Controller
                         }
 
                         // When Supervisor & Dept Head not added: show simple Pending
-                        $companyIdForStatus = $row->company_id ?? $modules['company_id'] ?? null;
-                        if ($this->usesSimpleLeaveStatus($companyIdForStatus)) {
+                        if ($useSimpleStatus) {
                             return '<span class="badge bg-warning text-dark" style="min-width: 90px;">Pending</span>';
                         }
 
