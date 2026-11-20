@@ -3,6 +3,8 @@
 namespace App\Helpers;
 
 use App\Models\Company;
+use App\Models\CompanySubscriptionPlan;
+use App\Models\CompanyRegistration;
 use App\Models\SalesStatus;
 use App\Models\EmailLog;
 use App\Models\MainMenu;
@@ -1088,6 +1090,81 @@ class Helper
         } catch (\Exception $e) {
             Log::error("Image conversion failed: " . $e->getMessage());
             return $imagePath; // fallback to original if fails
+        }
+    }
+
+    /**
+     * Check if company plan/trial is expired. Auto-marks expired when plan_expiry_date has passed.
+     * Returns true when access must be blocked.
+     */
+    public static function isCompanyPlanExpired(?Company $company, bool $autoMarkExpired = true): bool
+    {
+        if (!$company) {
+            return false;
+        }
+
+        if (!empty($company->status) && $company->status === 'expired') {
+            return true;
+        }
+
+        if (empty($company->plan_id)) {
+            return false;
+        }
+
+        $latestPlan = CompanySubscriptionPlan::where('company_id', $company->id)
+            ->where('plan_id', $company->plan_id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$latestPlan) {
+            return false;
+        }
+
+        if (!empty($latestPlan->subscription_status) && $latestPlan->subscription_status === 'expired') {
+            return true;
+        }
+
+        $expiryDate = $latestPlan->plan_expiry_date ?? $latestPlan->plan_to ?? null;
+        if (empty($expiryDate)) {
+            return false;
+        }
+
+        $isPastExpiry = Carbon::parse($expiryDate)->startOfDay()->lt(Carbon::today());
+        if (!$isPastExpiry) {
+            return false;
+        }
+
+        if ($autoMarkExpired) {
+            self::markCompanyPlanExpired($company, $latestPlan);
+        }
+
+        return true;
+    }
+
+    /**
+     * Mark company subscription + company status as expired.
+     */
+    public static function markCompanyPlanExpired(Company $company, ?CompanySubscriptionPlan $latestPlan = null): void
+    {
+        if (!$latestPlan && $company->plan_id) {
+            $latestPlan = CompanySubscriptionPlan::where('company_id', $company->id)
+                ->where('plan_id', $company->plan_id)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        if ($latestPlan && $latestPlan->subscription_status !== 'expired') {
+            $latestPlan->subscription_status = 'expired';
+            $latestPlan->save();
+        }
+
+        if ($company->status !== 'expired') {
+            $company->status = 'expired';
+            $company->save();
+        }
+
+        if (!empty($company->email)) {
+            CompanyRegistration::where('email', $company->email)->update(['status' => 'expired']);
         }
     }
 }

@@ -17,6 +17,7 @@ use App\Models\RolePermission;
 use App\Models\SubMenu;
 use Illuminate\Http\Request;
 use App\Models\Company;
+use App\Models\CompanyRegistration;
 use App\Models\MasterCountry;
 use App\Models\PlanMaster;
 use App\Models\TeamRole;
@@ -1793,6 +1794,15 @@ class CompanyController extends Controller
                         'subscription_status' => $subscription_status,
                         'created_by' => $loginUserId,
                     ]);
+
+                    // Restore company access after plan upgrade/extend
+                    if ($subscription_status === 'active') {
+                        $updateData->status = 'active';
+                        $updateData->save();
+                        if (!empty($updateData->email)) {
+                            CompanyRegistration::where('email', $updateData->email)->update(['status' => 'active']);
+                        }
+                    }
                 }
 
                 if ($request?->btn_submit === 'submit_and_exit') {

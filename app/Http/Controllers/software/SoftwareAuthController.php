@@ -615,11 +615,10 @@ class SoftwareAuthController extends Controller
                                 return Redirect::back()->withErrors(['username' => 'Employee login is disabled for this company. Please contact company administrator.'])->withInput();
                             }
 
-                            $latestPlan = CompanySubscriptionPlan::where('company_id', $teamPerson->company_id)->where('plan_id', $company->plan_id)->orderBy('id', 'desc')->first();
                             session()->put('show_plan_expiry_modal', true);
-                            if (!empty($latestPlan?->subscription_status) && $latestPlan?->subscription_status == 'expired') {
+                            if (Helper::isCompanyPlanExpired($company)) {
                                 Auth::guard('employees')->logout();
-                                return Redirect::back()->withErrors(['plan_expired' => 'Your Plan is Expired.'])->withInput();
+                                return Redirect::back()->withErrors(['plan_expired' => 'Your plan expired'])->withInput();
                             } else if (!empty($company?->status) && $company?->status == 'inactive') {
                                 Auth::guard('employees')->logout();
                                 return Redirect::back()->withErrors(['company_inactive' => 'Your Company is Inactive.'])->withInput();

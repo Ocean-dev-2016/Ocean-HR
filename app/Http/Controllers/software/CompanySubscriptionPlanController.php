@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanySubscriptionAddons;
 use App\Models\CompanySubscriptionPlan;
 use App\Models\Company;
+use App\Models\CompanyRegistration;
 use App\Models\PlanMaster;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -280,11 +281,38 @@ class CompanySubscriptionPlanController extends Controller
 
                 $subscription_updated_date = (isset($subscription_plans->plan_expiry_date) && !empty($subscription_plans->plan_expiry_date)) ? $subscription_plans->plan_expiry_date : $subscription_plans->plan_to;
 
+                // If already expired, extend from today so added days are usable
+                if (Carbon::parse($subscription_updated_date)->lt(Carbon::today())) {
+                    $subscription_updated_date = Carbon::today()->format('Y-m-d');
+                }
+
                 $days = (int) $request->add_days;
                 $updated_plan_date = Carbon::parse($subscription_updated_date)->addDays($days)->format('Y-m-d');
 
                 $subscription_plans->plan_expiry_date = $updated_plan_date;
+                $subscription_plans->plan_to = $updated_plan_date;
+
+                if (Carbon::parse($updated_plan_date)->gte(Carbon::today())) {
+                    $subscription_plans->subscription_status = 'active';
+                }
+
                 $subscription_plans->save();
+
+                // Restore company access after plan extend
+                if ($subscription_plans->subscription_status === 'active') {
+                    $company = Company::find($subscription_plans->company_id);
+                    if ($company) {
+                        $company->status = 'active';
+                        if (!empty($subscription_plans->plan_id)) {
+                            $company->plan_id = $subscription_plans->plan_id;
+                        }
+                        $company->save();
+
+                        if (!empty($company->email)) {
+                            CompanyRegistration::where('email', $company->email)->update(['status' => 'active']);
+                        }
+                    }
+                }
             }
 
             return $this->sendResponse([], 'Subscription plan updated successfully.');

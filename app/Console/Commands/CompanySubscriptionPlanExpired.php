@@ -2,13 +2,9 @@
 
 namespace App\Console\Commands;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-use App\Models\CompanySubscriptionPlan;
+use App\Helpers\Helper;
 use App\Models\Company;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
-
 
 class CompanySubscriptionPlanExpired extends Command
 {
@@ -23,35 +19,11 @@ class CompanySubscriptionPlanExpired extends Command
     {
         Log::info('CompanySubscriptionPlanExpired command run at ' . now());
         try {
-            $today = Carbon::today();
-
             $companies = Company::orderBy('id', 'DESC')->get();
 
             foreach ($companies as $company) {
-                if (!$company->plan_id) {
-                    continue;
-                }
-
-                $plan = CompanySubscriptionPlan::where('company_id', $company->id)
-                    ->where('plan_id', $company->plan_id)
-                    ->where(function ($q) use ($today) {
-                        $q->whereDate('plan_from', '>', $today)
-                        ->orWhereDate('plan_expiry_date', '<', $today);
-                    })
-                    ->orderBy('id', 'desc')
-                    ->first();
-
-                if ($plan) {
-                    $plan->subscription_status = 'expired';
-                    $plan->save();
-
-                    $company->status = 'expired';
-                    $company->save();
-
-                    if (!empty($company->email)) {
-                        \App\Models\CompanyRegistration::where('email', $company->email)->update(['status' => 'expired']);
-                    }
-                }
+                // Marks expired when plan_expiry_date has passed (7-day trial or paid plan)
+                Helper::isCompanyPlanExpired($company, true);
             }
 
             $this->info('Company subscription plan status check completed.');

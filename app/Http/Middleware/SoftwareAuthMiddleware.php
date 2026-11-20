@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\CompanySubscriptionPlan;
+use App\Helpers\Helper;
 use App\Models\Company;
 
 class SoftwareAuthMiddleware
@@ -47,19 +47,12 @@ class SoftwareAuthMiddleware
                     }
                 }
 
-                if ($company && $company->plan_id) {
-                    $latestPlan = CompanySubscriptionPlan::where('company_id', $company->id)
-                        ->where('plan_id', $company->plan_id)
-                        ->orderBy('id', 'desc')
-                        ->first();
-
-                    if (!empty($latestPlan?->subscription_status) && $latestPlan?->subscription_status == 'expired') {
-                        Auth::guard('employees')->logout();
-                        if ($request->hasSession()) {
-                            $request->session()->invalidate();
-                        }
-                        return Redirect::route('software.login')->withErrors(['plan_expired' => 'Your Plan is Expired.']);
+                if (Helper::isCompanyPlanExpired($company)) {
+                    Auth::guard('employees')->logout();
+                    if ($request->hasSession()) {
+                        $request->session()->invalidate();
                     }
+                    return Redirect::route('software.login')->withErrors(['plan_expired' => 'Your plan expired']);
                 }
             }
             return $next($request);

@@ -88,24 +88,24 @@ class AuthenticateController extends Controller
                     function ($attribute, $value, $fail) {
 
                         // current_latest_plan
-                        $company = Company::where('app_key', $value)
-                            ->where('status', 'active')
-                            // ->whereDate('plan_to', '>=', Carbon::today())
-                            ->first();
+                        $company = Company::where('app_key', $value)->first();
 
                         if (!$company) {
                             $fail('The selected app_key is invalid or the company is inactive.');
                         }
+
+                        if (Helper::isCompanyPlanExpired($company)) {
+                            $fail('Your plan expired');
+                        }
+
+                        if (!empty($company->status) && $company->status !== 'active') {
+                            $fail('The selected app_key is invalid or the company is inactive.');
+                        }
+
                         $current_latest_plan = $company?->current_latest_plan;
 
                         if (!$current_latest_plan) {
                             $fail('The selected company subscription plan not found.');
-                        }
-
-                        $companyCurrentPlanExpiryDate = Helper::convert_date($current_latest_plan?->plan_expiry_date, "Y-m-d H:i:s", "Ymd") . "5959";
-                        $now = Carbon::now()->format('YmdHi');
-                        if ((int)$now >= (int)$companyCurrentPlanExpiryDate) {
-                            $fail('The selected company subscription plan has expired.');
                         }
                     },
                 ],
