@@ -79,7 +79,7 @@ class LeaveApplicationRequest extends FormRequest
             ],
             'status' => [
                 'required',
-                'in:pending,pass,reject'
+                'in:pending,approved,approve,pass,reject,rejected'
             ],
             'attachment' => [
                 'nullable',

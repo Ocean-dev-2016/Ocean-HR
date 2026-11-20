@@ -120,6 +120,104 @@ class LeaveApplicationController extends Controller
         return 'employee';
     }
 
+    /**
+     * Check whether company has active employees for a role type (supervisor / hod).
+     */
+    private function companyHasApproverRoleType($companyId, string $roleType): bool
+    {
+        if (empty($companyId)) {
+            return false;
+        }
+
+        $employees = \App\Models\Employee::with('role')
+            ->where('company_id', $companyId)
+            ->where('status', 'active')
+            ->whereNotNull('role_id')
+            ->get();
+
+        foreach ($employees as $employee) {
+            if ($this->getRoleType($employee) === $roleType) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @var array<int|string, bool> */
+    private array $simpleLeaveStatusCache = [];
+
+    /**
+     * When Supervisor and Department Head are not added, use simple Pending/Approve flow.
+     */
+    private function usesSimpleLeaveStatus($companyId): bool
+    {
+        if (empty($companyId)) {
+            return false;
+        }
+
+        $cacheKey = (string) $companyId;
+        if (array_key_exists($cacheKey, $this->simpleLeaveStatusCache)) {
+            return $this->simpleLeaveStatusCache[$cacheKey];
+        }
+
+        $hasSupervisor = $this->companyHasApproverRoleType($companyId, 'supervisor');
+        $hasDeptHead = $this->companyHasApproverRoleType($companyId, 'hod');
+        $this->simpleLeaveStatusCache[$cacheKey] = !$hasSupervisor && !$hasDeptHead;
+
+        return $this->simpleLeaveStatusCache[$cacheKey];
+    }
+
+    /**
+     * Apply approval fields for create/update based on hierarchy availability.
+     */
+    private function applyLeaveApprovalFields(array &$validated, $applicant, $loginUserId, bool $useSimpleStatus): void
+    {
+        $requestedStatus = strtolower((string) ($validated['status'] ?? 'pending'));
+        if ($requestedStatus === 'approve' || $requestedStatus === 'pass') {
+            $requestedStatus = 'approved';
+        }
+
+        if ($useSimpleStatus) {
+            if ($requestedStatus === 'approved') {
+                $validated['status'] = 'approved';
+                $validated['approval_level'] = 3;
+                $validated['supervisor_status'] = 'approved';
+                $validated['hod_status'] = 'approved';
+                $validated['hr_status'] = 'approved';
+                $validated['hr_approved_by'] = $loginUserId;
+                $validated['hr_approved_at'] = now();
+            } else {
+                $validated['status'] = 'pending';
+                $validated['approval_level'] = 3;
+                $validated['hr_status'] = 'pending';
+                $validated['supervisor_status'] = null;
+                $validated['hod_status'] = null;
+            }
+            return;
+        }
+
+        $applicantRoleType = $this->getRoleType($applicant);
+        $validated['status'] = 'pending';
+
+        if ($applicantRoleType === 'employee') {
+            $validated['approval_level'] = 1;
+            $validated['supervisor_status'] = 'pending';
+        } elseif ($applicantRoleType === 'supervisor') {
+            $validated['approval_level'] = 2;
+            $validated['supervisor_status'] = 'approved';
+            $validated['hod_status'] = 'pending';
+        } elseif ($applicantRoleType === 'hod') {
+            $validated['approval_level'] = 3;
+            $validated['supervisor_status'] = 'approved';
+            $validated['hod_status'] = 'approved';
+            $validated['hr_status'] = 'pending';
+        } else {
+            $validated['approval_level'] = 3;
+            $validated['hr_status'] = 'pending';
+        }
+    }
+
 
     public function index(Request $request)
     {
@@ -351,6 +449,12 @@ class LeaveApplicationController extends Controller
                             return $html;
                         }
 
+                        // When Supervisor & Dept Head not added: show simple Pending
+                        $companyIdForStatus = $row->company_id ?? $modules['company_id'] ?? null;
+                        if ($this->usesSimpleLeaveStatus($companyIdForStatus)) {
+                            return '<span class="badge bg-warning text-dark" style="min-width: 90px;">Pending</span>';
+                        }
+
                         // Multi-tier pending badges
                         $level = (int) ($row->approval_level ?? 1);
                         if ($level === 1) {
@@ -505,13 +609,15 @@ class LeaveApplicationController extends Controller
 
         ];
         try {
+            $useSimpleLeaveStatus = $this->usesSimpleLeaveStatus($modules['company_id'] ?? null);
             View::share('modules', $modules);
             View::share('leaveForDay', $leaveForDay);
             View::share('leaveByDays', $leaveByDays);
             View::share('leaveForHalfdays', $leaveForHalfdays);
+            View::share('useSimpleLeaveStatus', $useSimpleLeaveStatus);
 
 
-            return view($modules['folder_path'] . '.form', compact('modules', 'leaveForDay', 'leaveByDays', 'leaveForHalfdays'));
+            return view($modules['folder_path'] . '.form', compact('modules', 'leaveForDay', 'leaveByDays', 'leaveForHalfdays', 'useSimpleLeaveStatus'));
         } catch (\Exception $e) {
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
@@ -653,31 +759,12 @@ class LeaveApplicationController extends Controller
             $validated['singleday_multipleday'] = $request?->singleday_multipleday;
             $validated['firsthalf_secondhalf'] = $request?->firsthalf_secondhalf;
 
-            // Set starting approval_level based on applicant role
+            // Set starting approval_level based on hierarchy / applicant role
             $applicantEmpId = $validated['employee_id'] ?? $loginUserId;
             $applicant = \App\Models\Employee::with('role')->find($applicantEmpId);
-            $applicantRoleType = $this->getRoleType($applicant);
-
-            $validated['status'] = 'pending';
-            if ($applicantRoleType === 'employee') {
-                // Employee -> Level 1 (Supervisor)
-                $validated['approval_level'] = 1;
-                $validated['supervisor_status'] = 'pending';
-            } elseif ($applicantRoleType === 'supervisor') {
-                // Supervisor -> Level 2 (Dept Head)
-                $validated['approval_level'] = 2;
-                $validated['supervisor_status'] = 'approved';
-                $validated['hod_status'] = 'pending';
-            } elseif ($applicantRoleType === 'hod') {
-                // Dept Head -> Level 3 (Main HR)
-                $validated['approval_level'] = 3;
-                $validated['supervisor_status'] = 'approved';
-                $validated['hod_status'] = 'approved';
-                $validated['hr_status'] = 'pending';
-            } else {
-                $validated['approval_level'] = 3;
-                $validated['hr_status'] = 'pending';
-            }
+            $companyIdForLeave = $validated['company_id'] ?? $modules['company_id'] ?? $applicant?->company_id;
+            $useSimpleStatus = $this->usesSimpleLeaveStatus($companyIdForLeave);
+            $this->applyLeaveApprovalFields($validated, $applicant, $loginUserId, $useSimpleStatus);
 
             LeaveApplication::create($validated);
 
@@ -757,10 +844,13 @@ class LeaveApplicationController extends Controller
                 $leaveAppQuery->where('company_id', $modules['company_id']);
             }
             $edit = $leaveAppQuery->findOrFail($id);
+            $companyIdForLeave = $modules['company_id'] ?? $edit->company_id;
+            $useSimpleLeaveStatus = $this->usesSimpleLeaveStatus($companyIdForLeave);
             View::share('edit', $edit);
-            $leaveTypes = LeaveType::where('company_id', $modules['company_id'])->get();
+            View::share('useSimpleLeaveStatus', $useSimpleLeaveStatus);
+            $leaveTypes = LeaveType::where('company_id', $modules['company_id'] ?? $edit->company_id)->get();
 
-            return view($modules['folder_path'] . '.form', compact('leaveTypes'));
+            return view($modules['folder_path'] . '.form', compact('leaveTypes', 'useSimpleLeaveStatus'));
         } catch (\Exception $e) {
             return Redirect::route($modules['route'] . '.index')->withErrors($e->getMessage());
         }
@@ -910,6 +1000,14 @@ class LeaveApplicationController extends Controller
             // If no conflict, proceed to save the leave application update
             $validated['singleday_multipleday'] = $request?->singleday_multipleday;
             $validated['firsthalf_secondhalf'] = $request?->firsthalf_secondhalf;
+
+            $applicantEmpId = $validated['employee_id'] ?? $leaveApplication->employee_id;
+            $applicant = \App\Models\Employee::with('role')->find($applicantEmpId);
+            $companyIdForLeave = $validated['company_id'] ?? $modules['company_id'] ?? $leaveApplication->company_id;
+            $useSimpleStatus = $this->usesSimpleLeaveStatus($companyIdForLeave);
+            if ($useSimpleStatus || array_key_exists('status', $validated)) {
+                $this->applyLeaveApprovalFields($validated, $applicant, $loginUserId, $useSimpleStatus);
+            }
 
             // Update the leave application record
             $leaveApplication->update($validated);

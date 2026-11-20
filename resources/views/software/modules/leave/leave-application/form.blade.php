@@ -266,19 +266,33 @@
                         </div>
                     </div>
 
-                    @if (!$company_id)
-                        {{-- status --}}
+                    @php
+                        $useSimpleLeaveStatus = $useSimpleLeaveStatus ?? false;
+                        $showLeaveStatusField = !$company_id || $useSimpleLeaveStatus;
+                        $currentLeaveStatus = old('status', $edit->status ?? 'pending');
+                    @endphp
+                    @if ($showLeaveStatusField)
+                        {{-- status: when Supervisor & Dept Head not added, show Pending + Approve --}}
                         <div class="{{ $colums ?? 'col-12' }}">
                             <div class="form-group">
                                 <label class="form-label">Status</label>
                                 <select class="form-control select2 w-100 @error('status') is-invalid @enderror"
                                     name="status" required id="statusSelect">
                                     <option disabled>Select Status</option>
-                                    <option value="pending" style="color: orange;" selected
-                                        @if ((isset($edit) && $edit->status == 'pending') || old('status') == 'pending') selected @endif>
+                                    <option value="pending" style="color: orange;"
+                                        @if ($currentLeaveStatus == 'pending') selected @endif>
                                         Pending
                                     </option>
+                                    @if ($useSimpleLeaveStatus)
+                                        <option value="approved" style="color: green;"
+                                            @if ($currentLeaveStatus == 'approved') selected @endif>
+                                            Approve
+                                        </option>
+                                    @endif
                                 </select>
+                                @error('status')
+                                    <span class="invalid-feedback"><strong>{{ $message }}</strong></span>
+                                @enderror
                             </div>
                         </div>
                     @else

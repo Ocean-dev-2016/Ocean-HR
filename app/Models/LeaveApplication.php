@@ -124,7 +124,12 @@ class LeaveApplication extends Model
             return 'Rejected ' . $by;
         }
         if ($this->status === 'approved') {
-            return 'Approved (Final)';
+            return 'Approve';
+        }
+
+        // Simple pending when no multi-tier approvals recorded yet
+        if (empty($this->supervisor_status) && empty($this->hod_status) && (int) ($this->approval_level ?? 0) === 3) {
+            return 'Pending';
         }
 
         return match ((int) $this->approval_level) {
