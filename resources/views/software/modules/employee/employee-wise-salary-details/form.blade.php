@@ -104,7 +104,7 @@
                                         @if (isset($edit))
                                             {{ $edit->salary_classification == $key ? 'selected' : '' }}
                                         @else
-                                            {{ old('salary_classification', config('constants.salary_classification.PMS')) == $key ? 'selected' : '' }}
+                                            {{ old('salary_classification', 'PMS') == $key ? 'selected' : '' }}
                                         @endif>
                                         {{ $value }}
                                     </option>

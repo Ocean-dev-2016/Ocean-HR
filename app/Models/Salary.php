@@ -219,6 +219,17 @@ class Salary extends Model
                 ->count();
 
             if ($currentCount != $this->attendance_records_count) {
+                if (!isset($modifications['attendance'])) {
+                    $modifications['attendance'] = [
+                        'modified' => true,
+                        'last_modified' => now()->format('Y-m-d H:i:s'),
+                        'snapshot_date' => $this->attendance_snapshot_date
+                            ? $this->attendance_snapshot_date->format('Y-m-d H:i:s')
+                            : null,
+                    ];
+                } else {
+                    $modifications['attendance']['modified'] = true;
+                }
                 $modifications['attendance']['count_changed'] = true;
                 $modifications['attendance']['original_count'] = $this->attendance_records_count;
                 $modifications['attendance']['current_count'] = $currentCount;
@@ -262,6 +273,17 @@ class Salary extends Model
                 ->count();
 
             if ($currentLeaveCount != $this->leave_records_count) {
+                if (!isset($modifications['leave'])) {
+                    $modifications['leave'] = [
+                        'modified' => true,
+                        'last_modified' => now()->format('Y-m-d H:i:s'),
+                        'snapshot_date' => $this->leave_snapshot_date
+                            ? $this->leave_snapshot_date->format('Y-m-d H:i:s')
+                            : null,
+                    ];
+                } else {
+                    $modifications['leave']['modified'] = true;
+                }
                 $modifications['leave']['count_changed'] = true;
                 $modifications['leave']['original_count'] = $this->leave_records_count;
                 $modifications['leave']['current_count'] = $currentLeaveCount;

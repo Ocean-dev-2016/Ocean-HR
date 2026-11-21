@@ -214,18 +214,18 @@ class SalaryCalculationController extends Controller
                         $row->checkDataIntegrity();
 
                         if ($row->data_modified) {
-                            $modifications = $row->data_modification_details ?? [];
+                            $modifications = is_array($row->data_modification_details) ? $row->data_modification_details : [];
                             $modificationText = [];
-                            if (isset($modifications['attendance']) && $modifications['attendance']['modified']) {
+                            if (!empty($modifications['attendance']['modified']) || !empty($modifications['attendance']['count_changed'])) {
                                 $modificationText[] = 'Attendance';
                             }
-                            if (isset($modifications['leave']) && $modifications['leave']['modified']) {
+                            if (!empty($modifications['leave']['modified']) || !empty($modifications['leave']['count_changed'])) {
                                 $modificationText[] = 'Leave';
                             }
-                            if (isset($modifications['holiday']) && $modifications['holiday']['modified']) {
+                            if (!empty($modifications['holiday']['modified'])) {
                                 $modificationText[] = 'Holiday';
                             }
-                            if (isset($modifications['salary_detail']) && $modifications['salary_detail']['modified']) {
+                            if (!empty($modifications['salary_detail']['modified'])) {
                                 $modificationText[] = 'Salary Detail';
                             }
 
@@ -1465,6 +1465,38 @@ class SalaryCalculationController extends Controller
     /**
      * Calculate all salary components
      */
+    /**
+     * Resolve salary classification to a calculation mode.
+     * Supports DB keys (PHS/PDS/PMS/PWS) and legacy full labels.
+     *
+     * @return string hourly|daily|monthly|work
+     */
+    private function resolveSalaryClassificationMode($classification): string
+    {
+        $raw = strtolower(trim((string) $classification));
+
+        $map = [
+            'phs' => 'hourly',
+            'per hours salary' => 'hourly',
+            'per hour salary' => 'hourly',
+            'hourly' => 'hourly',
+
+            'pds' => 'daily',
+            'per day salary' => 'daily',
+            'daily' => 'daily',
+
+            'pms' => 'monthly',
+            'per month salary' => 'monthly',
+            'monthly' => 'monthly',
+
+            'pws' => 'work',
+            'per work salary' => 'work',
+            'work' => 'work',
+        ];
+
+        return $map[$raw] ?? 'monthly';
+    }
+
     private function calculateSalaryComponents($salaryDetail, $attendanceData, $holidayCount, $leaveData, $bonusData, $loanData, $totalDaysInMonth, $perDaySalary, $salaryDivisor = 30, $employee = null, $startDate = null, $endDate = null, $operationEarnings = 0)
     {
         $ctc = $salaryDetail->ctc ?? 0;
@@ -1539,17 +1571,14 @@ class SalaryCalculationController extends Controller
 
 
         // Determine Salary Classification Mode
-        $salaryClassification = strtolower(trim($salaryDetail->salary_classification ?? ''));
-        $isHourlyMode = ($salaryClassification === 'per hours salary');
+        // Keys stored in DB: PHS / PDS / PMS / PWS (also accept full labels for old data)
+        $classificationMode = $this->resolveSalaryClassificationMode($salaryDetail->salary_classification ?? '');
+        $isHourlyMode = ($classificationMode === 'hourly');
+        $isWorkMode = ($classificationMode === 'work');
 
-        // Initial Rate logic:
-        // By default, $perDaySalary and $salaryDivisor calculate a DAILY rate.
-        // If Hourly Mode:
-        // We need an HOURLY Rate.
-        // Option A: Rate = CTC / (DivisorDays * 8 hours)
-        // Option B: Rate = (CTC / DivisorDays) / 8 hours
-        // Usually, Per Hour Salary means they are paid for HOURS WORKED.
-        // So 'PayableUnits' becomes 'Worked Hours' instead of 'Worked Days'.
+        // PMS / PDS  => pay by payable days (monthly components / divisor * days)
+        // PHS        => pay by worked hours (monthly components / divisor / 8 * hours)
+        // PWS        => pay mainly from Operations Rate List (piece/work); attendance wage skipped
 
         $payableUnits = $calculateDays;
         $rateDivisor = $salaryDivisor; // Default Day Divisor
@@ -1557,13 +1586,14 @@ class SalaryCalculationController extends Controller
         if ($isHourlyMode) {
             // Use Total Worked HOURS as the multiplier unit
             $payableUnits = $attendanceData['total_working_hours_decimal'] ?? 0;
+        }
 
-            // Adjust Rate to be Hourly
-            // For Components (Basic, HRA, etc.), they are monthly figures.
-            // ComponentHourlyRate = (ComponentMonthly / DivisorDays) / 8 [assuming 8 hour shift default or standard].
-            // TODO: Ideally check shift hours from attendance, but for a global rate, 8 is standard or we need a config.
-            // Using 8 for now as standard conversion.
-            // Updated logic: We will adjust the logic below to use ($amount / $salaryDivisor / 8) * $payableUnits(Hours)
+        if ($isWorkMode) {
+            // Per Work Salary: operations amount is primary.
+            // If no operation entries for the month, fall back to day-based attendance pay.
+            if ((float) $operationEarnings > 0) {
+                $payableUnits = 0;
+            }
         }
 
         // Calculate amounts based on per day salary
