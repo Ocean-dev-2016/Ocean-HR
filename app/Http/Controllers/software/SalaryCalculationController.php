@@ -1457,6 +1457,29 @@ class SalaryCalculationController extends Controller
             if (isset($latestIncrement->per_hour_salary) && $latestIncrement->per_hour_salary > 0) {
                 $salaryDetail->per_hour_salary = $latestIncrement->per_hour_salary;
             }
+        } else {
+            // Salary detail is overwritten to latest CTC on increment save.
+            // For months BEFORE any applicable increment, restore pre-increment CTC.
+            $hasFutureIncrement = $increments->contains(function ($inc) use ($year, $month, $monthMap) {
+                $incYear = (int) $inc->effective_year;
+                $incMonthName = strtolower(trim($inc->effective_month ?? ''));
+                $incMonth = $monthMap[$incMonthName] ?? 1;
+
+                return $incYear > $year || ($incYear == $year && $incMonth > $month);
+            });
+
+            $oldCtc = (float) ($salaryDetail->previous_gross_salary ?? 0);
+            $newCtc = (float) ($salaryDetail->ctc ?? 0);
+
+            if ($hasFutureIncrement && $oldCtc > 0 && $newCtc > 0 && abs($newCtc - $oldCtc) > 0.01) {
+                $ratio = $oldCtc / $newCtc;
+                $salaryDetail->basic_da = round((float) $salaryDetail->basic_da * $ratio, 2);
+                $salaryDetail->hra = round((float) $salaryDetail->hra * $ratio, 2);
+                $salaryDetail->conveyance_allowance = round((float) $salaryDetail->conveyance_allowance * $ratio, 2);
+                $salaryDetail->medical_allowance = round((float) $salaryDetail->medical_allowance * $ratio, 2);
+                $salaryDetail->special_allowance = round((float) $salaryDetail->special_allowance * $ratio, 2);
+                $salaryDetail->ctc = round($oldCtc, 2);
+            }
         }
 
         return $salaryDetail;
