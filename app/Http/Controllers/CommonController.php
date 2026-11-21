@@ -306,22 +306,25 @@ class CommonController extends Controller
                 if ($branch && $branch?->prefix) {
                     $preFix = $branch?->prefix;
                 }
+                // Use selected branch's Employee Code Start (was missing — caused RJK-000)
+                $employeeCodeStart = (int) ($branch?->employee_code_start ?? 0);
+                if ($branch?->employee_code_start) {
+                    $codeLength = strlen((string) $branch->employee_code_start);
+                }
                 $employeeCount = $employeeCount->where('branch_id', $request?->branch_id);
-            }else{
+            } else {
                 $branch = Branch::where('company_id', $company_id)->first();
                 if ($branch && $branch?->prefix) {
                     $preFix = $branch?->prefix;
                 }
-                $employeeCodeStart = (int)$branch?->employee_code_start;
-                if($branch?->employee_code_start){
-                    $codeLength = strlen((string)$branch->employee_code_start);
+                $employeeCodeStart = (int) $branch?->employee_code_start;
+                if ($branch?->employee_code_start) {
+                    $codeLength = strlen((string) $branch->employee_code_start);
                 }
-                // dd($branch->toArray(), $branch->employee_code_start, $codeLength);
             }
             $employeeCount = $employeeCount->count();
-            
-            // $nextNumber = $employeeCount + 1;
-            $employeeCodeStart = $employeeCodeStart + $employeeCount ;
+
+            $employeeCodeStart = $employeeCodeStart + $employeeCount;
             $employeeCode = $preFix . str_pad($employeeCodeStart, $codeLength, '0', STR_PAD_LEFT);
             // dd($branch->toArray(), $branch->employee_code_start, $codeLength, $employeeCode);
 
