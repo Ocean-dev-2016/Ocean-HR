@@ -75,7 +75,7 @@ class LoanController extends Controller
                 (object)['data' => 'company_name', 'name' => 'company_id', 'td_label' => 'Company Name', 'className' => '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => "employee_full_name", 'name' => 'employee_id', 'td_label' => 'Employee Name', 'className' =>  '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => "loan_type", 'name' => 'loan_type_id', 'td_label' => 'Loan Type', 'className' =>  '', 'orderable' => true, 'searchable' => false],
-                (object)['data' => "loan_amount", 'name' => 'loan_amount', 'td_label' => 'Loan Type', 'className' =>  '', 'orderable' => true, 'searchable' => false],
+                (object)['data' => "loan_amount", 'name' => 'loan_amount', 'td_label' => 'Loan Amount', 'className' =>  '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => "total_installments", 'name' => 'total_installments', 'td_label' => 'Total Installments', 'className' =>  '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => "remaining_installments", 'name' => 'remaining_installments', 'td_label' => 'Remaining Installments', 'className' =>  '', 'orderable' => true, 'searchable' => false],
                 (object)['data' => "next_emi", 'name' => 'next_emi', 'td_label' => 'Next EMI', 'orderable' => false, 'searchable' => false, 'className' =>  'w-10 text-start'],
