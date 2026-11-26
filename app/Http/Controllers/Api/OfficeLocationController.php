@@ -10,23 +10,24 @@ use Illuminate\Support\Facades\Auth;
 class OfficeLocationController extends Controller
 {
     /**
-     * Get Company Office Location (only latitude and longitude).
+     * Get Company Office Location (latitude, longitude, radius).
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Accepts optional company_id. If omitted, uses authenticated employee company.
      */
     public function getOfficeLocation(Request $request)
     {
         try {
             $employee = Auth::guard('employee-api')->user();
-            $companyId = $request->input('company_id', $employee?->company_id);
+            $companyId = $request->input('company_id') ?: $employee?->company_id;
 
             if (!$companyId) {
-                // If not passed and not authenticated, fallback to the first active company
-                $company = Company::first();
-            } else {
-                $company = Company::find($companyId);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'company_id is required (or login as employee).',
+                ], 422);
             }
+
+            $company = Company::find($companyId);
 
             if (!$company) {
                 return response()->json([
@@ -35,11 +36,32 @@ class OfficeLocationController extends Controller
                 ], 404);
             }
 
+            // Only web-panel / DB values — no static lat/long/radius
+            $latitude = ($company->latitude !== null && $company->latitude !== '')
+                ? (float) $company->latitude
+                : null;
+            $longitude = ($company->longitude !== null && $company->longitude !== '')
+                ? (float) $company->longitude
+                : null;
+            $radius = ($company->radius !== null && $company->radius !== '')
+                ? (float) $company->radius
+                : null;
+
             $data = [
-                'latitude' => $company->latitude ? (float) $company->latitude : null,
-                'longitude' => $company->longitude ? (float) $company->longitude : null,
-                'radius' => $company->radius !== null ? (float) $company->radius : 100.0,
+                'company_id' => (string) $company->id,
+                'company_name' => $company->company_name,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'radius' => $radius,
             ];
+
+            if ($latitude === null || $longitude === null) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Office latitude/longitude not set in company (web panel).',
+                    'data' => $data,
+                ], 200);
+            }
 
             return response()->json([
                 'status' => true,

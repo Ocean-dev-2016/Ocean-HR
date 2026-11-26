@@ -92,8 +92,6 @@ use App\Http\Controllers\Api\OfficeLocationController;
 Route::match(['get', 'post'], 'get-office-location', [OfficeLocationController::class, 'getOfficeLocation'])->name('api.get_office_location');
 
 Route::group(['middleware' => ['auth:employee-api']], function () {
-    Route::match(['get', 'post'], 'get-office-location', [OfficeLocationController::class, 'getOfficeLocation']);
-
     Route::get('/get-profile', [\App\Http\Controllers\Api\EmployeeAuthController::class, 'getProfile']);
     Route::post('/get-profile', [\App\Http\Controllers\Api\EmployeeAuthController::class, 'getProfile']);
     Route::POST('/update-profile', [\App\Http\Controllers\Api\EmployeeAuthController::class, 'updateProfile']);
